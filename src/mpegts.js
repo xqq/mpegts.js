@@ -63,25 +63,25 @@ function getFeatureList() {
 
 
 // interfaces
-let flvjs = {};
+let mpegts = {};
 
-flvjs.createPlayer = createPlayer;
-flvjs.isSupported = isSupported;
-flvjs.getFeatureList = getFeatureList;
+mpegts.createPlayer = createPlayer;
+mpegts.isSupported = isSupported;
+mpegts.getFeatureList = getFeatureList;
 
-flvjs.BaseLoader = BaseLoader;
-flvjs.LoaderStatus = LoaderStatus;
-flvjs.LoaderErrors = LoaderErrors;
+mpegts.BaseLoader = BaseLoader;
+mpegts.LoaderStatus = LoaderStatus;
+mpegts.LoaderErrors = LoaderErrors;
 
-flvjs.Events = PlayerEvents;
-flvjs.ErrorTypes = ErrorTypes;
-flvjs.ErrorDetails = ErrorDetails;
+mpegts.Events = PlayerEvents;
+mpegts.ErrorTypes = ErrorTypes;
+mpegts.ErrorDetails = ErrorDetails;
 
-flvjs.FlvPlayer = FlvPlayer;
-flvjs.NativePlayer = NativePlayer;
-flvjs.LoggingControl = LoggingControl;
+mpegts.FlvPlayer = FlvPlayer;
+mpegts.NativePlayer = NativePlayer;
+mpegts.LoggingControl = LoggingControl;
 
-Object.defineProperty(flvjs, 'version', {
+Object.defineProperty(mpegts, 'version', {
     enumerable: true,
     get: function () {
         // replaced by browserify-versionify transform
@@ -89,4 +89,4 @@ Object.defineProperty(flvjs, 'version', {
     }
 });
 
-export default flvjs;
+export default mpegts;

@@ -1,19 +1,21 @@
 {
-  "name": "flv.js",
+  "name": "mpegts.js",
   "version": "1.5.0",
-  "description": "HTML5 FLV Player",
-  "main": "./dist/flv.js",
-  "module": "./src/flv.js",
-  "jsnext:main": "./src/flv.js",
+  "description": "HTML5 MPEG2-TS Player",
+  "main": "./dist/mpegts.js",
+  "module": "./src/mpegts.js",
+  "jsnext:main": "./src/mpegts.js",
   "types": "./d.ts/flv.d.ts",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Bilibili/flv.js"
+    "url": "https://github.com/xqq/mpegts.js"
   },
   "keywords": [
     "html5",
-    "flv",
+    "mpegts",
+    "m2ts",
     "mse",
+    "arib",
     "javascript"
   ],
   "scripts": {

@@ -3,7 +3,7 @@
 
 <head>
     <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-    <title>flv.js demo</title>
+    <title>mpegts.js demo</title>
     <link rel="stylesheet" type="text/css" href="demo.css" />
 </head>
 
@@ -54,14 +54,14 @@
         <textarea name="logcatbox" class="logcatBox" rows="10" readonly></textarea>
     </div>
 
-    <script src="../dist/flv.js"></script>
+    <script src="../dist/mpegts.js"></script>
     
     <script>
         var checkBoxFields = ['isLive', 'withCredentials', 'hasAudio', 'hasVideo'];
         var streamURL, mediaSourceURL;
 
         function flv_load() {
-            console.log('isSupported: ' + flvjs.isSupported());
+            console.log('isSupported: ' + mpegts.isSupported());
             if (mediaSourceURL.className === '') {
                 var url = document.getElementById('msURL').value;
     
@@ -99,7 +99,7 @@
                     player = null;
                 }
             }
-            player = flvjs.createPlayer(mediaDataSource, {
+            player = mpegts.createPlayer(mediaDataSource, {
                 enableWorker: false,
                 lazyLoadMaxDuration: 3 * 60,
                 seekType: 'range',
@@ -143,7 +143,7 @@
 
         function ls_get(key, def) {
             try {
-                var ret = localStorage.getItem('flvjs_demo.' + key);
+                var ret = localStorage.getItem('mpegts_demo.' + key);
                 if (ret === null) {
                     ret = def;
                 }
@@ -154,7 +154,7 @@
 
         function ls_set(key, value) {
             try {
-                localStorage.setItem('flvjs_demo.' + key, value);
+                localStorage.setItem('mpegts_demo.' + key, value);
             } catch (e) {}
         }
 
@@ -200,12 +200,12 @@
         }
 
         function showVersion() {
-            var version = flvjs.version;
+            var version = mpegts.version;
             document.title = document.title + " (v" + version + ")";
         }
 
         var logcatbox = document.getElementsByName('logcatbox')[0];
-        flvjs.LoggingControl.addLogListener(function(type, str) {
+        mpegts.LoggingControl.addLogListener(function(type, str) {
             logcatbox.value = logcatbox.value + str + '\n';
             logcatbox.scrollTop = logcatbox.scrollHeight;
         });
