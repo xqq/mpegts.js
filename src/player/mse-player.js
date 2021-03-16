@@ -28,11 +28,11 @@ import {ErrorTypes, ErrorDetails} from './player-errors.js';
 import {createDefaultConfig} from '../config.js';
 import {InvalidArgumentException, IllegalStateException} from '../utils/exception.js';
 
-class FlvPlayer {
+class MSEPlayer {
 
     constructor(mediaDataSource, config) {
-        this.TAG = 'FlvPlayer';
-        this._type = 'FlvPlayer';
+        this.TAG = 'MSEPlayer';
+        this._type = 'MSEPlayer';
         this._emitter = new EventEmitter();
 
         this._config = createDefaultConfig();
@@ -40,8 +40,9 @@ class FlvPlayer {
             Object.assign(this._config, config);
         }
 
-        if (mediaDataSource.type.toLowerCase() !== 'flv') {
-            throw new InvalidArgumentException('FlvPlayer requires an flv MediaDataSource input!');
+        let typeLowerCase = mediaDataSource.type.toLowerCase();
+        if (typeLowerCase !== 'mpegts' && typeLowerCase !== 'm2ts' && typeLowerCase !== 'flv') {
+            throw new InvalidArgumentException('MSEPlayer requires an mpegts/m2ts/flv MediaDataSource input!');
         }
 
         if (mediaDataSource.isLive === true) {
@@ -189,7 +190,7 @@ class FlvPlayer {
             throw new IllegalStateException('HTMLMediaElement must be attached before load()!');
         }
         if (this._transmuxer) {
-            throw new IllegalStateException('FlvPlayer.load() has been called, please call unload() first!');
+            throw new IllegalStateException('MSEPlayer.load() has been called, please call unload() first!');
         }
         if (this._hasPendingLoad) {
             return;
@@ -607,4 +608,4 @@ class FlvPlayer {
 
 }
 
-export default FlvPlayer;
+export default MSEPlayer;

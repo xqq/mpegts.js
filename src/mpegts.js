@@ -19,7 +19,7 @@
 import Polyfill from './utils/polyfill.js';
 import Features from './core/features.js';
 import {BaseLoader, LoaderStatus, LoaderErrors} from './io/loader.js';
-import FlvPlayer from './player/flv-player.js';
+import MSEPlayer from './player/mse-player.js';
 import NativePlayer from './player/native-player.js';
 import PlayerEvents from './player/player-events.js';
 import {ErrorTypes, ErrorDetails} from './player/player-errors.js';
@@ -44,8 +44,10 @@ function createPlayer(mediaDataSource, optionalConfig) {
     }
 
     switch (mds.type) {
+        case 'mpegts':
+        case 'm2ts':
         case 'flv':
-            return new FlvPlayer(mds, optionalConfig);
+            return new MSEPlayer(mds, optionalConfig);
         default:
             return new NativePlayer(mds, optionalConfig);
     }
@@ -77,7 +79,7 @@ mpegts.Events = PlayerEvents;
 mpegts.ErrorTypes = ErrorTypes;
 mpegts.ErrorDetails = ErrorDetails;
 
-mpegts.FlvPlayer = FlvPlayer;
+mpegts.MSEPlayer = MSEPlayer;
 mpegts.NativePlayer = NativePlayer;
 mpegts.LoggingControl = LoggingControl;
 
