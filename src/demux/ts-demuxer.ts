@@ -21,7 +21,7 @@ import DemuxErrors from './demux-errors.js';
 import MediaInfo from '../core/media-info';
 import {IllegalStateException} from '../utils/exception.js';
 import BaseDemuxer from './base-demuxer';
-import { PAT } from './patpmt.js';
+import { PAT, PMT, ProgramPMTMap, StreamType } from './patpmt';
 
 class TSDemuxer extends BaseDemuxer {
 
@@ -36,7 +36,10 @@ class TSDemuxer extends BaseDemuxer {
     private media_info_ = new MediaInfo();
 
     private pat_: PAT;
+    private current_program_: number;
     private current_pmt_pid_: number = -1;
+    private pmt_: PMT;
+    private program_pmt_map: ProgramPMTMap = {};
 
     private video_track_ = {type: 'video', id: 1, sequenceNumber: 0, samples: [], length: 0};
     private audio_track_ = {type: 'audio', id: 2, sequenceNumber: 0, samples: [], length: 0};
@@ -122,7 +125,7 @@ class TSDemuxer extends BaseDemuxer {
 
         let offset = this.sync_offset_;
 
-        while (offset < chunk.byteLength) {
+        while (offset + this.ts_packet_size_ <= chunk.byteLength) {
             let v = new DataView(chunk, offset, this.ts_packet_size_);
 
             let sync_byte = v.getUint8(0);
@@ -141,7 +144,7 @@ class TSDemuxer extends BaseDemuxer {
             let adaptation_field_control = (v.getUint8(3) & 0x30) >>> 4;
             let continuity_conunter = (v.getUint8(3) & 0x0F);
 
-            let ts_payload_offset = offset + 4;
+            let ts_payload_start_index = 4;
 
             if (adaptation_field_control == 0x02 || adaptation_field_control == 0x03) {
                 let adaptation_field_length = v.getUint8(4);
@@ -150,31 +153,52 @@ class TSDemuxer extends BaseDemuxer {
                     offset += this.ts_packet_size_;
                     continue;
                 } else {
-                    ts_payload_offset = offset + 4 + 1 + adaptation_field_length;
+                    ts_payload_start_index = 4 + 1 + adaptation_field_length;
                 }
             }
 
             if (adaptation_field_control == 0x01 || adaptation_field_control == 0x03) {
                 if (pid === 0 || pid === this.current_pmt_pid_) {  // PAT(pid === 0) or PMT
                     if (payload_unit_start_indicator) {
-                        let pointer_field = v.getUint8(ts_payload_offset);
+                        let pointer_field = v.getUint8(ts_payload_start_index);
                         // skip pointer_field and strange data
-                        ts_payload_offset += 1 + pointer_field;
+                        ts_payload_start_index += 1 + pointer_field;
                     }
-                    let ts_payload_length = offset + this.ts_packet_size_ - ts_payload_offset;
+                    let ts_payload_length = this.ts_packet_size_ - ts_payload_start_index;
 
                     if (pid === 0) {
-                        Log.v(this.TAG, `pid = ${pid}: PAT`);
                         this.parsePAT(chunk,
-                                      ts_payload_offset,
+                                      offset + ts_payload_start_index,
                                       ts_payload_length,
                                       {payload_unit_start_indicator, continuity_conunter});
                     } else {
-                        Log.v(this.TAG, `pid = ${pid}: PMT`);
                         this.parsePMT(chunk,
-                                      ts_payload_offset,
+                                      offset + ts_payload_start_index,
                                       ts_payload_length,
                                       {payload_unit_start_indicator, continuity_conunter});
+                    }
+                } else if (this.pmt_ != undefined && this.pmt_.pid_stream_type[pid] != undefined) {
+                    // parse PES
+                    let stream_type = this.pmt_.pid_stream_type[pid];
+                    switch (stream_type) {
+                        case StreamType.kMPEG1Audio:
+                        case StreamType.kMPEG2Audio:
+                            break;
+                        case StreamType.kPESPrivateData:
+                            break;
+                        case StreamType.kADTSAAC:
+                            // Log.v(this.TAG, `AAC PES: pid = ${pid}, type = ${stream_type}`);
+                            break;
+                        case StreamType.kID3:
+                            // Log.v(this.TAG, `ID3 PES: pid = ${pid}, type = ${stream_type}`);
+                            break;
+                        case StreamType.kH264:
+                            // Log.v(this.TAG, `H264 PES: pid = ${pid}, type = ${stream_type}`);
+                            break;
+                        case StreamType.kH265:
+                            break;
+                        default:
+                            break;
                     }
                 }
             }
@@ -193,7 +217,6 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     private parsePAT(buffer: ArrayBuffer, offset: number, length: number, misc: object): void {
-        Log.v(this.TAG, `parsePAT`);
         let data = new Uint8Array(buffer, offset, length);
 
         let table_id = data[0];
@@ -214,13 +237,19 @@ class TSDemuxer extends BaseDemuxer {
 
         if (current_next_indicator === 1 && section_number === 0) {
             this.pat_ = new PAT();
+            this.pat_.version_number = version_number;
+        } else {
+            if (this.pat_ == undefined) {
+                return;
+            }
         }
 
         let program_start_index = 8;
         let program_bytes = section_length - 5 - 4;  // section_length - (headers + crc)
+        let first_program_number = -1;
         let first_pmt_pid = -1;
 
-        for (let i = program_start_index; i < program_bytes; i += 4) {
+        for (let i = program_start_index; i < program_start_index + program_bytes; i += 4) {
             let program_number = (data[i] << 8) | data[i + 1];
             let pid = ((data[i + 2] & 0x1F) << 8) | data[i + 3];
 
@@ -231,6 +260,10 @@ class TSDemuxer extends BaseDemuxer {
                 // program_map_PID
                 this.pat_.program_pmt_pid[program_number] = pid;
 
+                if (first_program_number === -1) {
+                    first_program_number = program_number;
+                }
+
                 if (first_pmt_pid === -1) {
                     first_pmt_pid = pid;
                 }
@@ -238,13 +271,66 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         // Currently we only deal with first appeared PMT pid
-        if (section_number === 0) {
+        if (current_next_indicator === 1 && section_number === 0) {
+            this.current_program_ = first_program_number;
             this.current_pmt_pid_ = first_pmt_pid;
+            Log.v(this.TAG, `PAT: ${JSON.stringify(this.pat_)}`);
         }
     }
 
     private parsePMT(buffer: ArrayBuffer, offset: number, length: number, misc: object): void {
+        let data = new Uint8Array(buffer, offset, length);
 
+        let table_id = data[0];
+        if (table_id !== 0x02) {
+            Log.e(this.TAG, `parsePMT: table_id ${table_id} is not corresponded to PMT!`);
+            return;
+        }
+
+        let section_length_part1 = data[1] & 0x0F;
+        let section_length_part2 = data[2];
+        let section_length = (section_length_part1 << 8) | section_length_part2;
+
+        let program_number = (data[3] << 8) | data[4];
+        let version_number = (data[5] & 0x3E) >>> 1;
+        let current_next_indicator = data[5] & 0x01;
+        let section_number = data[6];
+        let last_section_number = data[7];
+
+        let pmt: PMT = null;
+
+        if (current_next_indicator === 1 && section_number === 0) {
+            pmt = new PMT();
+            pmt.program_number = program_number;
+            pmt.version_number = version_number;
+            this.program_pmt_map[program_number] = pmt;
+        } else {
+            pmt = this.program_pmt_map[program_number];
+            if (pmt == undefined) {
+                return;
+            }
+        }
+
+        let PCR_PID = ((data[8] & 0x1F) << 8) | data[9];
+        let program_info_length = ((data[10] & 0x0F) << 8) | data[11];
+
+        let info_start_index = 12 + program_info_length;
+        let info_bytes = section_length - 9 - program_info_length - 4;
+
+        for (let i = info_start_index; i < info_start_index + info_bytes; ) {
+            let stream_type = data[i] as StreamType;
+            let elementary_PID = ((data[i + 1] & 0x1F) << 8) | data[i + 2];
+
+            pmt.pid_stream_type[elementary_PID] = stream_type;
+
+            let ES_info_length = ((data[i + 3] & 0x0F) << 8) | data[i + 4];
+            i += 5 + ES_info_length;
+        }
+
+        if (program_number === this.current_program_) {
+            this.pmt_ = pmt;
+            Log.v(this.TAG, `PMT: ${JSON.stringify(pmt)}`);
+        }
     }
 
 }
