@@ -39,9 +39,9 @@ class TSDemuxer extends BaseDemuxer {
     private current_program_: number;
     private current_pmt_pid_: number = -1;
     private pmt_: PMT;
-    private program_pmt_map: ProgramPMTMap = {};
+    private program_pmt_map_: ProgramPMTMap = {};
 
-    private pid_pes_queues: PIDPESQueues = {};
+    private pid_pes_queues_: PIDPESQueues = {};
 
     private video_track_ = {type: 'video', id: 1, sequenceNumber: 0, samples: [], length: 0};
     private audio_track_ = {type: 'audio', id: 2, sequenceNumber: 0, samples: [], length: 0};
@@ -292,9 +292,9 @@ class TSDemuxer extends BaseDemuxer {
             pmt = new PMT();
             pmt.program_number = program_number;
             pmt.version_number = version_number;
-            this.program_pmt_map[program_number] = pmt;
+            this.program_pmt_map_[program_number] = pmt;
         } else {
-            pmt = this.program_pmt_map[program_number];
+            pmt = this.program_pmt_map_[program_number];
             if (pmt == undefined) {
                 return;
             }
@@ -345,7 +345,7 @@ class TSDemuxer extends BaseDemuxer {
 
             // handle queued PES slices:
             // Merge into a big Uint8Array then call parsePES()
-            let pes_queue = this.pid_pes_queues[misc.pid];
+            let pes_queue = this.pid_pes_queues_[misc.pid];
             if (pes_queue) {
                 let pes = new Uint8Array(pes_queue.total_length);
                 for (let i = 0, offset = 0; i < pes_queue.slices.length; i++) {
@@ -359,16 +359,16 @@ class TSDemuxer extends BaseDemuxer {
             }
 
             // Make a new PES queue for new PES slices
-            this.pid_pes_queues[misc.pid] = new PESQueue();
+            this.pid_pes_queues_[misc.pid] = new PESQueue();
         }
 
-        if (this.pid_pes_queues[misc.pid] == undefined) {
+        if (this.pid_pes_queues_[misc.pid] == undefined) {
             // ignore PES slices without [PES slice that has payload_unit_start_indicator]
             return;
         }
 
         // push subsequent PES slices into pes_queue
-        let pes_queue = this.pid_pes_queues[misc.pid];
+        let pes_queue = this.pid_pes_queues_[misc.pid];
         pes_queue.slices.push(data);
         pes_queue.total_length += data.byteLength;
     }
