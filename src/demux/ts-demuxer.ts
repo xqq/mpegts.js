@@ -16,12 +16,13 @@
  * limitations under the License.
  */
 
-import Log from '../utils/logger.js';
-import DemuxErrors from './demux-errors.js';
+import Log from '../utils/logger';
+import DemuxErrors from './demux-errors';
 import MediaInfo from '../core/media-info';
-import {IllegalStateException} from '../utils/exception.js';
+import {IllegalStateException} from '../utils/exception';
 import BaseDemuxer from './base-demuxer';
-import { PAT, PESQueue, PIDPESQueues, PMT, ProgramPMTMap, StreamType } from './pat-pmt-pes';
+import { PAT, PESData, PESSliceQueue, PIDToPESSliceQueues, PMT, ProgramToPMTMap, StreamType } from './pat-pmt-pes';
+import { H264AnnexBParser, H264NaluAVC1, H264NaluPayload, H264NaluType } from './h264';
 
 class TSDemuxer extends BaseDemuxer {
 
@@ -30,7 +31,6 @@ class TSDemuxer extends BaseDemuxer {
     private config_: any;
     private ts_packet_size_: number;
     private sync_offset_: number;
-    private first_parse_: boolean = true;
     private do_dispatch_: boolean;
 
     private media_info_ = new MediaInfo();
@@ -39,9 +39,9 @@ class TSDemuxer extends BaseDemuxer {
     private current_program_: number;
     private current_pmt_pid_: number = -1;
     private pmt_: PMT;
-    private program_pmt_map_: ProgramPMTMap = {};
+    private program_pmt_map_: ProgramToPMTMap = {};
 
-    private pid_pes_queues_: PIDPESQueues = {};
+    private pes_slice_queues_: PIDToPESSliceQueues = {};
 
     private video_track_ = {type: 'video', id: 1, sequenceNumber: 0, samples: [], length: 0};
     private audio_track_ = {type: 'audio', id: 2, sequenceNumber: 0, samples: [], length: 0};
@@ -121,7 +121,7 @@ class TSDemuxer extends BaseDemuxer {
         return false;
     }
 
-    public parseChunks(chunk: ArrayBuffer, byteStart: number): number {
+    public parseChunks(chunk: ArrayBuffer, byte_start: number): number {
         if (!this.onError
                 || !this.onMediaInfo
                 || !this.onTrackMetadata
@@ -132,6 +132,7 @@ class TSDemuxer extends BaseDemuxer {
         let offset = this.sync_offset_;
 
         while (offset + this.ts_packet_size_ <= chunk.byteLength) {
+            let file_position = byte_start + offset;
             let v = new DataView(chunk, offset, this.ts_packet_size_);
 
             let sync_byte = v.getUint8(0);
@@ -191,7 +192,13 @@ class TSDemuxer extends BaseDemuxer {
                         this.handlePESSlice(chunk,
                                             offset + ts_payload_start_index,
                                             ts_payload_length,
-                                            {pid, stream_type, payload_unit_start_indicator, continuity_conunter});
+                                            {
+                                                pid,
+                                                stream_type,
+                                                file_position,
+                                                payload_unit_start_indicator,
+                                                continuity_conunter
+                                            });
                     }
                 }
             }
@@ -345,35 +352,43 @@ class TSDemuxer extends BaseDemuxer {
 
             // handle queued PES slices:
             // Merge into a big Uint8Array then call parsePES()
-            let pes_queue = this.pid_pes_queues_[misc.pid];
-            if (pes_queue) {
-                let pes = new Uint8Array(pes_queue.total_length);
-                for (let i = 0, offset = 0; i < pes_queue.slices.length; i++) {
-                    let slice = pes_queue.slices[i];
-                    pes.set(slice, offset);
+            let slice_queue = this.pes_slice_queues_[misc.pid];
+            if (slice_queue) {
+                let data = new Uint8Array(slice_queue.total_length);
+                for (let i = 0, offset = 0; i < slice_queue.slices.length; i++) {
+                    let slice = slice_queue.slices[i];
+                    data.set(slice, offset);
                     offset += slice.byteLength;
                 }
-                pes_queue.slices = [];
-                pes_queue.total_length = 0;
-                this.parsePES(pes, misc);
+                slice_queue.slices = [];
+                slice_queue.total_length = 0;
+
+                let pes_data = new PESData();
+                pes_data.pid = misc.pid;
+                pes_data.data = data;
+                pes_data.stream_type = misc.stream_type;
+                pes_data.file_position = slice_queue.file_position;
+                this.parsePES(pes_data);
             }
 
             // Make a new PES queue for new PES slices
-            this.pid_pes_queues_[misc.pid] = new PESQueue();
+            this.pes_slice_queues_[misc.pid] = new PESSliceQueue();
+            this.pes_slice_queues_[misc.pid].file_position = misc.file_position;
         }
 
-        if (this.pid_pes_queues_[misc.pid] == undefined) {
+        if (this.pes_slice_queues_[misc.pid] == undefined) {
             // ignore PES slices without [PES slice that has payload_unit_start_indicator]
             return;
         }
 
         // push subsequent PES slices into pes_queue
-        let pes_queue = this.pid_pes_queues_[misc.pid];
-        pes_queue.slices.push(data);
-        pes_queue.total_length += data.byteLength;
+        let slice_queue = this.pes_slice_queues_[misc.pid];
+        slice_queue.slices.push(data);
+        slice_queue.total_length += data.byteLength;
     }
 
-    private parsePES(data: Uint8Array, misc: any): void {
+    private parsePES(pes_data: PESData): void {
+        let data = pes_data.data;
         let packet_start_code_prefix = (data[0] << 16) | (data[1] << 8) | (data[2]);
         let stream_id = data[3];
         let PES_packet_length = (data[4] << 8) | data[5];
@@ -431,19 +446,19 @@ class TSDemuxer extends BaseDemuxer {
 
             let payload = new Uint8Array(data, payload_start_index, payload_length);
 
-            switch (misc.stream_type) {
+            switch (pes_data.stream_type) {
                 case StreamType.kMPEG1Audio:
                 case StreamType.kMPEG2Audio:
                     break;
                 case StreamType.kPESPrivateData:
                     break;
                 case StreamType.kADTSAAC:
-                    this.parseAACPayload(payload, pts, dts, misc);
+                    this.parseAACPayload(payload, pts, dts);
                     break;
                 case StreamType.kID3:
                     break;
                 case StreamType.kH264:
-                    this.parseH264Payload(payload, pts, dts, misc);
+                    this.parseH264Payload(payload, pts, dts, pes_data.file_position);
                     break;
                 case StreamType.kH265:
                 default:
@@ -452,11 +467,10 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseH264Payload(data: Uint8Array, pts: number, dts: number, misc: any) {
-
+    private parseH264Payload(data: Uint8Array, pts: number, dts: number, file_position: number) {
     }
 
-    private parseAACPayload(data: Uint8Array, pts: number, dts: number, misc: any) {
+    private parseAACPayload(data: Uint8Array, pts: number, dts: number) {
 
     }
 

@@ -1,4 +1,4 @@
-interface ProgramPMTPIDMap {
+interface ProgramToPMTPIDMap {
     [program: number]: number;
 }
 
@@ -6,7 +6,7 @@ export class PAT {
     version_number: number;
     network_pid: number;
     // program_number -> pmt_pid
-    program_pmt_pid: ProgramPMTPIDMap = {};
+    program_pmt_pid: ProgramToPMTPIDMap = {};
 }
 
 export enum StreamType {
@@ -19,7 +19,7 @@ export enum StreamType {
     kH265 = 0x24
 }
 
-interface PIDStreamTypeMap {
+interface PIDToStreamTypeMap {
     [pid: number]: StreamType;
 }
 
@@ -28,7 +28,7 @@ export class PMT {
     version_number: number;
     pcr_pid: number;
     // pid -> stream_type
-    pid_stream_type: PIDStreamTypeMap = {};
+    pid_stream_type: PIDToStreamTypeMap = {};
 
     common_pids: {
         h264: number | undefined,
@@ -43,15 +43,23 @@ export class PMT {
     } = {};
 }
 
-export interface ProgramPMTMap {
+export interface ProgramToPMTMap {
     [program: number]: PMT;
 }
 
-export class PESQueue {
-    slices: Uint8Array[] = [];
-    total_length: number = 0;
+export class PESData {
+    pid: number;
+    data: Uint8Array;
+    stream_type: StreamType;
+    file_position: number;
 }
 
-export interface PIDPESQueues {
-    [pid: number]: PESQueue;
+export class PESSliceQueue {
+    slices: Uint8Array[] = [];
+    total_length: number = 0;
+    file_position: number = 0;
+}
+
+export interface PIDToPESSliceQueues {
+    [pid: number]: PESSliceQueue;
 }
