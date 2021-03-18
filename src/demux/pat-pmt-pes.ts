@@ -29,8 +29,29 @@ export class PMT {
     pcr_pid: number;
     // pid -> stream_type
     pid_stream_type: PIDStreamTypeMap = {};
+
+    common_pids: {
+        h264: number | undefined,
+        adts_aac: number | undefined
+    } = {
+        h264: undefined,
+        adts_aac: undefined
+    };
+
+    pes_private_data_pids: {
+        [pid: number]: boolean
+    } = {};
 }
 
 export interface ProgramPMTMap {
     [program: number]: PMT;
+}
+
+export class PESQueue {
+    slices: Uint8Array[] = [];
+    total_length: number = 0;
+}
+
+export interface PIDPESQueues {
+    [pid: number]: PESQueue;
 }
