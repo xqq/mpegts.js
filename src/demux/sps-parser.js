@@ -41,6 +41,16 @@ class SPSParser {
     }
 
     static parseSPS(uint8array) {
+        let codec_array = uint8array.subarray(1, 4);
+        let codec_mimetype = 'avc1.';
+        for (let j = 0; j < 3; j++) {
+            let h = codec_array[j].toString(16);
+            if (h.length < 2) {
+                h = '0' + h;
+            }
+            codec_mimetype += h;
+        }
+
         let rbsp = SPSParser._ebsp2rbsp(uint8array);
         let gb = new ExpGolomb(rbsp);
 
@@ -195,11 +205,14 @@ class SPSParser {
         gb = null;
 
         return {
-            profile_string: profile_string,  // baseline, high, high10, ...
-            level_string: level_string,  // 3, 3.1, 4, 4.1, 5, 5.1, ...
-            bit_depth: bit_depth,  // 8bit, 10bit, ...
-            ref_frames: ref_frames,
-            chroma_format: chroma_format,  // 4:2:0, 4:2:2, ...
+            codec_mimetype,
+            profile_idc,
+            level_idc,
+            profile_string,  // baseline, high, high10, ...
+            level_string,  // 3, 3.1, 4, 4.1, 5, 5.1, ...
+            bit_depth,  // 8bit, 10bit, ...
+            ref_frames,
+            chroma_format,  // 4:2:0, 4:2:2, ...
             chroma_format_string: SPSParser.getChromaFormatString(chroma_format),
 
             frame_rate: {
