@@ -21,6 +21,7 @@ import Log from '../utils/logger.js';
 import Browser from '../utils/browser.js';
 import MediaInfo from './media-info.js';
 import FLVDemuxer from '../demux/flv-demuxer.js';
+import TSDemuxer from '../demux/ts-demuxer';
 import MP4Remuxer from '../remux/mp4-remuxer.js';
 import DemuxErrors from '../demux/demux-errors.js';
 import IOController from '../io/io-controller.js';
@@ -240,6 +241,24 @@ class TransmuxingController {
             // IOController seeked immediately after opened, byteStart > 0 callback may received
             this._demuxer.bindDataSource(this._ioctl);
             this._demuxer.timestampBase = this._mediaDataSource.segments[this._currentSegmentIndex].timestampBase;
+
+            consumed = this._demuxer.parseChunks(data, byteStart);
+        } else if ((probeData = TSDemuxer.probe(data)).match) {
+            let demuxer = this._demuxer = new TSDemuxer(probeData, this._config);
+
+            if (!this._remuxer) {
+                this._remuxer = new MP4Remuxer(this._config);
+            }
+
+            demuxer.onError = this._onDemuxException.bind(this);
+            demuxer.onMediaInfo = this._onMediaInfo.bind(this);
+            demuxer.onMetaDataArrived = this._onMetaDataArrived.bind(this);
+
+            this._remuxer.bindDataSource(this._demuxer);
+            this._demuxer.bindDataSource(this._ioctl);
+
+            this._remuxer.onInitSegment = this._onRemuxerInitSegmentArrival.bind(this);
+            this._remuxer.onMediaSegment = this._onRemuxerMediaSegmentArrival.bind(this);
 
             consumed = this._demuxer.parseChunks(data, byteStart);
         } else if ((probeData = FLVDemuxer.probe(data)).match) {
