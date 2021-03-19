@@ -33,7 +33,7 @@ export class H264NaluAVC1 {
         this.type = nalu.type;
         this.data = new Uint8Array(4 + nalu_size);  // 4 byte length-header + nalu payload
 
-        let v = new DataView(this.data);
+        let v = new DataView(this.data.buffer);
         // Fill 4 byte length-header
         v.setUint32(0, nalu_size);
         // Copy payload
@@ -72,9 +72,9 @@ export class H264AnnexBParser {
                         | (data[i + 1] << 16)
                         | (data[i + 2] << 8)
                         | (data[i + 3]);
-            let uint24 = (data[i + 0] << 24)
-                        | (data[i + 1] << 16)
-                        | (data[i + 2] << 8);
+            let uint24 = (data[i + 0] << 16)
+                        | (data[i + 1] << 8)
+                        | (data[i + 2]);
             if (uint32 === 0x00000001 || uint24 === 0x000001) {
                 return i;
             } else {
@@ -113,8 +113,8 @@ export class H264AnnexBParser {
                 continue;
             }
             if (forbidden_bit !== 0) {
-                Log.e(this.TAG, `forbidden_bit near offset ${offset} should be 0 but has value ${forbidden_bit}`);
-                continue;
+                // Log.e(this.TAG, `forbidden_bit near offset ${offset} should be 0 but has value ${forbidden_bit}`);
+                // continue;
             }
 
             let payload_data = data.subarray(offset, next_startcode_offset);
