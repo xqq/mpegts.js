@@ -128,3 +128,45 @@ export class H264AnnexBParser {
     }
 
 }
+
+
+export class AVCDecoderConfigurationRecord {
+
+    private data: Uint8Array;
+
+    // sps, pps: require Nalu without 4 byte length-header
+    public constructor(sps: Uint8Array, pps: Uint8Array) {
+        let length = 6 + 2 + sps.byteLength + 1 + 2 + pps.byteLength;
+        let data = this.data = new Uint8Array(length);
+
+        data[0] = 0x01;    // configurationVersion
+        data[1] = sps[1];  // AVCProfileIndication
+        data[2] = sps[2];  // profile_compatibility
+        data[3] = sps[3];  // AVCLevelIndication
+        data[4] = 0xFF;    // 111111 + lengthSizeMinusOne(3)
+
+        data[5] = 0xE0 | 0x01  // 111 + numOfSequenceParameterSets
+
+        let sps_length = sps.byteLength;
+        data[6] = sps_length >>> 8;  // sequenceParameterSetLength
+        data[7] = sps_length & 0x0F;
+
+        let offset = 8;
+        data.set(sps, 8);
+        offset += sps_length;
+
+        data[offset] = 1;  // numOfPictureParameterSets
+
+        let pps_length = pps.byteLength;
+        data[offset + 1] = pps_length >>> 8;  // pictureParameterSetLength
+        data[offset + 2] = pps_length & 0x0F;
+
+        data.set(pps, offset + 3);
+        offset += 3 + pps_length;
+    }
+
+    public getData() {
+        return this.data;
+    }
+
+}
