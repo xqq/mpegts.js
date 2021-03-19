@@ -136,8 +136,12 @@ class MP4Remuxer {
         if (!this._dtsBaseInited) {
             this._calculateDtsBase(audioTrack, videoTrack);
         }
-        this._remuxVideo(videoTrack);
-        this._remuxAudio(audioTrack);
+        if (videoTrack) {
+            this._remuxVideo(videoTrack);
+        }
+        if (audioTrack) {
+            this._remuxAudio(audioTrack);
+        }
     }
 
     _onTrackMetadataReceived(type, metadata) {
