@@ -2,20 +2,20 @@ import Log from "../utils/logger";
 
 export enum H264NaluType {
     kUnspecified = 0,
-	kSliceNonIDR,
-	kSliceDPA,
-	kSliceDPB,
-	kSliceDPC,
-	kSliceIDR,
-	kSliceSEI,
-	kSliceSPS,
-	kSlicePPS,
-	kSliceAUD,
-	kEndOfSequence,
-	kEndOfStream,
-	kFiller,
-	kSPSExt,
-	kReserved0
+    kSliceNonIDR,
+    kSliceDPA,
+    kSliceDPB,
+    kSliceDPC,
+    kSliceIDR,
+    kSliceSEI,
+    kSliceSPS,
+    kSlicePPS,
+    kSliceAUD,
+    kEndOfSequence,
+    kEndOfStream,
+    kFiller,
+    kSPSExt,
+    kReserved0
 }
 
 export class H264NaluPayload {
