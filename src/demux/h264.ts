@@ -114,7 +114,7 @@ export class H264AnnexBParser {
             }
             if (forbidden_bit !== 0) {
                 // Log.e(this.TAG, `forbidden_bit near offset ${offset} should be 0 but has value ${forbidden_bit}`);
-                // continue;
+                continue;
             }
 
             let payload_data = data.subarray(offset, next_startcode_offset);
@@ -135,8 +135,15 @@ export class AVCDecoderConfigurationRecord {
     private data: Uint8Array;
 
     // sps, pps: require Nalu without 4 byte length-header
-    public constructor(sps: Uint8Array, pps: Uint8Array) {
+    public constructor(sps: Uint8Array, pps: Uint8Array, sps_details: any) {
         let length = 6 + 2 + sps.byteLength + 1 + 2 + pps.byteLength;
+        let need_extra_fields = false;
+
+        if (sps[3] !== 66 && sps[3] !== 77 && sps[3] !== 88) {
+            need_extra_fields = true;
+            length += 4;
+        }
+
         let data = this.data = new Uint8Array(length);
 
         data[0] = 0x01;    // configurationVersion
@@ -149,7 +156,7 @@ export class AVCDecoderConfigurationRecord {
 
         let sps_length = sps.byteLength;
         data[6] = sps_length >>> 8;  // sequenceParameterSetLength
-        data[7] = sps_length & 0x0F;
+        data[7] = sps_length & 0xFF;
 
         let offset = 8;
         data.set(sps, 8);
@@ -159,10 +166,18 @@ export class AVCDecoderConfigurationRecord {
 
         let pps_length = pps.byteLength;
         data[offset + 1] = pps_length >>> 8;  // pictureParameterSetLength
-        data[offset + 2] = pps_length & 0x0F;
+        data[offset + 2] = pps_length & 0xFF;
 
         data.set(pps, offset + 3);
         offset += 3 + pps_length;
+
+        if (need_extra_fields) {
+            data[offset] = 0xFC | sps_details.chroma_format_idc;
+            data[offset + 1] = 0xF8 | (sps_details.bit_depth_luma - 8);
+            data[offset + 2] = 0xF8 | (sps_details.bit_depth_chroma - 8);
+            data[offset + 3] = 0x00;  // number of sps ext
+            offset += 4;
+        }
     }
 
     public getData() {
