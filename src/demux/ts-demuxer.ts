@@ -511,6 +511,7 @@ class TSDemuxer extends BaseDemuxer {
                     this.video_metadata_.sps = nalu_avc1;
                     this.video_metadata_.sps_details = sps_details;
                 } else if (this.detectVideoMetadataChange(nalu_avc1, sps_details) === true) {
+                    Log.v(this.TAG, `H264: Critical h264 metadata has been changed, attempt to re-generate InitSegment`);
                     this.video_metadata_changed_ = true;
                     this.video_metadata_ = {sps: nalu_avc1, pps: undefined, sps_details: sps_details};
                 }
@@ -564,18 +565,23 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         if (new_sps_details.codec_mimetype !== this.video_metadata_.sps_details.codec_mimetype) {
+            Log.v(this.TAG, `H264: Codec mimeType changed from ` +
+                            `${this.video_metadata_.sps_details.codec_mimetype} to ${new_sps_details.codec_mimetype}`);
             return true;
         }
 
-        if (new_sps_details.codec_size.width !== this.video_metadata_.sps_details.codec_size.width) {
-            return true;
-        }
-
-        if (new_sps_details.codec_size.height !== this.video_metadata_.sps_details.codec_size.height) {
+        if (new_sps_details.codec_size.width !== this.video_metadata_.sps_details.codec_size.width
+            || new_sps_details.codec_size.height !== this.video_metadata_.sps_details.codec_size.height) {
+            let old_size = this.video_metadata_.sps_details.codec_size;
+            let new_size = new_sps_details.codec_size;
+            Log.v(this.TAG, `H264: Coded Resolution changed from ` +
+                            `${old_size.width}x${old_size.height} to ${new_size.width}x${new_size.height}`);
             return true;
         }
 
         if (new_sps_details.present_size.width !== this.video_metadata_.sps_details.present_size.width) {
+            Log.v(this.TAG, `H264: Present resolution width changed from ` +
+                            `${this.video_metadata_.sps_details.present_size.width} to ${new_sps_details.present_size.width}`);
             return true;
         }
 
@@ -627,6 +633,10 @@ class TSDemuxer extends BaseDemuxer {
 
         let avcc = new AVCDecoderConfigurationRecord(sps_without_header, pps_without_header, sps_details);
         meta.avcc = avcc.getData();
+
+        if (this.video_init_segment_dispatched_ == false) {
+            Log.v(this.TAG, `Generated first AVCDecoderConfigurationRecord for mimeType: ${meta.codec}`);
+        }
 
         this.onTrackMetadata('video', meta);
         this.video_init_segment_dispatched_ = true;
