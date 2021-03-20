@@ -22,18 +22,21 @@ import MediaInfo from '../core/media-info';
 import {IllegalStateException} from '../utils/exception';
 import BaseDemuxer from './base-demuxer';
 import { PAT, PESData, PESSliceQueue, PIDToPESSliceQueues, PMT, ProgramToPMTMap, StreamType } from './pat-pmt-pes';
-import { H264AnnexBParser, H264NaluAVC1, H264NaluPayload, H264NaluType } from './h264';
+import { AVCDecoderConfigurationRecord, H264AnnexBParser, H264NaluAVC1, H264NaluPayload, H264NaluType } from './h264';
+import SPSParser from './sps-parser';
 
 class TSDemuxer extends BaseDemuxer {
 
-    private readonly TAG: string = "TSDemuxer";
+    private readonly TAG: string = 'TSDemuxer';
 
     private config_: any;
     private ts_packet_size_: number;
     private sync_offset_: number;
-    private do_dispatch_: boolean;
 
     private media_info_ = new MediaInfo();
+
+    private timescale_ = 90;
+    private duration_ = 0;
 
     private pat_: PAT;
     private current_program_: number;
@@ -42,6 +45,23 @@ class TSDemuxer extends BaseDemuxer {
     private program_pmt_map_: ProgramToPMTMap = {};
 
     private pes_slice_queues_: PIDToPESSliceQueues = {};
+
+    private video_metadata_: {
+        sps: H264NaluAVC1 | undefined,
+        pps: H264NaluAVC1 | undefined,
+        sps_details: any
+    } = {
+        sps: undefined,
+        pps: undefined,
+        sps_details: undefined
+    };
+
+    private has_video_ = false;
+    private has_audio_ = false;
+    private video_init_segment_dispatched_ = false;
+    private audio_init_segment_dispatched_ = false;
+    private video_metadata_changed_ = false;
+    private audio_metadata_changed_ = false;
 
     private video_track_ = {type: 'video', id: 1, sequenceNumber: 0, samples: [], length: 0};
     private audio_track_ = {type: 'audio', id: 2, sequenceNumber: 0, samples: [], length: 0};
@@ -64,7 +84,7 @@ class TSDemuxer extends BaseDemuxer {
         let ts_packet_size = 188;
 
         if (data.byteLength <= 3 * ts_packet_size) {
-            Log.e("TSDemuxer", `Probe data ${data.byteLength} bytes is too few for judging MPEG-TS stream format!`);
+            Log.e('TSDemuxer', `Probe data ${data.byteLength} bytes is too few for judging MPEG-TS stream format!`);
             return {match: false};
         }
 
@@ -115,10 +135,6 @@ class TSDemuxer extends BaseDemuxer {
 
     public resetMediaInfo() {
         this.media_info_ = new MediaInfo();
-    }
-
-    private isInitialMetadataDispatched() {
-        return false;
     }
 
     public parseChunks(chunk: ArrayBuffer, byte_start: number): number {
@@ -207,11 +223,7 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         // dispatch parsed frames to the remuxer (consumer)
-        if (this.isInitialMetadataDispatched()) {
-            if (this.do_dispatch_ && (this.audio_track_.length || this.video_track_.length)) {
-                this.onDataAvailable(this.audio_track_, this.video_track_);
-            }
-        }
+        this.dispatchAudioVideoMediaSegment();
 
         return offset;  // consumed bytes
     }
@@ -333,6 +345,13 @@ class TSDemuxer extends BaseDemuxer {
 
         if (program_number === this.current_program_) {
             this.pmt_ = pmt;
+            if (pmt.common_pids.h264) {
+                this.has_video_ = true;
+            }
+            if (pmt.common_pids.adts_aac) {
+                // TODO: Support AAC audio
+                // this.has_audio_ = true;
+            }
             // Log.v(this.TAG, `PMT: ${JSON.stringify(pmt)}`);
         }
     }
@@ -468,6 +487,150 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     private parseH264Payload(data: Uint8Array, pts: number, dts: number, file_position: number) {
+        let annexb_parser = new H264AnnexBParser(data);
+        let nalu_payload: H264NaluPayload = null;
+        let units: {type: H264NaluType, data: Uint8Array}[] = [];
+        let length = 0;
+        let keyframe = false;
+
+        while ((nalu_payload = annexb_parser.readNextNaluPayload()) != null) {
+            let nalu_avc1 = new H264NaluAVC1(nalu_payload);
+
+            if (nalu_avc1.type === H264NaluType.kSliceSPS) {
+                // Notice: parseSPS requires Nalu without startcode or length-header
+                let sps_details = SPSParser.parseSPS(nalu_payload.data);
+                if (!this.video_init_segment_dispatched_) {
+                    this.video_metadata_.sps = nalu_avc1;
+                    this.video_metadata_.sps_details = sps_details;
+                } else if (this.detectVideoMetadataChange(nalu_avc1, sps_details) === true) {
+                    this.video_metadata_changed_ = true;
+                    this.video_metadata_ = {sps: nalu_avc1, pps: undefined, sps_details: sps_details};
+                }
+            } else if (nalu_avc1.type === H264NaluType.kSlicePPS) {
+                if (!this.video_init_segment_dispatched_ || this.video_metadata_changed_) {
+                    this.video_metadata_.pps = nalu_avc1;
+                }
+            } else if (nalu_avc1.type === H264NaluType.kSliceIDR) {
+                keyframe = true;
+                if (!this.video_init_segment_dispatched_ || this.video_metadata_changed_) {
+                    if (this.video_metadata_.sps && this.video_metadata_.pps) {
+                        if (this.video_metadata_changed_) {
+                            // flush stashed frames before changing codec metadata
+                            this.dispatchAudioVideoMediaSegment();
+                        }
+                        // notify new codec metadata (maybe changed)
+                        this.dispatchVideoInitSegment();
+                    }
+                }
+            }
+
+            // Push samples to remuxer only if initialization metadata has been dispatched
+            if (this.video_init_segment_dispatched_) {
+                units.push(nalu_avc1);
+                length += nalu_avc1.data.byteLength;
+            }
+        }
+
+        let pts_ms = Math.floor(pts / this.timescale_);
+        let dts_ms = Math.floor(dts / this.timescale_);
+
+        if (units.length) {
+            let track = this.video_track_;
+            let avc_sample = {
+                units,
+                length,
+                isKeyframe: keyframe,
+                dts: dts_ms,
+                pts: pts_ms,
+                cts: pts_ms - dts_ms,
+                file_position
+            };
+            track.samples.push(avc_sample);
+            track.length += length;
+        }
+    }
+
+    private detectVideoMetadataChange(new_sps: H264NaluAVC1, new_sps_details: any): boolean {
+        if (new_sps.data.byteLength !== this.video_metadata_.sps.data.byteLength) {
+            return true;
+        }
+
+        if (new_sps_details.codec_mimetype !== this.video_metadata_.sps_details.codec_mimetype) {
+            return true;
+        }
+
+        if (new_sps_details.codec_size.width !== this.video_metadata_.sps_details.codec_size.width) {
+            return true;
+        }
+
+        if (new_sps_details.codec_size.height !== this.video_metadata_.sps_details.codec_size.height) {
+            return true;
+        }
+
+        if (new_sps_details.present_size.width !== this.video_metadata_.sps_details.present_size.width) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private isInitSegmentDispatched(): boolean {
+        if (this.has_video_ && this.has_audio_) {  // both video & audio
+            return this.video_init_segment_dispatched_ && this.audio_init_segment_dispatched_;
+        }
+        if (this.has_video_ && !this.has_audio_) {  // video only
+            return this.video_init_segment_dispatched_;
+        }
+        if (!this.has_video_ && this.has_audio_) {  // audio only
+            return this.audio_init_segment_dispatched_;
+        }
+        return false;
+    }
+
+    private dispatchVideoInitSegment() {
+        let sps_details = this.video_metadata_.sps_details;
+        let meta: any = {};
+
+        meta.type = 'video';
+        meta.id = this.video_track_.id;
+        meta.timescale = 1000;
+        meta.duration = this.duration_;
+
+        meta.codecWidth = sps_details.codec_size.width;
+        meta.codecHeight = sps_details.codec_size.height;
+        meta.presentWidth = sps_details.present_size.width;
+        meta.presentHeight = sps_details.present_size.height;
+
+        meta.profile = sps_details.profile_string;
+        meta.level = sps_details.level_string;
+        meta.bitDepth = sps_details.bit_depth;
+        meta.chromaFormat = sps_details.chroma_format;
+        meta.sarRatio = sps_details.sar_ratio;
+        meta.frameRate = sps_details.frame_rate;
+
+        let fps_den = meta.frameRate.fps_den;
+        let fps_num = meta.frameRate.fps_num;
+        meta.refSampleDuration = 1000 * (fps_den / fps_num);
+
+        meta.codec = sps_details.codec_mimetype;
+
+        let sps_without_header = this.video_metadata_.sps.data.subarray(4);
+        let pps_without_header = this.video_metadata_.pps.data.subarray(4);
+
+        let avcc = new AVCDecoderConfigurationRecord(sps_without_header, pps_without_header, sps_details);
+        meta.avcc = avcc.getData();
+
+        this.onTrackMetadata('video', meta);
+        this.video_init_segment_dispatched_ = true;
+        this.video_metadata_changed_ = false;
+    }
+
+    private dispatchAudioVideoMediaSegment() {
+        if (this.isInitSegmentDispatched()) {
+            if (this.audio_track_.length || this.video_track_.length) {
+                this.onDataAvailable(this.audio_track_, this.video_track_);
+            }
+        }
     }
 
     private parseAACPayload(data: Uint8Array, pts: number, dts: number) {
