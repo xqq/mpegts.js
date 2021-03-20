@@ -24,6 +24,8 @@ import BaseDemuxer from './base-demuxer';
 import { PAT, PESData, PESSliceQueue, PIDToPESSliceQueues, PMT, ProgramToPMTMap, StreamType } from './pat-pmt-pes';
 import { AVCDecoderConfigurationRecord, H264AnnexBParser, H264NaluAVC1, H264NaluPayload, H264NaluType } from './h264';
 import SPSParser from './sps-parser';
+import { AACADTSParser, AACFrame, AudioSpecificConfig } from './aac';
+import { MPEG4AudioObjectTypes, MPEG4SamplingFrequencyIndex } from './mpeg4-audio';
 
 class TSDemuxer extends BaseDemuxer {
 
@@ -32,6 +34,7 @@ class TSDemuxer extends BaseDemuxer {
     private config_: any;
     private ts_packet_size_: number;
     private sync_offset_: number;
+    private first_parse_: boolean = true;
 
     private media_info_ = new MediaInfo();
 
@@ -55,6 +58,21 @@ class TSDemuxer extends BaseDemuxer {
         pps: undefined,
         sps_details: undefined
     };
+
+    private audio_metadata_: {
+        audio_object_type: MPEG4AudioObjectTypes;
+        sampling_freq_index: MPEG4SamplingFrequencyIndex;
+        sampling_frequency: number;
+        channel_config: number;
+    } = {
+        audio_object_type: undefined,
+        sampling_freq_index: undefined,
+        sampling_frequency: undefined,
+        channel_config: undefined
+    };
+
+    private aac_last_sample_pts_: number = undefined;
+    private aac_last_incomplete_data_: Uint8Array = null;
 
     private has_video_ = false;
     private has_audio_ = false;
@@ -145,7 +163,12 @@ class TSDemuxer extends BaseDemuxer {
             throw new IllegalStateException('onError & onMediaInfo & onTrackMetadata & onDataAvailable callback must be specified');
         }
 
-        let offset = this.sync_offset_;
+        let offset = 0;
+
+        if (this.first_parse_) {
+            this.first_parse_ = false;
+            offset = this.sync_offset_;
+        }
 
         while (offset + this.ts_packet_size_ <= chunk.byteLength) {
             let file_position = byte_start + offset;
@@ -358,8 +381,7 @@ class TSDemuxer extends BaseDemuxer {
                 this.has_video_ = true;
             }
             if (pmt.common_pids.adts_aac) {
-                // TODO: Support AAC audio
-                // this.has_audio_ = true;
+                this.has_audio_ = true;
             }
         }
     }
@@ -471,7 +493,7 @@ class TSDemuxer extends BaseDemuxer {
                 payload_length = data.byteLength - payload_start_index;
             }
 
-            let payload = new Uint8Array(data, payload_start_index, payload_length);
+            let payload = data.subarray(payload_start_index, payload_start_index + payload_length);
 
             switch (pes_data.stream_type) {
                 case StreamType.kMPEG1Audio:
@@ -480,7 +502,7 @@ class TSDemuxer extends BaseDemuxer {
                 case StreamType.kPESPrivateData:
                     break;
                 case StreamType.kADTSAAC:
-                    this.parseAACPayload(payload, pts, dts);
+                    this.parseAACPayload(payload, pts);
                     break;
                 case StreamType.kID3:
                     break;
@@ -525,7 +547,7 @@ class TSDemuxer extends BaseDemuxer {
                     if (this.video_metadata_.sps && this.video_metadata_.pps) {
                         if (this.video_metadata_changed_) {
                             // flush stashed frames before changing codec metadata
-                            this.dispatchAudioVideoMediaSegment();
+                            this.dispatchVideoMediaSegment();
                         }
                         // notify new codec metadata (maybe changed)
                         this.dispatchVideoInitSegment();
@@ -643,6 +665,22 @@ class TSDemuxer extends BaseDemuxer {
         this.video_metadata_changed_ = false;
     }
 
+    private dispatchVideoMediaSegment() {
+        if (this.isInitSegmentDispatched()) {
+            if (this.video_track_.length) {
+                this.onDataAvailable(null, this.video_track_);
+            }
+        }
+    }
+
+    private dispatchAudioMediaSegment() {
+        if (this.isInitSegmentDispatched()) {
+            if (this.audio_track_.length) {
+                this.onDataAvailable(this.audio_track_, null);
+            }
+        }
+    }
+
     private dispatchAudioVideoMediaSegment() {
         if (this.isInitSegmentDispatched()) {
             if (this.audio_track_.length || this.video_track_.length) {
@@ -651,8 +689,129 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseAACPayload(data: Uint8Array, pts: number, dts: number) {
+    private parseAACPayload(data: Uint8Array, pts: number) {
+        if (this.aac_last_incomplete_data_) {
+            let buf = new Uint8Array(data.byteLength + this.aac_last_incomplete_data_.byteLength);
+            buf.set(this.aac_last_incomplete_data_, 0);
+            buf.set(data, this.aac_last_incomplete_data_.byteLength);
+            data = buf;
+        }
 
+        let ref_sample_duration: number;
+        let base_pts_ms: number;
+
+        if (pts != undefined) {
+            base_pts_ms = pts / this.timescale_;
+        } else if (this.aac_last_sample_pts_ != undefined) {
+            ref_sample_duration = 1024 / this.audio_metadata_.sampling_frequency * 1000;
+            base_pts_ms = this.aac_last_sample_pts_ + ref_sample_duration;
+        } else {
+            Log.w(this.TAG, `AAC: Unknown pts`);
+            return;
+        }
+
+        if (this.aac_last_incomplete_data_ && this.aac_last_sample_pts_) {
+            ref_sample_duration = 1024 / this.audio_metadata_.sampling_frequency * 1000;
+            let new_pts_ms = this.aac_last_sample_pts_ + ref_sample_duration;
+
+            if (Math.abs(new_pts_ms - base_pts_ms) > 1) {
+                Log.w(this.TAG, `AAC: Detected pts overlapped, ` +
+                                `expected: ${new_pts_ms}ms, PES pts: ${base_pts_ms}ms`);
+                base_pts_ms = new_pts_ms;
+            }
+        }
+
+        let adts_parser = new AACADTSParser(data);
+        let aac_frame: AACFrame = null;
+        let sample_pts_ms = base_pts_ms;
+        let last_sample_pts_ms: number;
+
+        while ((aac_frame = adts_parser.readNextAACFrame()) != null) {
+            ref_sample_duration = 1024 / aac_frame.sampling_frequency * 1000;
+
+            if (this.audio_init_segment_dispatched_ == false) {
+                this.audio_metadata_.audio_object_type = aac_frame.audio_object_type;
+                this.audio_metadata_.sampling_freq_index = aac_frame.sampling_freq_index;
+                this.audio_metadata_.sampling_frequency = aac_frame.sampling_frequency;
+                this.audio_metadata_.channel_config = aac_frame.channel_config;
+                this.dispatchAudioInitSegment(aac_frame);
+            } else if (this.detectAudioMetadataChange(aac_frame)) {
+                // flush stashed frames before notify new AudioSpecificConfig
+                this.dispatchAudioMediaSegment();
+                // notify new AAC AudioSpecificConfig
+                this.dispatchAudioInitSegment(aac_frame);
+            }
+
+            last_sample_pts_ms = sample_pts_ms;
+            let sample_pts_ms_int = Math.floor(sample_pts_ms);
+
+            let aac_sample = {
+                unit: aac_frame.data,
+                length: aac_frame.data.byteLength,
+                pts: sample_pts_ms_int,
+                dts: sample_pts_ms_int
+            };
+            this.audio_track_.samples.push(aac_sample);
+            this.audio_track_.length += aac_frame.data.byteLength;
+
+            sample_pts_ms += ref_sample_duration;
+        }
+
+        if (adts_parser.hasIncompleteData()) {
+            this.aac_last_incomplete_data_ = adts_parser.getIncompleteData();
+        }
+
+        if (last_sample_pts_ms) {
+            this.aac_last_sample_pts_ = last_sample_pts_ms;
+        }
+    }
+
+    private detectAudioMetadataChange(frame: AACFrame): boolean {
+        if (frame.audio_object_type !== this.audio_metadata_.audio_object_type) {
+            Log.v(this.TAG, `AAC: AudioObjectType changed from ` +
+                            `${this.audio_metadata_.audio_object_type} to ${frame.audio_object_type}`);
+            return true;
+        }
+
+        if (frame.sampling_freq_index !== this.audio_metadata_.sampling_freq_index) {
+            Log.v(this.TAG, `AAC: SamplingFrequencyIndex changed from ` +
+                            `${this.audio_metadata_.sampling_freq_index} to ${frame.sampling_freq_index}`);
+            return true;
+        }
+
+        if (frame.channel_config !== this.audio_metadata_.channel_config) {
+            Log.v(this.TAG, `AAC: Channel configuration changed from ` +
+                            `${this.audio_metadata_.channel_config} to ${frame.channel_config}`);
+            return true;
+        }
+
+        return false;
+    }
+
+    private dispatchAudioInitSegment(aac_frame: AACFrame) {
+        let audio_specific_config = new AudioSpecificConfig(aac_frame);
+        let meta: any = {};
+
+        meta.type = 'audio';
+        meta.id = this.audio_track_.id;
+        meta.timescale = 1000;
+        meta.duration = this.duration_;
+
+        meta.audioSampleRate = audio_specific_config.sampling_rate;
+        meta.channelCount = audio_specific_config.channel_count;
+        meta.codec = audio_specific_config.codec_mimetype;
+        meta.originalCodec = audio_specific_config.original_codec_mimetype;
+        meta.config = audio_specific_config.config;
+
+        meta.refSampleDuration = 1024 / meta.audioSampleRate * meta.timescale;
+
+        if (this.audio_init_segment_dispatched_ == false) {
+            Log.v(this.TAG, `Generated first AudioSpecificConfig for mimeType: ${meta.codec}`);
+        }
+
+        this.onTrackMetadata('audio', meta);
+        this.audio_init_segment_dispatched_ = true;
+        this.video_metadata_changed_ = false;
     }
 
 }
