@@ -4,6 +4,7 @@ import { MPEG4AudioObjectTypes, MPEG4SamplingFrequencies, MPEG4SamplingFrequency
 export class AACFrame {
     audio_object_type: MPEG4AudioObjectTypes;
     sampling_freq_index: MPEG4SamplingFrequencyIndex;
+    sampling_frequency: number;
     channel_config: number;
 
     data: Uint8Array;
@@ -16,6 +17,7 @@ export class AACADTSParser {
     private data_: Uint8Array;
     private current_syncword_offset_: number;
     private eof_flag_: boolean;
+    private has_last_incomplete_data: boolean;
 
     public constructor(data: Uint8Array) {
         this.data_ = data;
@@ -73,12 +75,19 @@ export class AACADTSParser {
                                     | ((data[offset + 5] & 0xE0) >>> 5);
             let number_of_raw_data_blocks_in_frame = data[offset + 6] & 0x03;
 
+            if (offset + aac_frame_length > this.data_.byteLength) {
+                // data not enough for extracting last sample
+                this.eof_flag_ = true;
+                this.has_last_incomplete_data = true;
+                break;
+            }
+
             let adts_header_length = (protection_absent === 1) ? 7 : 9;
-            let aac_frame_payload_length = aac_frame_length - adts_header_length;
+            let adts_frame_payload_length = aac_frame_length - adts_header_length;
 
             offset += adts_header_length;
 
-            let next_syncword_offset = this.findNextSyncwordOffset(offset);
+            let next_syncword_offset = this.findNextSyncwordOffset(offset + adts_frame_payload_length);
             this.current_syncword_offset_ = next_syncword_offset;
 
             if ((ID !== 0 && ID !== 1) || layer !== 0) {
@@ -86,11 +95,12 @@ export class AACADTSParser {
                 continue;
             }
 
-            let frame_data = data.subarray(offset, offset += aac_frame_payload_length);
+            let frame_data = data.subarray(offset, offset + adts_frame_payload_length);
 
             aac_frame = new AACFrame();
             aac_frame.audio_object_type = (profile + 1) as MPEG4AudioObjectTypes;
             aac_frame.sampling_freq_index = sampling_frequency_index as MPEG4SamplingFrequencyIndex;
+            aac_frame.sampling_frequency = MPEG4SamplingFrequencies[sampling_frequency_index];
             aac_frame.channel_config = channel_configuration;
             aac_frame.data = frame_data;
         }
@@ -98,6 +108,17 @@ export class AACADTSParser {
         return aac_frame;
     }
 
+    public hasIncompleteData(): boolean {
+        return this.has_last_incomplete_data;
+    }
+
+    public getIncompleteData(): Uint8Array {
+        if (!this.has_last_incomplete_data) {
+            return null;
+        }
+
+        return this.data_.subarray(this.current_syncword_offset_);
+    }
 }
 
 export class AudioSpecificConfig {
