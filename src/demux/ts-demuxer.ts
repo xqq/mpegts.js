@@ -245,11 +245,14 @@ class TSDemuxer extends BaseDemuxer {
         let section_number = data[6];
         let last_section_number = data[7];
 
+        let pat: PAT = null;
+
         if (current_next_indicator === 1 && section_number === 0) {
-            this.pat_ = new PAT();
-            this.pat_.version_number = version_number;
+            pat = new PAT();
+            pat.version_number = version_number;
         } else {
-            if (this.pat_ == undefined) {
+            pat = this.pat_;
+            if (pat == undefined) {
                 return;
             }
         }
@@ -265,10 +268,10 @@ class TSDemuxer extends BaseDemuxer {
 
             if (program_number === 0) {
                 // network_PID
-                this.pat_.network_pid = pid;
+                pat.network_pid = pid;
             } else {
                 // program_map_PID
-                this.pat_.program_pmt_pid[program_number] = pid;
+                pat.program_pmt_pid[program_number] = pid;
 
                 if (first_program_number === -1) {
                     first_program_number = program_number;
@@ -282,9 +285,12 @@ class TSDemuxer extends BaseDemuxer {
 
         // Currently we only deal with first appeared PMT pid
         if (current_next_indicator === 1 && section_number === 0) {
+            if (this.pat_ == undefined) {
+                Log.v(this.TAG, `Parsed first PAT: ${JSON.stringify(pat)}`);
+            }
+            this.pat_ = pat;
             this.current_program_ = first_program_number;
             this.current_pmt_pid_ = first_pmt_pid;
-            // Log.v(this.TAG, `PAT: ${JSON.stringify(this.pat_)}`);
         }
     }
 
@@ -344,6 +350,9 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         if (program_number === this.current_program_) {
+            if (this.pmt_ == undefined) {
+                Log.v(this.TAG, `Parsed first PMT: ${JSON.stringify(pmt)}`);
+            }
             this.pmt_ = pmt;
             if (pmt.common_pids.h264) {
                 this.has_video_ = true;
@@ -352,7 +361,6 @@ class TSDemuxer extends BaseDemuxer {
                 // TODO: Support AAC audio
                 // this.has_audio_ = true;
             }
-            // Log.v(this.TAG, `PMT: ${JSON.stringify(pmt)}`);
         }
     }
 
