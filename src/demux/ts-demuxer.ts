@@ -690,6 +690,12 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     private parseAACPayload(data: Uint8Array, pts: number) {
+        if (this.has_video_ && !this.video_init_segment_dispatched_) {
+            // If first video IDR frame hasn't been detected,
+            // Wait for first IDR frame and video init segment being dispatched
+            return;
+        }
+
         if (this.aac_last_incomplete_data_) {
             let buf = new Uint8Array(data.byteLength + this.aac_last_incomplete_data_.byteLength);
             buf.set(this.aac_last_incomplete_data_, 0);
