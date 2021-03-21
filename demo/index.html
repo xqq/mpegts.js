@@ -96,7 +96,7 @@
                 }
             }
             player = mpegts.createPlayer(mediaDataSource, {
-                enableWorker: false,
+                enableWorker: true,
                 lazyLoadMaxDuration: 3 * 60,
                 seekType: 'range',
             });
