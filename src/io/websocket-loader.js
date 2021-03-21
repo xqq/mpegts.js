@@ -20,7 +20,7 @@ import Log from '../utils/logger.js';
 import {BaseLoader, LoaderStatus, LoaderErrors} from './loader.js';
 import {RuntimeException} from '../utils/exception.js';
 
-// For FLV over WebSocket live stream
+// For MPEG-TS/FLV over WebSocket live stream
 class WebSocketLoader extends BaseLoader {
 
     static isSupported() {

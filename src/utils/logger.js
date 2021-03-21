@@ -125,7 +125,7 @@ class Log {
 
 }
 
-Log.GLOBAL_TAG = 'flv.js';
+Log.GLOBAL_TAG = 'mpegts.js';
 Log.FORCE_GLOBAL_TAG = false;
 Log.ENABLE_ERROR = true;
 Log.ENABLE_INFO = true;

@@ -50,8 +50,8 @@ class Features {
 
     static getFeatureList() {
         let features = {
-            mseFlvPlayback: false,
-            mseLiveFlvPlayback: false,
+            msePlayback: false,
+            mseLivePlayback: false,
             networkStreamIO: false,
             networkLoaderName: '',
             nativeMP4H264Playback: false,
@@ -59,10 +59,10 @@ class Features {
             nativeWebmVP9Playback: false
         };
 
-        features.mseFlvPlayback = Features.supportMSEH264Playback();
+        features.msePlayback = Features.supportMSEH264Playback();
         features.networkStreamIO = Features.supportNetworkStreamIO();
         features.networkLoaderName = Features.getNetworkLoaderTypeName();
-        features.mseLiveFlvPlayback = features.mseFlvPlayback && features.networkStreamIO;
+        features.mseLivePlayback = features.msePlayback && features.networkStreamIO;
         features.nativeMP4H264Playback = Features.supportNativeMediaPlayback('video/mp4; codecs="avc1.42001E, mp4a.40.2"');
         features.nativeWebmVP8Playback = Features.supportNativeMediaPlayback('video/webm; codecs="vp8.0, vorbis"');
         features.nativeWebmVP9Playback = Features.supportNativeMediaPlayback('video/webm; codecs="vp9"');

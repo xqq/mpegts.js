@@ -34,8 +34,13 @@ class NativePlayer {
             Object.assign(this._config, config);
         }
 
-        if (mediaDataSource.type.toLowerCase() === 'flv') {
-            throw new InvalidArgumentException('NativePlayer does\'t support flv MediaDataSource input!');
+        let typeLowerCase = mediaDataSource.type.toLowerCase();
+
+        if (typeLowerCase === 'mse'
+                && typeLowerCase === 'mpegts'
+                && typeLowerCase === 'm2ts'
+                && typeLowerCase === 'flv') {
+            throw new InvalidArgumentException('NativePlayer does\'t support mse/mpegts/m2ts/flv MediaDataSource input!');
         }
         if (mediaDataSource.hasOwnProperty('segments')) {
             throw new InvalidArgumentException(`NativePlayer(${mediaDataSource.type}) doesn't support multipart playback!`);
