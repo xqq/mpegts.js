@@ -18,14 +18,10 @@
                     <button onclick="switch_mds()">Switch to MediaDataSource</button>
                 </div>
                 <div class="options">
-                    <input type="checkbox" id="isLive" onchange="saveSettings()" />
+                    <input type="checkbox" id="isLive" onchange="saveSettings()" checked />
                     <label for="isLive">isLive</label>
                     <input type="checkbox" id="withCredentials" onchange="saveSettings()" />
                     <label for="withCredentials">withCredentials</label>
-                    <input type="checkbox" id="hasAudio" onchange="saveSettings()" checked />
-                    <label for="hasAudio">hasAudio</label>
-                    <input type="checkbox" id="hasVideo" onchange="saveSettings()" checked />
-                    <label for="hasVideo">hasVideo</label>
                 </div>
             </div>
             <div id="mediaSourceURL" class="hidden">
@@ -44,12 +40,12 @@
             </div>
         </div>
         <div class="controls">
-            <button onclick="flv_load()">Load</button>
-            <button onclick="flv_start()">Start</button>
-            <button onclick="flv_pause()">Pause</button>
-            <button onclick="flv_destroy()">Destroy</button>
+            <button onclick="player_load()">Load</button>
+            <button onclick="player_start()">Start</button>
+            <button onclick="player_pause()">Pause</button>
+            <button onclick="player_destroy()">Destroy</button>
             <input style="width:100px" type="text" name="seekpoint"/>
-            <button onclick="flv_seekto()">SeekTo</button>
+            <button onclick="player_seekto()">SeekTo</button>
         </div>
         <textarea name="logcatbox" class="logcatBox" rows="10" readonly></textarea>
     </div>
@@ -57,10 +53,10 @@
     <script src="../dist/mpegts.js"></script>
     
     <script>
-        var checkBoxFields = ['isLive', 'withCredentials', 'hasAudio', 'hasVideo'];
+        var checkBoxFields = ['isLive', 'withCredentials'];
         var streamURL, mediaSourceURL;
 
-        function flv_load() {
+        function player_load() {
             console.log('isSupported: ' + mpegts.isSupported());
             if (mediaSourceURL.className === '') {
                 var url = document.getElementById('msURL').value;
@@ -69,13 +65,13 @@
                 xhr.open('GET', url, true);
                 xhr.onload = function (e) {
                     var mediaDataSource = JSON.parse(xhr.response);
-                    flv_load_mds(mediaDataSource);
+                    player_load_mds(mediaDataSource);
                 }
                 xhr.send();
             } else {
                 var i;
                 var mediaDataSource = {
-                    type: 'flv'
+                    type: 'mse'
                 };
                 for (i = 0; i < checkBoxFields.length; i++) {
                     var field = checkBoxFields[i];
@@ -85,11 +81,11 @@
                 }
                 mediaDataSource['url'] = document.getElementById('sURL').value;
                 console.log('MediaDataSource', mediaDataSource);
-                flv_load_mds(mediaDataSource);
+                player_load_mds(mediaDataSource);
             }
         }
 
-        function flv_load_mds(mediaDataSource) {
+        function player_load_mds(mediaDataSource) {
             var element = document.getElementsByName('videoElement')[0];
             if (typeof player !== "undefined") {
                 if (player != null) {
@@ -108,15 +104,15 @@
             player.load();
         }
 
-        function flv_start() {
+        function player_start() {
             player.play();
         }
 
-        function flv_pause() {
+        function player_pause() {
             player.pause();
         }
 
-        function flv_destroy() {
+        function player_destroy() {
             player.pause();
             player.unload();
             player.detachMediaElement();
@@ -124,7 +120,7 @@
             player = null;
         }
 
-        function flv_seekto() {
+        function player_seekto() {
             var input = document.getElementsByName('seekpoint')[0];
             player.currentTime = parseFloat(input.value);
         }
@@ -215,7 +211,7 @@
             mediaSourceURL = document.getElementById('mediaSourceURL');
             loadSettings();
             showVersion();
-            flv_load();
+            player_load();
         });
     </script>
     
