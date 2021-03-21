@@ -41,7 +41,10 @@ class MSEPlayer {
         }
 
         let typeLowerCase = mediaDataSource.type.toLowerCase();
-        if (typeLowerCase !== 'mpegts' && typeLowerCase !== 'm2ts' && typeLowerCase !== 'flv') {
+        if (typeLowerCase !== 'mse'
+                && typeLowerCase !== 'mpegts'
+                && typeLowerCase !== 'm2ts'
+                && typeLowerCase !== 'flv') {
             throw new InvalidArgumentException('MSEPlayer requires an mpegts/m2ts/flv MediaDataSource input!');
         }
 
