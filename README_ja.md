@@ -15,7 +15,7 @@ mpegts.js は、JavaScript で MPEG2-TS ストリームを解析しながら、�
 [http://xqq.github.io/mpegts.js/demo/](http://xqq.github.io/mpegts.js/demo/)
 
 ## Features
-- http(s) または WebSocket で転送する H.264 + AAC の MPEG2-TS ストリームが再生可能
+- http(s) または WebSocket で伝送する H.264 + AAC の MPEG2-TS ストリームが再生可能
 - 最良の場合は 1 秒ほどの低遅延が達成可能
 - 動的パラメータ切り替えが可能 （例えば、映像解像度が途中に切り替わっても再生します）
 - Chrome, FireFox, Safari, Edge (Old or Chromium) または Chromium-based ブラウザで実行可能
@@ -75,7 +75,7 @@ npm run build               # packaged & minimized js will be emitted in dist fo
 - H.264 + AAC/MP3 codec の FLV ファイルが再生可能
 - マルチパットな複数の FLV ファイルも一緒に再生可能
 - HTTP FLV のライブストリームが低遅延で再生可能
-- WebSocketで転送する FLV ストリームも再生可能
+- WebSocket で伝送する FLV ストリームも再生可能
 - Chrome, FireFox, Safari 10, IE11 and Edge のブラウザで実行可能
 - ブラウザによる hardware accelerated があるためコストは非常に低い
 
