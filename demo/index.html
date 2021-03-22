@@ -22,6 +22,8 @@
                     <label for="isLive">isLive</label>
                     <input type="checkbox" id="withCredentials" onchange="saveSettings()" />
                     <label for="withCredentials">withCredentials</label>
+                    <input type="checkbox" id="liveBufferLatencyChasing" onchange="saveSettings()" checked />
+                    <label for="liveBufferLatencyChasing">liveBufferLatencyChasing</label>
                 </div>
             </div>
             <div id="mediaSourceURL" class="hidden">
@@ -53,7 +55,7 @@
     <script src="../dist/mpegts.js"></script>
     
     <script>
-        var checkBoxFields = ['isLive', 'withCredentials'];
+        var checkBoxFields = ['isLive', 'withCredentials', 'liveBufferLatencyChasing'];
         var streamURL, mediaSourceURL;
 
         function player_load() {
@@ -99,6 +101,7 @@
                 enableWorker: true,
                 lazyLoadMaxDuration: 3 * 60,
                 seekType: 'range',
+                liveBufferLatencyChasing: document.getElementById('liveBufferLatencyChasing').checked,
             });
             player.attachMediaElement(element);
             player.load();
