@@ -67,6 +67,7 @@ mpegts.js could be tested with [Simple Realtime Server](https://github.com/ossrs
 ## TODO
 - MPEG2-TS static file playback (seeking is not supported now)
 - BDAV/BDMV (.m2ts) static file playback
+- H.265/HEVC video codec support (only Safari support HEVC for now)
 - MP3 audio codec support
 - AV1/OPUS codec over MPEG2-TS stream support (?)
 

@@ -63,6 +63,7 @@ npm run build               # packaged & minimized js will be emitted in dist fo
 ## TODO
 - 静的 MPEG2-TS ファイルの再生 （現時点ではシークできません）
 - BDAV/BDMV (.m2ts) ファイルの再生
+- H.265/HEVC codec の支援 （ただし、現時点では Safari のみ HEVC が再生可能）
 - MP3 audio codec の支援
 - AV1/OPUS codec over MPEG2-TS stream support (?)
 
