@@ -1,3 +1,3 @@
 // TypeScript Version: 2.3
 
-import '../d.ts/flv.d.ts';
+import '../d.ts/mpegts.d.ts';

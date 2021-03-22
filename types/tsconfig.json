@@ -19,6 +19,6 @@
     },
     "files": [
         "index.d.ts",
-        "../d.ts/flv.d.ts"
+        "../d.ts/mpegts.d.ts"
     ]
 }
