@@ -63,9 +63,9 @@ npm run build               # packaged & minimized js will be emitted in dist fo
 可使用 [Simple Realtime Server](https://github.com/ossrs/srs/) 来测试 mpegts.js。
 
 ## TODO
-- MPEG2-TS 静态文件回放（目前还不支持 seek）
+- MPEG2-TS 静态文件回放 （目前还不支持 seek）
 - BDAV/BDMV (.m2ts) 蓝光文件回放
-- H.265/HEVC 支持 (但是似乎只有 Safari 支持？)
+- H.265/HEVC 支持 （但是似乎只有 Safari 支持？)
 - MP3 音频编码支持
 - AV1/OPUS codec over MPEG2-TS stream support (?)
 
