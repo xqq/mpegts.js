@@ -1,34 +1,33 @@
-
-flv.js API
+mpegts.js API
 ==========
 This document use TypeScript-like definitions to describe interfaces.
 
 ## Interfaces
 
-flv.js exports all the interfaces through `flvjs` object which exposed in global context `window`.
+mpegts.js exports all the interfaces through `mpegts` object which exposed in global context `window`.
 
-`flvjs` object can also be accessed by require or ES6 import.
+`mpegts` object can also be accessed by require or ES6 import.
 
 
 Functions:
-- [flvjs.createPlayer()](#flvjscreateplayer)
-- [flvjs.isSupported()](#flvjsissupported)
-- [flvjs.getFeatureList()](#flvjsgetfeaturelist)
+- [mpegts.createPlayer()](#mpegtscreateplayer)
+- [mpegts.isSupported()](#mpegtsissupported)
+- [mpegts.getFeatureList()](#mpegtsgetfeaturelist)
 
 Classes:
-- [flvjs.FlvPlayer](#flvjsflvplayer)
-- [flvjs.NativePlayer](#flvjsnativeplayer)
-- [flvjs.LoggingControl](#flvjsloggingcontrol)
+- [mpegts.MSEPlayer](#mpegtsmseplayer)
+- [mpegts.NativePlayer](#mpegtsnativeplayer)
+- [mpegts.LoggingControl](#mpegtsloggingcontrol)
 
 Enums:
-- [flvjs.Events](#flvjsevents)
-- [flvjs.ErrorTypes](#flvjserrortypes)
-- [flvjs.ErrorDetails](#flvjserrordetails)
+- [mpegts.Events](#mpegtsevents)
+- [mpegts.ErrorTypes](#mpegtserrortypes)
+- [mpegts.ErrorDetails](#mpegtserrordetails)
 
 
 
 
-### flvjs.createPlayer()
+### mpegts.createPlayer()
 ```js
 function createPlayer(mediaDataSource: MediaDataSource, config?: Config): Player;
 ```
@@ -40,7 +39,7 @@ Create a player instance according to `type` field indicated in `mediaDataSource
 
 | Field              | Type                  | Description                              |
 | ------------------ | --------------------- | ---------------------------------------- |
-| `type`             | `string`              | Indicates media type, `'flv'` or `'mp4'` |
+| `type`             | `string`              | Indicates media type, `'mse'`, `'mpegts'`, `'m2ts'`, `'flv'` or `'mp4'` |
 | `isLive?`          | `boolean`             | Indicates whether the data source is a **live stream** |
 | `cors?`            | `boolean`             | Indicates whether to enable CORS for http fetching |
 | `withCredentials?` | `boolean`             | Indicates whether to do http fetching with cookies |
@@ -72,6 +71,9 @@ In multipart mode, `duration` `filesize` `url` field in `MediaDataSource` struct
 | `enableStashBuffer?`             | `boolean` | `true`                       | Enable IO stash buffer. Set to false if you need realtime (minimal latency) for live stream playback, but may stalled if there's network jittering. |
 | `stashInitialSize?`              | `number`  | `384KB`                      | Indicates IO stash buffer initial size. Default is `384KB`. Indicate a suitable size can improve video load/seek time. |
 | `isLive?`                        | `boolean` | `false`                      | Same to `isLive` in **MediaDataSource**, ignored if has been set in MediaDataSource structure. |
+| `liveBufferLatencyChasing?`      | `boolean` | `false`                      | Chasing the live stream latency caused by the internal buffer in HTMLMediaElement. `isLive` should also be set to `true` |
+| `liveBufferLatencyMaxLatency?`   | `number`  | `1`                          | Maximum acceptable buffer latency in HTMLMediaElement, in seconds. Effective only if `isLive: true` and `liveBufferLatencyChasing: true` |
+| `liveBufferLatencyMinRemain?`    | `number`  | `0.5`                        | Minimum buffer latency to be keeped in HTMLMediaElement, in seconds. Effective only if `isLive: true` and `liveBufferLatencyChasing: true` |
 | `lazyLoad?`                      | `boolean` | `true`                       | Abort the http connection if there's enough data for playback. |
 | `lazyLoadMaxDuration?`           | `number`  | `3 * 60`                     | Indicates how many seconds of data to be kept for `lazyLoad`. |
 | `lazyLoadRecoverDuration?`       | `number`  | `30`                         | Indicates the `lazyLoad` recover time boundary in seconds. |
@@ -88,11 +90,12 @@ In multipart mode, `duration` `filesize` `url` field in `MediaDataSource` struct
 | `customSeekHandler?`             | `object`  | `undefined`                  | Indicates a custom seek handler          |
 | `reuseRedirectedURL?`            | `boolean` | `false`                      | Reuse 301/302 redirected url for subsequence request like seek, reconnect, etc. |
 | `referrerPolicy?`                | `string`  | `no-referrer-when-downgrade` | Indicates the [Referrer Policy][] when using FetchStreamLoader |
+| `headers?`                       | `object`  | `undefined`                  | Indicates additional headers that will be added to request |
 
 
 [Referrer Policy]: https://w3c.github.io/webappsec-referrer-policy/#referrer-policy
 
-### flvjs.isSupported()
+### mpegts.isSupported()
 ```js
 function isSupported(): boolean;
 ```
@@ -100,7 +103,7 @@ Return `true` if basic playback can works on your browser.
 
 
 
-### flvjs.getFeatureList()
+### mpegts.getFeatureList()
 ```js
 function getFeatureList(): FeatureList;
 ```
@@ -108,8 +111,8 @@ Return a `FeatureList` object which has following details:
 #### FeatureList
 | Field                   | Type      | Description                              |
 | ----------------------- | --------- | ---------------------------------------- |
-| `mseFlvPlayback`        | `boolean` | Same to `flvjs.isSupported()`, indicates whether basic playback works on your browser. |
-| `mseLiveFlvPlayback`    | `boolean` | Indicates whether HTTP FLV live stream can works on your browser. |
+| `msePlayback`           | `boolean` | Same to `mpegts.isSupported()`, indicates whether basic playback works on your browser. |
+| `mseLivePlayback`       | `boolean` | Indicates whether HTTP MPEG2-TS/FLV live stream can works on your browser. |
 | `networkStreamIO`       | `boolean` | Indicates whether the network loader is streaming. |
 | `networkLoaderName`     | `string`  | Indicates the network loader type name.  |
 | `nativeMP4H264Playback` | `boolean` | Indicates whether your browser support H.264 MP4 video file natively. |
@@ -118,14 +121,14 @@ Return a `FeatureList` object which has following details:
 
 
 
-### flvjs.FlvPlayer
+### mpegts.MSEPlayer
 ```typescript
-interface FlvPlayer extends Player {}
+interface MSEPlayer extends Player {}
 ```
 
-FLV player which implements the `Player` interface. Can be created by `new` operator directly.
+MSE player which implements the `Player` interface. Can be created by `new` operator directly.
 
-### flvjs.NativePlayer
+### mpegts.NativePlayer
 
 ```typescript
 interface NativePlayer extends Player {}
@@ -158,9 +161,9 @@ interface Player {
 }
 ```
 
-### flvjs.LoggingControl
+### mpegts.LoggingControl
 
-A global interface which include several static getter/setter to set flv.js logcat verbose level.
+A global interface which include several static getter/setter to set mpegts.js logcat verbose level.
 
 ```typescript
 interface LoggingControl {
@@ -179,9 +182,9 @@ interface LoggingControl {
 }
 ```
 
-### flvjs.Events
+### mpegts.Events
 
-A series of constants that can be used with `Player.on()` / `Player.off()`. They require the prefix `flvjs.Events`.
+A series of constants that can be used with `Player.on()` / `Player.off()`. They require the prefix `mpegts.Events`.
 
 | Event               | Description                              |
 | ------------------- | ---------------------------------------- |
@@ -189,11 +192,14 @@ A series of constants that can be used with `Player.on()` / `Player.off()`. They
 | LOADING_COMPLETE    | The input MediaDataSource has been completely buffered to end |
 | RECOVERED_EARLY_EOF | An unexpected network EOF occurred during buffering but automatically recovered |
 | MEDIA_INFO          | Provides technical information of the media like video/audio codec, bitrate, etc. |
+| METADATA_ARRIVED    | Provides metadata which FLV file(stream) can contain with an "onMetaData" marker.  |
+| SCRIPTDATA_ARRIVED  | Provides scriptdata (OnCuePoint / OnTextData) which FLV file(stream) can contain. |
+| PES_PRIVATE_DATA_ARRIVED | Provides ISO/IEC 13818-1 PES packets containing private data (stream_type=0x06) callback |
 | STATISTICS_INFO     | Provides playback statistics information like dropped frames, current speed, etc. |
 
-### flvjs.ErrorTypes
+### mpegts.ErrorTypes
 
-The possible errors that can come up during playback. They require the prefix `flvjs.ErrorTypes`.
+The possible errors that can come up during playback. They require the prefix `mpegts.ErrorTypes`.
 
 | Error         | Description                              |
 | ------------- | ---------------------------------------- |
@@ -202,9 +208,9 @@ The possible errors that can come up during playback. They require the prefix `f
 | OTHER_ERROR   | Any other unspecified error              |
 
 
-### flvjs.ErrorDetails
+### mpegts.ErrorDetails
 
-Provide more verbose explanation for Network and Media errors. They require the prefix `flvjs.ErrorDetails`.
+Provide more verbose explanation for Network and Media errors. They require the prefix `mpegts.ErrorDetails`.
 
 | Error                           | Description                              |
 | ------------------------------- | ---------------------------------------- |
@@ -214,5 +220,5 @@ Provide more verbose explanation for Network and Media errors. They require the 
 | NETWORK_UNRECOVERABLE_EARLY_EOF | Related to unexpected network EOF which cannot be recovered |
 | MEDIA_MSE_ERROR                 | Related to MediaSource's error such as decode issue |
 | MEDIA_FORMAT_ERROR              | Related to any invalid parameters in the media stream |
-| MEDIA_FORMAT_UNSUPPORTED        | The input MediaDataSource format is not supported by flv.js |
+| MEDIA_FORMAT_UNSUPPORTED        | The input MediaDataSource format is not supported by mpegts.js |
 | MEDIA_CODEC_UNSUPPORTED         | The media stream contains video/audio codec which is not supported |

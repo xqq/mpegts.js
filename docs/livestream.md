@@ -3,6 +3,17 @@ Livestream playback
 ===================
 You need to provide a livestream URL in `MediaDataSource` and indicates `isLive: true`.
 
+Sample MPEG2-TS over HTTP source:
+
+```js
+{
+    // MPEG2-TS over HTTP
+    "type": "mpegts",
+    "isLive": true,
+    "url": "http://127.0.0.1:8080/live/livestream.ts"
+}
+```
+
 Sample HTTP FLV source:
 
 ```js
@@ -18,14 +29,14 @@ Or a WebSocket source:
 
 ```js
 {
-    // FLV over WebSocket
-    "type": "flv",
+    // MPEG2-TS/FLV over WebSocket
+    "type": "mse",
     "isLive": true,
     "url": "ws://127.0.0.1:9090/live/livestream.flv"
 }
 ```
 
-## HTTP FLV live stream
+## HTTP MPEG2-TS/FLV live stream
 
 ### CORS
 You must configure `Access-Control-Allow-Origin` header correctly on your stream server.
@@ -33,9 +44,9 @@ You must configure `Access-Control-Allow-Origin` header correctly on your stream
 See [cors.md](../docs/cors.md) for details.
 
 ### Compatibility
-Due to IO restrictions, flv.js can support HTTP FLV live stream on `Chrome 43+`, `FireFox 42+`, `Edge 15.15048+` and `Safari 10.1+` for now.
+Due to IO restrictions, mpegts.js can support HTTP MPEG2-TS/FLV live stream on `Chrome 43+`, `FireFox 42+`, `Edge 15.15048+` and `Safari 10.1+` for now.
 
-HTTP FLV live stream relies on stream IO, which has been introduced in [fetch][] and [stream][] spec. Now `FetchStreamLoader` works well on most of the modern browsers:
+HTTP MPEG2-TS/FLV live stream relies on stream IO, which has been introduced in [fetch][] and [stream][] spec. Now `FetchStreamLoader` works well on most of the modern browsers:
 
 - Chrome: `FetchStreamLoader` works well on Chrome 43+
 - FireFox: FireFox has `fetch` support but `stream` is missing, `moz-chunked-arraybuffer` xhr extension is used

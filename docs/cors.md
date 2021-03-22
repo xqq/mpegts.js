@@ -1,13 +1,13 @@
 
 CORS Configuration
 ==================
-Anytime you want to play an FLV stream from another `Origin`, the server must response with a CORS header:
+Anytime you want to play an MPEG2-TS/FLV stream from another `Origin`, the server must response with a CORS header:
 
 ```
 Access-Control-Allow-Origin: <your-origin> | *
 ```
 
-For example, if an html on your site `http://flvplayback.com` want's to play an FLV from another `Origin` like `http://cdn.flvplayback.com`, the video server must response with the following CORS header:
+For example, if an html on your site `http://flvplayback.com` want's to play an MPEG2-TS/FLV from another `Origin` like `http://cdn.flvplayback.com`, the video server must response with the following CORS header:
 
 ```
 Access-Control-Allow-Origin: http://flvplayback.com
@@ -19,8 +19,8 @@ Or a wildcard value `*` to allow any request origin:
 Access-Control-Allow-Origin: *
 ```
 
-## Static FLV file playback
-For static FLV file playback, we recommend you to add:
+## Static MPEG2-TS/FLV file playback
+For static MPEG2-TS/FLV file playback, we recommend you to add:
 
 ```
 Access-Control-Expose-Headers: Content-Length
@@ -42,7 +42,7 @@ Access-Control-Allow-Origin: null | *
 Or you can determine by request header `Origin` dynamically.
 
 ## Preflight OPTIONS for Range seek
-When use Range seek for cross-origin FLV file, `Range` header added by flv.js will cause a [Preflight OPTIONS][] request by the browser.
+When use Range seek for cross-origin MPEG2-TS/FLV file, `Range` header added by mpegts.js will cause a [Preflight OPTIONS][] request by the browser.
 
 The browser will send an `OPTIONS` request before actual `GET` request, with following additional headers according to CORS policy:
 
