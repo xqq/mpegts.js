@@ -252,6 +252,9 @@ class MSEPlayer {
         this._transmuxer.on(TransmuxingEvents.SCRIPTDATA_ARRIVED, (data) => {
             this._emitter.emit(PlayerEvents.SCRIPTDATA_ARRIVED, data);
         });
+        this._transmuxer.on(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, (private_data) => {
+            this._emitter.emit(PlayerEvents.PES_PRIVATE_DATA_ARRIVED, private_data);
+        });
         this._transmuxer.on(TransmuxingEvents.STATISTICS_INFO, (statInfo) => {
             this._statisticsInfo = this._fillStatisticsInfo(statInfo);
             this._emitter.emit(PlayerEvents.STATISTICS_INFO, Object.assign({}, this._statisticsInfo));

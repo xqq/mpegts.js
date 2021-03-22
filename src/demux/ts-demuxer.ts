@@ -26,6 +26,7 @@ import { AVCDecoderConfigurationRecord, H264AnnexBParser, H264NaluAVC1, H264Nalu
 import SPSParser from './sps-parser';
 import { AACADTSParser, AACFrame, AudioSpecificConfig } from './aac';
 import { MPEG4AudioObjectTypes, MPEG4SamplingFrequencyIndex } from './mpeg4-audio';
+import { PESPrivateData } from './pes-private-data';
 
 class TSDemuxer extends BaseDemuxer {
 
@@ -500,6 +501,7 @@ class TSDemuxer extends BaseDemuxer {
                 case StreamType.kMPEG2Audio:
                     break;
                 case StreamType.kPESPrivateData:
+                    this.parsePESPrivateDataPayload(payload, pts, dts, pes_data.pid);
                     break;
                 case StreamType.kADTSAAC:
                     this.parseAACPayload(payload, pts);
@@ -858,6 +860,22 @@ class TSDemuxer extends BaseDemuxer {
 
         if (mi.isComplete()) {
             this.onMediaInfo(mi);
+        }
+    }
+
+    private parsePESPrivateDataPayload(data: Uint8Array, pts: number, dts: number, pid: number) {
+        let pts_ms = Math.floor(pts / this.timescale_);
+        let dts_ms = Math.floor(dts / this.timescale_);
+
+        let private_data = new PESPrivateData();
+        private_data.pid = pid;
+        private_data.pts = pts_ms;
+        private_data.dts = dts_ms;
+        private_data.len = data.byteLength;
+        private_data.data = data;
+
+        if (this.onPESPrivateData) {
+            this.onPESPrivateData(private_data);
         }
     }
 

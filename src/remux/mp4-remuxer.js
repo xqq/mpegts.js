@@ -197,6 +197,13 @@ class MP4Remuxer {
         this._dtsBaseInited = true;
     }
 
+    getTimestampBase() {
+        if (!this._dtsBaseInited) {
+            return 0;
+        }
+        return this._dtsBase;
+    }
+
     flushStashedSamples() {
         let videoSample = this._videoStashedLastSample;
         let audioSample = this._audioStashedLastSample;

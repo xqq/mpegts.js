@@ -1,10 +1,12 @@
 import MediaInfo from '../core/media-info';
+import { PESPrivateData } from './pes-private-data';
 
 type OnErrorCallback = (type: string, info: string) => void;
 type OnMediaInfoCallback = (mediaInfo: MediaInfo) => void;
 type OnMetaDataArrivedCallback = (metadata: any) => void;
 type OnTrackMetadataCallback = (type: string, metadata: any) => void;
 type OnDataAvailableCallback = (videoTrack: any, audioTrack: any) => void;
+type OnPESPrivateDataCallback = (private_data: PESPrivateData) => void;
 
 export default abstract class BaseDemuxer {
 
@@ -13,6 +15,7 @@ export default abstract class BaseDemuxer {
     public onMetaDataArrived: OnMetaDataArrivedCallback;
     public onTrackMetadata: OnTrackMetadataCallback;
     public onDataAvailable: OnDataAvailableCallback;
+    public onPESPrivateData: OnPESPrivateDataCallback;
 
     public constructor() {}
 
@@ -22,6 +25,7 @@ export default abstract class BaseDemuxer {
         this.onMetaDataArrived = null;
         this.onTrackMetadata = null;
         this.onDataAvailable = null;
+        this.onPESPrivateData = null;
     }
 
     abstract parseChunks(chunk: ArrayBuffer, byteStart: number): number;

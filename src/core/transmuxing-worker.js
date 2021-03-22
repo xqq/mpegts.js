@@ -56,6 +56,7 @@ let TransmuxingWorker = function (self) {
                 controller.on(TransmuxingEvents.MEDIA_INFO, onMediaInfo.bind(this));
                 controller.on(TransmuxingEvents.METADATA_ARRIVED, onMetaDataArrived.bind(this));
                 controller.on(TransmuxingEvents.SCRIPTDATA_ARRIVED, onScriptDataArrived.bind(this));
+                controller.on(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, onPESPrivateDataArrived.bind(this));
                 controller.on(TransmuxingEvents.STATISTICS_INFO, onStatisticsInfo.bind(this));
                 controller.on(TransmuxingEvents.RECOMMEND_SEEKPOINT, onRecommendSeekpoint.bind(this));
                 break;
@@ -150,6 +151,14 @@ let TransmuxingWorker = function (self) {
     function onScriptDataArrived(data) {
         let obj = {
             msg: TransmuxingEvents.SCRIPTDATA_ARRIVED,
+            data: data
+        };
+        self.postMessage(obj);
+    }
+
+    function onPESPrivateDataArrived(data) {
+        let obj = {
+            msg: TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED,
             data: data
         };
         self.postMessage(obj);
