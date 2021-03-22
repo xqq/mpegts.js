@@ -663,6 +663,30 @@ class TSDemuxer extends BaseDemuxer {
         this.onTrackMetadata('video', meta);
         this.video_init_segment_dispatched_ = true;
         this.video_metadata_changed_ = false;
+
+        // notify new MediaInfo
+        let mi = this.media_info_;
+        mi.hasVideo = true;
+        mi.width = meta.codecWidth;
+        mi.height = meta.codecHeight;
+        mi.fps = meta.frameRate.fps;
+        mi.profile = meta.profile;
+        mi.level = meta.level;
+        mi.refFrames = sps_details.ref_frames;
+        mi.chromaFormat = sps_details.chroma_format_string;
+        mi.sarNum = meta.sarRatio.width;
+        mi.sarDen = meta.sarRatio.height;
+        mi.videoCodec = meta.codec;
+
+        if (mi.hasAudio && mi.audioCodec) {
+            mi.mimeType = `video/mp2t; codecs="${mi.videoCodec},${mi.audioCodec}"`;
+        } else {
+            mi.mimeType = `video/mp2t; codecs="${mi.videoCodec}"`;
+        }
+
+        if (mi.isComplete()) {
+            this.onMediaInfo(mi);
+        }
     }
 
     private dispatchVideoMediaSegment() {
@@ -818,6 +842,23 @@ class TSDemuxer extends BaseDemuxer {
         this.onTrackMetadata('audio', meta);
         this.audio_init_segment_dispatched_ = true;
         this.video_metadata_changed_ = false;
+
+        // notify new MediaInfo
+        let mi = this.media_info_;
+        mi.hasAudio = true;
+        mi.audioCodec = meta.originalCodec;
+        mi.audioSampleRate = meta.audioSampleRate;
+        mi.audioChannelCount = meta.channelCount;
+
+        if (mi.hasVideo && mi.videoCodec) {
+            mi.mimeType = `video/mp2t; codecs="${mi.videoCodec},${mi.audioCodec}"`;
+        } else {
+            mi.mimeType = `video/mp2t; codecs="${mi.audioCodec}"`;
+        }
+
+        if (mi.isComplete()) {
+            this.onMediaInfo(mi);
+        }
     }
 
 }
