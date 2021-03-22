@@ -200,6 +200,20 @@
             document.title = document.title + " (v" + version + ")";
         }
 
+        var sURL = document.getElementById('sURL');
+        sURL.onkeyup = function(event) {
+            if (event.key === 'Enter' || event.keyCode === 13) {
+                saveSettings()
+                if (player != null) {
+                    player.unload();
+                    player.detachMediaElement();
+                    player.destroy();
+                    player = null;
+                }
+                player_load();
+            }
+        };
+
         var logcatbox = document.getElementsByName('logcatbox')[0];
         mpegts.LoggingControl.addLogListener(function(type, str) {
             logcatbox.value = logcatbox.value + str + '\n';
