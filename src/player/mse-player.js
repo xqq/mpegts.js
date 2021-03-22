@@ -377,12 +377,28 @@ class MSEPlayer {
     }
 
     _onmseUpdateEnd() {
+        let buffered = this._mediaElement.buffered;
+        let currentTime = this._mediaElement.currentTime;
+
+        if (this._config.isLive
+                && this._config.liveBufferLatencyChasing
+                && buffered.length > 0
+                && !this._mediaElement.paused) {
+            let buffered_end = buffered.end(buffered.length - 1);
+            if (buffered_end > this._config.liveBufferLatencyMaxLatency) {
+                // Ensure there's enough buffered data
+                if (buffered_end - currentTime > this._config.liveBufferLatencyMaxLatency) {
+                    // if remained data duration has larger than config.liveBufferLatencyMaxLatency
+                    let target_time = buffered_end - this._config.liveBufferLatencyMinRemain;
+                    this.currentTime = target_time;
+                }
+            }
+        }
+
         if (!this._config.lazyLoad || this._config.isLive) {
             return;
         }
 
-        let buffered = this._mediaElement.buffered;
-        let currentTime = this._mediaElement.currentTime;
         let currentRangeStart = 0;
         let currentRangeEnd = 0;
 

@@ -23,6 +23,10 @@ export const defaultConfig = {
 
     isLive: false,
 
+    liveBufferLatencyChasing: false,
+    liveBufferLatencyMaxLatency: 1,
+    liveBufferLatencyMinRemain: 0.5,
+
     lazyLoad: true,
     lazyLoadMaxDuration: 3 * 60,
     lazyLoadRecoverDuration: 30,

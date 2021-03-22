@@ -1,8 +1,8 @@
-import flvjs from '../';
+import mpegts from '../';
 
-type LoaderStatusAlias = flvjs.LoaderStatus;
-type LoaderErrorsAlias = flvjs.LoaderErrors;
+type LoaderStatusAlias = mpegts.LoaderStatus;
+type LoaderErrorsAlias = mpegts.LoaderErrors;
 
-interface MediaDataSourceExt extends flvjs.MediaDataSource {
+interface MediaDataSourceExt extends mpegts.MediaDataSource {
     example: string;
 }
