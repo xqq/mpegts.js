@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2016 Bilibili. All Rights Reserved.
+ * Copyright (C) 2021 magicxqq. All Rights Reserved.
  *
- * @author zheng qian <xqq@xqq.im>
+ * @author magicxqq <xqq@xqq.im>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,9 @@
  * limitations under the License.
  */
 
-// flv.js TypeScript definition file
+// mpegts.js TypeScript definition file
 
-declare namespace FlvJs {
+declare namespace Mpegts {
     interface MediaSegment {
         duration: number;
         filesize?: number;
@@ -235,8 +235,8 @@ declare namespace FlvJs {
     }
 
     interface FeatureList {
-        mseFlvPlayback: boolean;
-        mseLiveFlvPlayback: boolean;
+        msePlayback: boolean;
+        mseLivePlayback: boolean;
         networkStreamIO: boolean;
         networkLoaderName: string;
         nativeMP4H264Playback: boolean;
@@ -265,17 +265,17 @@ declare namespace FlvJs {
         muted: boolean;
         currentTime: number;
         /**
-         * @deprecated FlvPlayer/NativePlayer have its own `mediaInfo` field.
+         * @deprecated MSEPlayer/NativePlayer have its own `mediaInfo` field.
          * @desc Keep it for backwards compatibility
          * @since 1.4
          */
-        mediaInfo: NativePlayerMediaInfo | FlvPlayerMediaInfo;
+        mediaInfo: NativePlayerMediaInfo | MSEPlayerMediaInfo;
         /**
-         * @deprecated FlvPlayer/NativePlayer have its own `statisticsInfo` field.
+         * @deprecated MSEPlayer/NativePlayer have its own `statisticsInfo` field.
          * @desc Keep it for backwards compatibility
          * @since 1.4
          */
-        statisticsInfo: NativePlayerStatisticsInfo | FlvPlayerStatisticsInfo;
+        statisticsInfo: NativePlayerStatisticsInfo | MSEPlayerStatisticsInfo;
     }
 
     interface NativePlayerStatisticsInfo {
@@ -285,7 +285,7 @@ declare namespace FlvJs {
         droppedFrames?: number;
     }
 
-    interface FlvPlayerReportStatisticsInfo {
+    interface MSEPlayerReportStatisticsInfo {
         url: string;
         hasRedirect: boolean;
         redirectedURL?: string;
@@ -295,8 +295,8 @@ declare namespace FlvJs {
         totalSegmentCount: number;
     }
 
-    interface FlvPlayerStatisticsInfo extends Partial<FlvPlayerReportStatisticsInfo> {
-        playerType: 'FlvPlayer';
+    interface MSEPlayerStatisticsInfo extends Partial<MSEPlayerReportStatisticsInfo> {
+        playerType: 'MSEPlayer';
         decodedFrames?: number;
         droppedFrames?: number;
     }
@@ -308,7 +308,7 @@ declare namespace FlvJs {
         height?: number;
     }
 
-    interface FlvPlayerMediaInfo extends NativePlayerMediaInfo {
+    interface MSEPlayerMediaInfo extends NativePlayerMediaInfo {
         audioCodec?: string;
         videoCodec?: string;
         audioDataRate?: number;
@@ -321,9 +321,9 @@ declare namespace FlvJs {
         [k: string]: any;
     }
 
-    interface FlvPlayer extends Player {
-        mediaInfo: FlvPlayerMediaInfo;
-        statisticsInfo: FlvPlayerStatisticsInfo;
+    interface MSEPlayer extends Player {
+        mediaInfo: MSEPlayerMediaInfo;
+        statisticsInfo: MSEPlayerStatisticsInfo;
     }
 
     interface NativePlayer extends Player {
@@ -356,6 +356,7 @@ declare namespace FlvJs {
         MEDIA_INFO: string;
         METADATA_ARRIVED: string;
         SCRIPTDATA_ARRIVED: string;
+        PES_PRIVATE_DATA_ARRIVED: string;
         STATISTICS_INFO: string;
     }
 
@@ -379,40 +380,40 @@ declare namespace FlvJs {
     }
 }
 
-declare var FlvJs: {
-    createPlayer(mediaDataSource: FlvJs.MediaDataSource, config?: FlvJs.Config): FlvJs.Player;
+declare var Mpegts: {
+    createPlayer(mediaDataSource: Mpegts.MediaDataSource, config?: Mpegts.Config): Mpegts.Player;
     isSupported(): boolean;
-    getFeatureList(): FlvJs.FeatureList;
+    getFeatureList(): Mpegts.FeatureList;
 
     /**
-     * @deprecated Use `FlvJs.BaseLoaderConstructor` instead.
-     *              Because it's not available on `flvjs` variable.
+     * @deprecated Use `Mpegts.BaseLoaderConstructor` instead.
+     *              Because it's not available on `mpegts` variable.
      * @desc implement interface `BaseLoader`
      * @since 1.4
      */
-    BaseLoader: FlvJs.BaseLoaderConstructor;
+    BaseLoader: Mpegts.BaseLoaderConstructor;
     /**
-     * @deprecated Use `FlvJs.BaseLoaderConstructor` instead.
-     *              Because it's not available on `flvjs` variable.
+     * @deprecated Use `Mpegts.BaseLoaderConstructor` instead.
+     *              Because it's not available on `mpegts` variable.
      * @since 1.4
      */
-    LoaderStatus: FlvJs.LoaderStatus;
+    LoaderStatus: Mpegts.LoaderStatus;
     /**
-     * @deprecated Use `FlvJs.BaseLoaderConstructor` instead.
-     *              Because it's not available on `flvjs` variable.
+     * @deprecated Use `Mpegts.BaseLoaderConstructor` instead.
+     *              Because it's not available on `mpegts` variable.
      * @since 1.4
      */
-    LoaderErrors: FlvJs.LoaderErrors;
+    LoaderErrors: Mpegts.LoaderErrors;
 
     readonly version: string;
 
-    readonly Events: Readonly<FlvJs.Events>;
-    readonly ErrorTypes: Readonly<FlvJs.ErrorTypes>;
-    readonly ErrorDetails: Readonly<FlvJs.ErrorDetails>;
+    readonly Events: Readonly<Mpegts.Events>;
+    readonly ErrorTypes: Readonly<Mpegts.ErrorTypes>;
+    readonly ErrorDetails: Readonly<Mpegts.ErrorDetails>;
 
-    readonly FlvPlayer: FlvJs.PlayerConstructor;
-    readonly NativePlayer: FlvJs.PlayerConstructor;
-    readonly LoggingControl: FlvJs.LoggingControl;
+    readonly MSEPlayer: Mpegts.PlayerConstructor;
+    readonly NativePlayer: Mpegts.PlayerConstructor;
+    readonly LoggingControl: Mpegts.LoggingControl;
 };
 
-export default FlvJs;
+export default Mpegts;

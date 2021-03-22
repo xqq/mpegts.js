@@ -5,7 +5,7 @@
   "main": "./dist/mpegts.js",
   "module": "./src/mpegts.js",
   "jsnext:main": "./src/mpegts.js",
-  "types": "./d.ts/flv.d.ts",
+  "types": "./d.ts/mpegts.d.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/xqq/mpegts.js"
