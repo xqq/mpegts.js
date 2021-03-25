@@ -149,6 +149,11 @@ class TSDemuxer extends BaseDemuxer {
             return {match: false};
         }
 
+        if (ts_packet_size === 192 && sync_offset >= 4) {
+            Log.v('TSDemuxer', `ts_packet_size = 192, m2ts mode`);
+            sync_offset -= 4;
+        }
+
         return {
             match: true,
             consumed: 0,
@@ -183,27 +188,33 @@ class TSDemuxer extends BaseDemuxer {
 
         while (offset + this.ts_packet_size_ <= chunk.byteLength) {
             let file_position = byte_start + offset;
-            let v = new DataView(chunk, offset, this.ts_packet_size_);
 
-            let sync_byte = v.getUint8(0);
+            if (this.ts_packet_size_ === 192) {
+                // skip ATS field (2-bits copy-control + 30-bits timestamp) for m2ts
+                offset += 4;
+            }
+
+            let data = new Uint8Array(chunk, offset, 188);
+
+            let sync_byte = data[0];
             if (sync_byte !== 0x47) {
                 Log.e(this.TAG, `sync_byte = ${sync_byte}, not 0x47`);
                 break;
             }
 
-            let payload_unit_start_indicator = (v.getUint8(1) & 0x40) >>> 6;
-            let transport_priority = (v.getUint8(1) & 0x20) >>> 5;
-            let pid = ((v.getUint8(1) & 0x1F) << 8) | v.getUint8(2);
-            let adaptation_field_control = (v.getUint8(3) & 0x30) >>> 4;
-            let continuity_conunter = (v.getUint8(3) & 0x0F);
+            let payload_unit_start_indicator = (data[1] & 0x40) >>> 6;
+            let transport_priority = (data[1] & 0x20) >>> 5;
+            let pid = ((data[1] & 0x1F) << 8) | data[2];
+            let adaptation_field_control = (data[3] & 0x30) >>> 4;
+            let continuity_conunter = (data[3] & 0x0F);
 
             let ts_payload_start_index = 4;
 
             if (adaptation_field_control == 0x02 || adaptation_field_control == 0x03) {
-                let adaptation_field_length = v.getUint8(4);
-                if (5 + adaptation_field_length === this.ts_packet_size_) {
+                let adaptation_field_length = data[4];
+                if (5 + adaptation_field_length === 188) {
                     // TS packet only has adaption field, jump to next
-                    offset += this.ts_packet_size_;
+                    offset += 188;
                     continue;
                 } else {
                     ts_payload_start_index = 4 + 1 + adaptation_field_length;
@@ -213,11 +224,11 @@ class TSDemuxer extends BaseDemuxer {
             if (adaptation_field_control == 0x01 || adaptation_field_control == 0x03) {
                 if (pid === 0 || pid === this.current_pmt_pid_) {  // PAT(pid === 0) or PMT
                     if (payload_unit_start_indicator) {
-                        let pointer_field = v.getUint8(ts_payload_start_index);
+                        let pointer_field = data[ts_payload_start_index];
                         // skip pointer_field and strange data
                         ts_payload_start_index += 1 + pointer_field;
                     }
-                    let ts_payload_length = this.ts_packet_size_ - ts_payload_start_index;
+                    let ts_payload_length = 188 - ts_payload_start_index;
 
                     if (pid === 0) {
                         this.parsePAT(chunk,
@@ -232,7 +243,7 @@ class TSDemuxer extends BaseDemuxer {
                     }
                 } else if (this.pmt_ != undefined && this.pmt_.pid_stream_type[pid] != undefined) {
                     // PES
-                    let ts_payload_length = this.ts_packet_size_ - ts_payload_start_index;
+                    let ts_payload_length = 188 - ts_payload_start_index;
                     let stream_type = this.pmt_.pid_stream_type[pid];
 
                     // process PES only for known common_pids
@@ -253,7 +264,7 @@ class TSDemuxer extends BaseDemuxer {
                 }
             }
 
-            offset += this.ts_packet_size_;
+            offset += 188;
         }
 
         // dispatch parsed frames to the remuxer (consumer)
