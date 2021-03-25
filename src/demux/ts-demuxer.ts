@@ -137,21 +137,26 @@ class TSDemuxer extends BaseDemuxer {
                 if (ts_packet_size === 188) {
                     // try 192 packet size (BDAV, etc.)
                     ts_packet_size = 192;
+                } else if (ts_packet_size === 192) {
+                    // try 204 packet size (European DVB, etc.)
+                    ts_packet_size = 204;
                 } else {
-                    // 192 also failed, exit
+                    // 192, 204 also failed, exit
                     break;
                 }
             }
         }
 
         if (sync_offset === -1) {
-            // both 188 / 192 failed, Non MPEG-TS
+            // both 188, 192, 204 failed, Non MPEG-TS
             return {match: false};
         }
 
         if (ts_packet_size === 192 && sync_offset >= 4) {
             Log.v('TSDemuxer', `ts_packet_size = 192, m2ts mode`);
             sync_offset -= 4;
+        } else if (ts_packet_size === 204) {
+            Log.v('TSDemuxer', `ts_packet_size = 204, RS encoded MPEG2-TS stream`);
         }
 
         return {
@@ -215,6 +220,10 @@ class TSDemuxer extends BaseDemuxer {
                 if (5 + adaptation_field_length === 188) {
                     // TS packet only has adaption field, jump to next
                     offset += 188;
+                    if (this.ts_packet_size_ === 204) {
+                        // skip parity word (16 bytes) for RS encoded TS
+                        offset += 16;
+                    }
                     continue;
                 } else {
                     ts_payload_start_index = 4 + 1 + adaptation_field_length;
@@ -265,6 +274,11 @@ class TSDemuxer extends BaseDemuxer {
             }
 
             offset += 188;
+
+            if (this.ts_packet_size_ === 204) {
+                // skip parity word (16 bytes) for RS encoded TS
+                offset += 16;
+            }
         }
 
         // dispatch parsed frames to the remuxer (consumer)
