@@ -94,6 +94,16 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     public destroy() {
+        this.media_info_ = null;
+        this.pes_slice_queues_ = null;
+
+        this.video_metadata_ = null;
+        this.audio_metadata_ = null;
+        this.aac_last_incomplete_data_ = null;
+
+        this.video_track_ = null;
+        this.audio_track_ = null;
+
         super.destroy();
     }
 
