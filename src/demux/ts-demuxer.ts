@@ -536,7 +536,7 @@ class TSDemuxer extends BaseDemuxer {
                 case StreamType.kMPEG2Audio:
                     break;
                 case StreamType.kPESPrivateData:
-                    this.parsePESPrivateDataPayload(payload, pts, dts, pes_data.pid);
+                    this.parsePESPrivateDataPayload(payload, pts, dts, pes_data.pid, stream_id);
                     break;
                 case StreamType.kADTSAAC:
                     this.parseAACPayload(payload, pts);
@@ -898,12 +898,13 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parsePESPrivateDataPayload(data: Uint8Array, pts: number, dts: number, pid: number) {
+    private parsePESPrivateDataPayload(data: Uint8Array, pts: number, dts: number, pid: number, stream_id: number) {
         let pts_ms = Math.floor(pts / this.timescale_);
         let dts_ms = Math.floor(dts / this.timescale_);
 
         let private_data = new PESPrivateData();
         private_data.pid = pid;
+        private_data.stream_id = stream_id;
         private_data.pts = pts_ms;
         private_data.dts = dts_ms;
         private_data.len = data.byteLength;
