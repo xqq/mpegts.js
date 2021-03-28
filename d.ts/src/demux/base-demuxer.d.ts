@@ -1,11 +1,12 @@
 import MediaInfo from '../core/media-info';
-import { PESPrivateData } from './pes-private-data';
+import { PESPrivateData, PESPrivateDataDescriptor } from './pes-private-data';
 declare type OnErrorCallback = (type: string, info: string) => void;
 declare type OnMediaInfoCallback = (mediaInfo: MediaInfo) => void;
 declare type OnMetaDataArrivedCallback = (metadata: any) => void;
 declare type OnTrackMetadataCallback = (type: string, metadata: any) => void;
 declare type OnDataAvailableCallback = (videoTrack: any, audioTrack: any) => void;
 declare type OnPESPrivateDataCallback = (private_data: PESPrivateData) => void;
+declare type OnPESPrivateDataDescriptorCallback = (private_data_descriptor: PESPrivateDataDescriptor) => void;
 export default abstract class BaseDemuxer {
     onError: OnErrorCallback;
     onMediaInfo: OnMediaInfoCallback;
@@ -13,6 +14,7 @@ export default abstract class BaseDemuxer {
     onTrackMetadata: OnTrackMetadataCallback;
     onDataAvailable: OnDataAvailableCallback;
     onPESPrivateData: OnPESPrivateDataCallback;
+    onPESPrivateDataDescriptor: OnPESPrivateDataDescriptorCallback;
     constructor();
     destroy(): void;
     abstract parseChunks(chunk: ArrayBuffer, byteStart: number): number;
