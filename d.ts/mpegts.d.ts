@@ -75,7 +75,7 @@ declare namespace Mpegts {
         /**
          * @desc Maximum acceptable buffer latency in HTMLMediaElement, in seconds
          *       Effective only if `isLive: true` and `liveBufferLatencyChasing: true`
-         * @defaultvalue 1
+         * @defaultvalue 1.5
          */
         liveBufferLatencyMaxLatency?: number;
 
