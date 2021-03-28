@@ -253,6 +253,7 @@ class TransmuxingController {
             demuxer.onError = this._onDemuxException.bind(this);
             demuxer.onMediaInfo = this._onMediaInfo.bind(this);
             demuxer.onMetaDataArrived = this._onMetaDataArrived.bind(this);
+            demuxer.onPESPrivateDataDescriptor = this._onPESPrivateDataDescriptor.bind(this);
             demuxer.onPESPrivateData = this._onPESPrivateData.bind(this);
 
             this._remuxer.bindDataSource(this._demuxer);
@@ -287,7 +288,6 @@ class TransmuxingController {
             this._demuxer.onMediaInfo = this._onMediaInfo.bind(this);
             this._demuxer.onMetaDataArrived = this._onMetaDataArrived.bind(this);
             this._demuxer.onScriptDataArrived = this._onScriptDataArrived.bind(this);
-            this._demuxer.onPESPrivateData = this._onPESPrivateData.bind(this);
 
             this._remuxer.bindDataSource(this._demuxer
                          .bindDataSource(this._ioctl
@@ -299,11 +299,11 @@ class TransmuxingController {
             consumed = this._demuxer.parseChunks(data, byteStart);
         } else {
             probeData = null;
-            Log.e(this.TAG, 'Non-FLV, Unsupported media type!');
+            Log.e(this.TAG, 'Non MPEG-TS/FLV, Unsupported media type!');
             Promise.resolve().then(() => {
                 this._internalAbort();
             });
-            this._emitter.emit(TransmuxingEvents.DEMUX_ERROR, DemuxErrors.FORMAT_UNSUPPORTED, 'Non-FLV, Unsupported media type');
+            this._emitter.emit(TransmuxingEvents.DEMUX_ERROR, DemuxErrors.FORMAT_UNSUPPORTED, 'Non MPEG-TS/FLV, Unsupported media type!');
 
             consumed = 0;
         }
@@ -343,6 +343,10 @@ class TransmuxingController {
 
     _onScriptDataArrived(data) {
         this._emitter.emit(TransmuxingEvents.SCRIPTDATA_ARRIVED, data);
+    }
+
+    _onPESPrivateDataDescriptor(descriptor) {
+        this._emitter.emit(TransmuxingEvents.PES_PRIVATE_DATA_DESCRIPTOR, descriptor);
     }
 
     _onPESPrivateData(private_data) {

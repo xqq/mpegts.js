@@ -7,3 +7,9 @@ export class PESPrivateData {
     data: Uint8Array;
     len: number;
 }
+
+export class PESPrivateDataDescriptor {
+    pid: number;
+    stream_type: number;
+    descriptor: Uint8Array;
+}

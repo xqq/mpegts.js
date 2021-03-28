@@ -62,6 +62,7 @@ class Transmuxer {
             ctl.on(TransmuxingEvents.MEDIA_INFO, this._onMediaInfo.bind(this));
             ctl.on(TransmuxingEvents.METADATA_ARRIVED, this._onMetaDataArrived.bind(this));
             ctl.on(TransmuxingEvents.SCRIPTDATA_ARRIVED, this._onScriptDataArrived.bind(this));
+            ctl.on(TransmuxingEvents.PES_PRIVATE_DATA_DESCRIPTOR, this._onPESPrivateDataDescriptor.bind(this));
             ctl.on(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, this._onPESPrivateDataArrived.bind(this));
             ctl.on(TransmuxingEvents.STATISTICS_INFO, this._onStatisticsInfo.bind(this));
             ctl.on(TransmuxingEvents.RECOMMEND_SEEKPOINT, this._onRecommendSeekpoint.bind(this));
@@ -179,6 +180,12 @@ class Transmuxer {
         });
     }
 
+    _onPESPrivateDataDescriptor(data) {
+        Promise.resolve().then(() => {
+            this._emitter.emit(TransmuxingEvents.PES_PRIVATE_DATA_DESCRIPTOR, data);
+        });
+    }
+
     _onPESPrivateDataArrived(data) {
         Promise.resolve().then(() => {
             this._emitter.emit(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, data);
@@ -241,6 +248,7 @@ class Transmuxer {
                 break;
             case TransmuxingEvents.METADATA_ARRIVED:
             case TransmuxingEvents.SCRIPTDATA_ARRIVED:
+            case TransmuxingEvents.PES_PRIVATE_DATA_DESCRIPTOR:
             case TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED:
             case TransmuxingEvents.STATISTICS_INFO:
                 this._emitter.emit(message.msg, data);

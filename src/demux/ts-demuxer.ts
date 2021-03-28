@@ -26,7 +26,7 @@ import { AVCDecoderConfigurationRecord, H264AnnexBParser, H264NaluAVC1, H264Nalu
 import SPSParser from './sps-parser';
 import { AACADTSParser, AACFrame, AudioSpecificConfig } from './aac';
 import { MPEG4AudioObjectTypes, MPEG4SamplingFrequencyIndex } from './mpeg4-audio';
-import { PESPrivateData } from './pes-private-data';
+import { PESPrivateData, PESPrivateDataDescriptor } from './pes-private-data';
 
 class TSDemuxer extends BaseDemuxer {
 
@@ -393,6 +393,7 @@ class TSDemuxer extends BaseDemuxer {
         for (let i = info_start_index; i < info_start_index + info_bytes; ) {
             let stream_type = data[i] as StreamType;
             let elementary_PID = ((data[i + 1] & 0x1F) << 8) | data[i + 2];
+            let ES_info_length = ((data[i + 3] & 0x0F) << 8) | data[i + 4];
 
             pmt.pid_stream_type[elementary_PID] = stream_type;
 
@@ -402,9 +403,13 @@ class TSDemuxer extends BaseDemuxer {
                 pmt.common_pids.adts_aac = elementary_PID;
             } else if (stream_type === StreamType.kPESPrivateData) {
                 pmt.pes_private_data_pids[elementary_PID] = true;
+                if (ES_info_length > 0) {
+                    // provide descriptor for PES private data via callback
+                    let descriptor = data.subarray(i + 5, i + 5 + ES_info_length);
+                    this.dispatchPESPrivateDataDescriptor(elementary_PID, stream_type, descriptor);
+                }
             }
 
-            let ES_info_length = ((data[i + 3] & 0x0F) << 8) | data[i + 4];
             i += 5 + ES_info_length;
         }
 
@@ -895,6 +900,17 @@ class TSDemuxer extends BaseDemuxer {
 
         if (mi.isComplete()) {
             this.onMediaInfo(mi);
+        }
+    }
+
+    private dispatchPESPrivateDataDescriptor(pid: number, stream_type: number, descriptor: Uint8Array) {
+        let desc = new PESPrivateDataDescriptor();
+        desc.pid = pid;
+        desc.stream_type = stream_type;
+        desc.descriptor = descriptor;
+
+        if (this.onPESPrivateDataDescriptor) {
+            this.onPESPrivateDataDescriptor(desc);
         }
     }
 
