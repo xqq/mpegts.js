@@ -3,8 +3,6 @@
   "version": "1.6.0",
   "description": "HTML5 MPEG2-TS Player",
   "main": "./dist/mpegts.js",
-  "module": "./src/mpegts.js",
-  "jsnext:main": "./src/mpegts.js",
   "types": "./d.ts/mpegts.d.ts",
   "repository": {
     "type": "git",
@@ -16,7 +14,7 @@
     "m2ts",
     "mse",
     "arib",
-    "javascript"
+    "dvb"
   ],
   "scripts": {
     "build": "webpack --mode=production --progress --verbose",
