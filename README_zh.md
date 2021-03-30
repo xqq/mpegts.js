@@ -17,6 +17,7 @@ mpegts.js 通过在 JavaScript 中渐进化解析 MPEG2-TS 流并实时转封装
 ## Features
 - 回放 http(s) 或 WebSocket 上承载的 H.264 + AAC 编码的 MPEG2-TS 流
 - 超低延迟，最佳情况延迟可低达 1 秒前后
+- 回放 TS packet 为 192 字节的 `.m2ts` 文件（BDAV/BDMV）或 204 字节的 TS 流
 - 支持动态编码参数切换，如视频分辨率动态变化
 - 支持 Chrome, FireFox, Safari, Edge (Old or Chromium) 或任何基于 Chromium 的浏览器
 - 支持对 HTMLMediaElement 内部缓冲的自动延迟追赶
@@ -64,9 +65,8 @@ npm run build               # packaged & minimized js will be emitted in dist fo
 
 ## TODO
 - MPEG2-TS 静态文件回放 （目前还不支持 seek）
-- BDAV/BDMV (.m2ts) 蓝光文件回放
 - H.265/HEVC 支持 （但是似乎只有 Safari 支持？)
-- MP3 音频编码支持
+- MP3/AC3 音频编码支持
 - AV1/OPUS codec over MPEG2-TS stream support (?)
 
 ## Limitations

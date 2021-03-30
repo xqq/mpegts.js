@@ -17,6 +17,7 @@ mpegts.js は、JavaScript で MPEG2-TS ストリームを解析しながら、�
 ## Features
 - http(s) または WebSocket で伝送する H.264 + AAC の MPEG2-TS ストリームが再生可能
 - 最良の場合は 1 秒ほどの低遅延が達成可能
+- TS packet が 192 bytes の `.m2ts` ファイル（BDAV/BDMV）、または 204 bytes も再生可能
 - 動的パラメータ切り替えが可能 （例えば、映像解像度が途中に切り替わっても再生します）
 - Chrome, FireFox, Safari, Edge (Old or Chromium) または Chromium-based ブラウザで実行可能
 - HTMLMediaElement 内部バッファーの遅延を追いかける機能
@@ -62,9 +63,8 @@ npm run build               # packaged & minimized js will be emitted in dist fo
 
 ## TODO
 - 静的 MPEG2-TS ファイルの再生 （現時点ではシークできません）
-- BDAV/BDMV (.m2ts) ファイルの再生
 - H.265/HEVC codec の支援 （ただし、現時点では Safari のみ HEVC が再生可能）
-- MP3 audio codec の支援
+- MP3/AC3 audio codec の支援
 - AV1/OPUS codec over MPEG2-TS stream support (?)
 
 ## Limitations
