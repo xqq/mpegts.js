@@ -1,7 +1,7 @@
 {
   "name": "mpegts.js",
-  "version": "1.6.0",
-  "description": "HTML5 MPEG2-TS Player",
+  "version": "1.6.1",
+  "description": "HTML5 MPEG2-TS Stream Player",
   "main": "./dist/mpegts.js",
   "types": "./d.ts/mpegts.d.ts",
   "repository": {
@@ -34,6 +34,7 @@
     "exports-loader": "^0.7.0",
     "file-loader": "^3.0.1",
     "source-map-loader": "^0.2.4",
+    "ssri": ">=8.0.1",
     "terser-webpack-plugin": "^1.2.3",
     "ts-loader": "^5.3.2",
     "typescript": "^3.2.2",
