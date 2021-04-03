@@ -18,7 +18,7 @@ mpegts.js works by transmuxing MPEG2-TS stream into ISO BMFF (Fragmented MP4) se
 
 ## Features
 - Playback for MPEG2-TS stream with H.264 + AAC codec transported in http(s) or WebSocket
-- Extremely low latency of 1 second in the best case
+- Extremely low latency of less than 1 second in the best case
 - Playback for `.m2ts` file like BDAV/BDMV with 192 bytes TS packet, or 204 bytes TS packet
 - Support handling dynamic codec parameters change (e.g. video resolution change)
 - Support Chrome, FireFox, Safari, Edge (Old or Chromium) or any Chromium-based browsers
