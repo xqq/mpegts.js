@@ -555,6 +555,26 @@ class TSDemuxer extends BaseDemuxer {
                 default:
                     break;
             }
+        } else if (stream_id === 0xBC  // program_stream_map
+                       || stream_id === 0xBF  // private_stream_2
+                       || stream_id === 0xF0  // ECM
+                       || stream_id === 0xF1  // EMM
+                       || stream_id === 0xFF  // program_stream_directory
+                       || stream_id === 0xF2  // DSMCC_stream
+                       || stream_id === 0xF8) {  // ITU-T Rec. H.222.1 type E stream
+            if (pes_data.stream_type === StreamType.kPESPrivateData) {
+                let payload_start_index = 6;
+                let payload_length: number;
+
+                if (PES_packet_length !== 0) {
+                    payload_length = PES_packet_length;
+                } else {  // PES_packet_length === 0
+                    payload_length = data.byteLength - payload_start_index;
+                }
+
+                let payload = data.subarray(payload_start_index, payload_start_index + payload_length);
+                this.parsePESPrivateDataPayload(payload, undefined, undefined, pes_data.pid, stream_id);
+            }
         }
     }
 
@@ -915,16 +935,22 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     private parsePESPrivateDataPayload(data: Uint8Array, pts: number, dts: number, pid: number, stream_id: number) {
-        let pts_ms = Math.floor(pts / this.timescale_);
-        let dts_ms = Math.floor(dts / this.timescale_);
-
         let private_data = new PESPrivateData();
+
         private_data.pid = pid;
         private_data.stream_id = stream_id;
-        private_data.pts = pts_ms;
-        private_data.dts = dts_ms;
         private_data.len = data.byteLength;
         private_data.data = data;
+
+        if (pts != undefined) {
+            let pts_ms = Math.floor(pts / this.timescale_);
+            private_data.pts = pts_ms;
+        }
+
+        if (dts != undefined) {
+            let dts_ms = Math.floor(dts / this.timescale_);
+            private_data.dts = dts_ms;
+        }
 
         if (this.onPESPrivateData) {
             this.onPESPrivateData(private_data);

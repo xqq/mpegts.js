@@ -351,8 +351,15 @@ class TransmuxingController {
 
     _onPESPrivateData(private_data) {
         let timestamp_base = this._remuxer.getTimestampBase();
-        private_data.pts -= timestamp_base;
-        private_data.dts -= timestamp_base;
+
+        if (private_data.pts != undefined) {
+            private_data.pts -= timestamp_base;
+        }
+
+        if (private_data.dts != undefined) {
+            private_data.dts -= timestamp_base;
+        }
+
         this._emitter.emit(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, private_data);
     }
 
