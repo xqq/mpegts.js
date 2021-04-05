@@ -356,6 +356,10 @@ class TransmuxingController {
             private_data.pts -= timestamp_base;
         }
 
+        if (private_data.nearest_pts != undefined) {
+            private_data.nearest_pts -= timestamp_base;
+        }
+
         if (private_data.dts != undefined) {
             private_data.dts -= timestamp_base;
         }

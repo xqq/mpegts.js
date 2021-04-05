@@ -945,6 +945,8 @@ class TSDemuxer extends BaseDemuxer {
         if (pts != undefined) {
             let pts_ms = Math.floor(pts / this.timescale_);
             private_data.pts = pts_ms;
+        } else {
+            private_data.nearest_pts = this.aac_last_sample_pts_;
         }
 
         if (dts != undefined) {
