@@ -37,9 +37,9 @@ class NativePlayer {
         let typeLowerCase = mediaDataSource.type.toLowerCase();
 
         if (typeLowerCase === 'mse'
-                && typeLowerCase === 'mpegts'
-                && typeLowerCase === 'm2ts'
-                && typeLowerCase === 'flv') {
+                || typeLowerCase === 'mpegts'
+                || typeLowerCase === 'm2ts'
+                || typeLowerCase === 'flv') {
             throw new InvalidArgumentException('NativePlayer does\'t support mse/mpegts/m2ts/flv MediaDataSource input!');
         }
         if (mediaDataSource.hasOwnProperty('segments')) {
