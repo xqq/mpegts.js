@@ -39,7 +39,8 @@
     "ts-loader": "^5.3.2",
     "typescript": "^3.2.2",
     "webpack": "^4.28.3",
-    "webpack-cli": "^3.3.12"
+    "webpack-cli": "^3.3.12",
+    "xmlhttprequest-ssl": ">=1.6.2"
   },
   "author": "zheng qian <xqq@xqq.im>",
   "license": "Apache-2.0"
