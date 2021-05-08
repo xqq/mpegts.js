@@ -602,10 +602,6 @@ class TSDemuxer extends BaseDemuxer {
             } else if (nalu_avc1.type === H264NaluType.kSlicePPS) {
                 if (!this.video_init_segment_dispatched_ || this.video_metadata_changed_) {
                     this.video_metadata_.pps = nalu_avc1;
-                }
-            } else if (nalu_avc1.type === H264NaluType.kSliceIDR) {
-                keyframe = true;
-                if (!this.video_init_segment_dispatched_ || this.video_metadata_changed_) {
                     if (this.video_metadata_.sps && this.video_metadata_.pps) {
                         if (this.video_metadata_changed_) {
                             // flush stashed frames before changing codec metadata
@@ -615,6 +611,8 @@ class TSDemuxer extends BaseDemuxer {
                         this.dispatchVideoInitSegment();
                     }
                 }
+            } else if (nalu_avc1.type === H264NaluType.kSliceIDR) {
+                keyframe = true;
             }
 
             // Push samples to remuxer only if initialization metadata has been dispatched
