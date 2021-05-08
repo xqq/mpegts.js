@@ -52,12 +52,14 @@ export class PESData {
     data: Uint8Array;
     stream_type: StreamType;
     file_position: number;
+    random_access_indicator: number;
 }
 
 export class PESSliceQueue {
     slices: Uint8Array[] = [];
     total_length: number = 0;
     file_position: number = 0;
+    random_access_indicator: 0;
 }
 
 export interface PIDToPESSliceQueues {

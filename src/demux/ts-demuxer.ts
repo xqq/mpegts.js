@@ -278,7 +278,8 @@ class TSDemuxer extends BaseDemuxer {
                                                 stream_type,
                                                 file_position,
                                                 payload_unit_start_indicator,
-                                                continuity_conunter
+                                                continuity_conunter,
+                                                random_access_indicator: adaptation_field_info.random_access_indicator
                                             });
                     }
                 }
@@ -497,12 +498,14 @@ class TSDemuxer extends BaseDemuxer {
                 pes_data.data = data;
                 pes_data.stream_type = misc.stream_type;
                 pes_data.file_position = slice_queue.file_position;
+                pes_data.random_access_indicator = slice_queue.random_access_indicator;
                 this.parsePES(pes_data);
             }
 
             // Make a new PES queue for new PES slices
             this.pes_slice_queues_[misc.pid] = new PESSliceQueue();
             this.pes_slice_queues_[misc.pid].file_position = misc.file_position;
+            this.pes_slice_queues_[misc.pid].random_access_indicator = misc.random_access_indicator;
         }
 
         if (this.pes_slice_queues_[misc.pid] == undefined) {
@@ -588,7 +591,7 @@ class TSDemuxer extends BaseDemuxer {
                 case StreamType.kID3:
                     break;
                 case StreamType.kH264:
-                    this.parseH264Payload(payload, pts, dts, pes_data.file_position);
+                    this.parseH264Payload(payload, pts, dts, pes_data.file_position, pes_data.random_access_indicator);
                     break;
                 case StreamType.kH265:
                 default:
@@ -617,7 +620,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseH264Payload(data: Uint8Array, pts: number, dts: number, file_position: number) {
+    private parseH264Payload(data: Uint8Array, pts: number, dts: number, file_position: number, random_access_indicator: number) {
         let annexb_parser = new H264AnnexBParser(data);
         let nalu_payload: H264NaluPayload = null;
         let units: {type: H264NaluType, data: Uint8Array}[] = [];
@@ -651,6 +654,9 @@ class TSDemuxer extends BaseDemuxer {
                     }
                 }
             } else if (nalu_avc1.type === H264NaluType.kSliceIDR) {
+                keyframe = true;
+            } else if (nalu_avc1.type === H264NaluType.kSliceNonIDR && random_access_indicator === 1) {
+                // For open-gop stream, use random_access_indicator to identify keyframe
                 keyframe = true;
             }
 
