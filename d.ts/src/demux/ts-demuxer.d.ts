@@ -42,6 +42,7 @@ declare class TSDemuxer extends BaseDemuxer {
     bindDataSource(loader: any): this;
     resetMediaInfo(): void;
     parseChunks(chunk: ArrayBuffer, byte_start: number): number;
+    private parseAdaptationField;
     private parsePAT;
     private parsePMT;
     private handlePESSlice;

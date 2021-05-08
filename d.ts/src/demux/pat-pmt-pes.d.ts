@@ -39,11 +39,13 @@ export declare class PESData {
     data: Uint8Array;
     stream_type: StreamType;
     file_position: number;
+    random_access_indicator: number;
 }
 export declare class PESSliceQueue {
     slices: Uint8Array[];
     total_length: number;
     file_position: number;
+    random_access_indicator: 0;
 }
 export interface PIDToPESSliceQueues {
     [pid: number]: PESSliceQueue;
