@@ -213,6 +213,11 @@ class TSDemuxer extends BaseDemuxer {
             let adaptation_field_control = (data[3] & 0x30) >>> 4;
             let continuity_conunter = (data[3] & 0x0F);
 
+            let adaptation_field_info: {
+                discontinuity_indicator?: number,
+                random_access_indicator?: number,
+                elementary_stream_priority_indicator?: number
+            } = {};
             let ts_payload_start_index = 4;
 
             if (adaptation_field_control == 0x02 || adaptation_field_control == 0x03) {
@@ -226,6 +231,12 @@ class TSDemuxer extends BaseDemuxer {
                     }
                     continue;
                 } else {
+                    // parse leading adaptation_field if has payload
+                    if (adaptation_field_length > 0) {
+                        adaptation_field_info = this.parseAdaptationField(chunk,
+                                                                          offset + 4,
+                                                                          1 + adaptation_field_length);
+                    }
                     ts_payload_start_index = 4 + 1 + adaptation_field_length;
                 }
             }
@@ -285,6 +296,34 @@ class TSDemuxer extends BaseDemuxer {
         this.dispatchAudioVideoMediaSegment();
 
         return offset;  // consumed bytes
+    }
+
+    private parseAdaptationField(buffer: ArrayBuffer, offset: number, length: number): {
+        discontinuity_indicator?: number,
+        random_access_indicator?: number,
+        elementary_stream_priority_indicator?: number
+    } {
+        let data = new Uint8Array(buffer, offset, length);
+
+        let adaptation_field_length = data[0];
+        if (adaptation_field_length > 0) {
+            if (adaptation_field_length > 183) {
+                Log.w(this.TAG, `Illegal adaptation_field_length: ${adaptation_field_length}`);
+                return {};
+            }
+
+            let discontinuity_indicator: number = (data[1] & 0x80) >>> 7;
+            let random_access_indicator: number = (data[1] & 0x40) >>> 6;
+            let elementary_stream_priority_indicator: number = (data[1] & 0x20) >>> 5;
+
+            return {
+                discontinuity_indicator,
+                random_access_indicator,
+                elementary_stream_priority_indicator
+            };
+        }
+
+        return {};
     }
 
     private parsePAT(buffer: ArrayBuffer, offset: number, length: number, misc: any): void {
