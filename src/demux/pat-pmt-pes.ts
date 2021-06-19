@@ -42,7 +42,7 @@ export class PMT {
         [pid: number]: boolean
     } = {};
 
-    pes_timed_id3_pids: {
+    timed_id3_pids: {
         [pid: number]: boolean
     } = {};
 }
