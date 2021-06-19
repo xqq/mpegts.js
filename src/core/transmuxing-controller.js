@@ -357,7 +357,7 @@ class TransmuxingController {
             timed_id3_metadata.dts -= timestamp_base;
         }
 
-        this._emitter.emit(TransmuxingEvents.PES_TIMED_ID3_METADATA_ARRIVED, timed_id3_metadata);
+        this._emitter.emit(TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED, timed_id3_metadata);
     }
 
     _onPESPrivateDataDescriptor(descriptor) {
