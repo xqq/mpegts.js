@@ -41,6 +41,10 @@ export class PMT {
     pes_private_data_pids: {
         [pid: number]: boolean
     } = {};
+
+    pes_timed_id3_pids: {
+        [pid: number]: boolean
+    } = {};
 }
 
 export interface ProgramToPMTMap {

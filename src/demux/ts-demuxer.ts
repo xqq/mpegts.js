@@ -269,7 +269,8 @@ class TSDemuxer extends BaseDemuxer {
                     // process PES only for known common_pids
                     if (pid === this.pmt_.common_pids.h264
                             || pid === this.pmt_.common_pids.adts_aac
-                            || this.pmt_.pes_private_data_pids[pid] === true) {
+                            || this.pmt_.pes_private_data_pids[pid] === true
+                            || this.pmt_.pes_timed_id3_pids[pid] === true) {
                         this.handlePESSlice(chunk,
                                             offset + ts_payload_start_index,
                                             ts_payload_length,
@@ -448,6 +449,8 @@ class TSDemuxer extends BaseDemuxer {
                     let descriptor = data.subarray(i + 5, i + 5 + ES_info_length);
                     this.dispatchPESPrivateDataDescriptor(elementary_PID, stream_type, descriptor);
                 }
+            } else if (stream_type === StreamType.kID3) {
+                pmt.pes_timed_id3_pids[elementary_PID] = true;
             }
 
             i += 5 + ES_info_length;
@@ -589,6 +592,7 @@ class TSDemuxer extends BaseDemuxer {
                     this.parseAACPayload(payload, pts);
                     break;
                 case StreamType.kID3:
+                    this.parsePESTimedID3MetadataPayload(payload, pts, dts, pes_data.pid, stream_id);
                     break;
                 case StreamType.kH264:
                     this.parseH264Payload(payload, pts, dts, pes_data.file_position, pes_data.random_access_indicator);
@@ -1002,6 +1006,28 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
+    private parsePESTimedID3MetadataPayload(data: Uint8Array, pts: number, dts: number, pid: number, stream_id: number) {
+        let timed_id3_metadata = new PESPrivateData();
+
+        timed_id3_metadata.pid = pid;
+        timed_id3_metadata.stream_id = stream_id;
+        timed_id3_metadata.len = data.byteLength;
+        timed_id3_metadata.data = data;
+
+        if (pts != undefined) {
+            let pts_ms = Math.floor(pts / this.timescale_);
+            timed_id3_metadata.pts = pts_ms;
+        } 
+
+        if (dts != undefined) {
+            let dts_ms = Math.floor(dts / this.timescale_);
+            timed_id3_metadata.dts = dts_ms;
+        }
+
+        if (this.onTimedID3Metadata) {
+            this.onTimedID3Metadata(timed_id3_metadata);
+        }
+    }
 }
 
 export default TSDemuxer;

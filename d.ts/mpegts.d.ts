@@ -377,6 +377,7 @@ declare namespace Mpegts {
         MEDIA_INFO: string;
         METADATA_ARRIVED: string;
         SCRIPTDATA_ARRIVED: string;
+        PES_TIMED_ID3_METADATA_ARRIVED: string;
         PES_PRIVATE_DATA_DESCRIPTOR: string;
         PES_PRIVATE_DATA_ARRIVED: string;
         STATISTICS_INFO: string;
