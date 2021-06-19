@@ -40,6 +40,7 @@
     "typescript": "^3.2.2",
     "webpack": "^4.28.3",
     "webpack-cli": "^3.3.12",
+    "ws": ">=7.4.6",
     "xmlhttprequest-ssl": ">=1.6.2"
   },
   "author": "zheng qian <xqq@xqq.im>",
