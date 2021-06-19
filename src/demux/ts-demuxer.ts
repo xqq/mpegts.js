@@ -592,7 +592,7 @@ class TSDemuxer extends BaseDemuxer {
                     this.parseAACPayload(payload, pts);
                     break;
                 case StreamType.kID3:
-                    this.parsePESTimedID3MetadataPayload(payload, pts, dts, pes_data.pid, stream_id);
+                    this.parseTimedID3MetadataPayload(payload, pts, dts, pes_data.pid, stream_id);
                     break;
                 case StreamType.kH264:
                     this.parseH264Payload(payload, pts, dts, pes_data.file_position, pes_data.random_access_indicator);
@@ -1006,7 +1006,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parsePESTimedID3MetadataPayload(data: Uint8Array, pts: number, dts: number, pid: number, stream_id: number) {
+    private parseTimedID3MetadataPayload(data: Uint8Array, pts: number, dts: number, pid: number, stream_id: number) {
         let timed_id3_metadata = new PESPrivateData();
 
         timed_id3_metadata.pid = pid;
