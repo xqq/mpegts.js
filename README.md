@@ -16,14 +16,18 @@ mpegts.js works by transmuxing MPEG2-TS stream into ISO BMFF (Fragmented MP4) se
 ## Demo
 [http://xqq.github.io/mpegts.js/demo/](http://xqq.github.io/mpegts.js/demo/)
 
+[demo with aribb24.js](http://xqq.github.io/mpegts.js/demo/arib.html)
+
 ## Features
 - Playback for MPEG2-TS stream with H.264 + AAC codec transported in http(s) or WebSocket
-- Extremely low latency of 1 second in the best case
+- Extremely low latency of less than 1 second in the best case
+- Playback for `.m2ts` file like BDAV/BDMV with 192 bytes TS packet, or 204 bytes TS packet
 - Support handling dynamic codec parameters change (e.g. video resolution change)
 - Support Chrome, FireFox, Safari, Edge (Old or Chromium) or any Chromium-based browsers
 - Support chasing latency automatically for internal buffer of HTMLMediaElement
 - Low CPU overhead and low memory usage (JS heap takes about 10MiB for each instance)
 - Support extracting PES private data (stream_type=0x06) like ARIB B24 subtitles
+- Support Timed ID3 Metadata (stream_type=0x15) callback (TIMED_ID3_METADATA_ARRIVED)
 
 ## CORS
 If you use standalone video server for MPEG2-TS stream, `Access-Control-Allow-Origin` header must be configured correctly on video server for cross-origin resource fetching.
@@ -66,9 +70,8 @@ mpegts.js could be tested with [Simple Realtime Server](https://github.com/ossrs
 
 ## TODO
 - MPEG2-TS static file playback (seeking is not supported now)
-- BDAV/BDMV (.m2ts) static file playback
 - H.265/HEVC video codec support (only Safari support HEVC for now)
-- MP3 audio codec support
+- MP3/AC3 audio codec support
 - AV1/OPUS codec over MPEG2-TS stream support (?)
 
 ## Limitations

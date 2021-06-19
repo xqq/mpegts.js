@@ -14,14 +14,18 @@ mpegts.js は、JavaScript で MPEG2-TS ストリームを解析しながら、�
 ## Demo
 [http://xqq.github.io/mpegts.js/demo/](http://xqq.github.io/mpegts.js/demo/)
 
+[demo with aribb24.js](http://xqq.github.io/mpegts.js/demo/arib.html)
+
 ## Features
 - http(s) または WebSocket で伝送する H.264 + AAC の MPEG2-TS ストリームが再生可能
-- 最良の場合は 1 秒ほどの低遅延が達成可能
+- 最良の場合は 1 秒以内の低遅延が達成可能
+- TS packet が 192 bytes の `.m2ts` ファイル（BDAV/BDMV）、または 204 bytes も再生可能
 - 動的パラメータ切り替えが可能 （例えば、映像解像度が途中に切り替わっても再生します）
 - Chrome, FireFox, Safari, Edge (Old or Chromium) または Chromium-based ブラウザで実行可能
 - HTMLMediaElement 内部バッファーの遅延を追いかける機能
 - 低い CPU 使用率とメモリ使用量 （1つのインスタンスが概ね 10MiB のメモリかかります）
 - ARIB-B24 字幕等の PES private data (stream_type=0x06) が抽出可能
+- Timed ID3 Metadata (stream_type=0x15) のコールバック支援 (TIMED_ID3_METADATA_ARRIVED)
 
 ## CORS
 MPEG2-TS ストリームが別のサーバー上にある場合、`Access-Control-Allow-Origin` は必須です。
@@ -62,9 +66,8 @@ npm run build               # packaged & minimized js will be emitted in dist fo
 
 ## TODO
 - 静的 MPEG2-TS ファイルの再生 （現時点ではシークできません）
-- BDAV/BDMV (.m2ts) ファイルの再生
 - H.265/HEVC codec の支援 （ただし、現時点では Safari のみ HEVC が再生可能）
-- MP3 audio codec の支援
+- MP3/AC3 audio codec の支援
 - AV1/OPUS codec over MPEG2-TS stream support (?)
 
 ## Limitations
