@@ -13,6 +13,7 @@ mpegts.js は、JavaScript で MPEG2-TS ストリームを解析しながら、�
 
 ## Demo
 [http://xqq.github.io/mpegts.js/demo/](http://xqq.github.io/mpegts.js/demo/)
+[demo with aribb24.js](http://xqq.github.io/mpegts.js/demo/arib.html)
 
 ## Features
 - http(s) または WebSocket で伝送する H.264 + AAC の MPEG2-TS ストリームが再生可能

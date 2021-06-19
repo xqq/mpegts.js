@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <title>mpegts.js ARIB demo</title>
+    <link rel="stylesheet" type="text/css" href="demo.css" />
+</head>
+
+<body>
+
+    <div class="mainContainer">
+        <div>
+            <div id="streamURL">
+                <div class="url-input">
+                    <label for="sURL">Stream URL:</label>
+                    <input id="sURL" type="text" value="http://127.0.0.1/api/streams/live/3273601024/mpegts?mode=1" />
+                    <button onclick="switch_mds()">Switch to MediaDataSource</button>
+                </div>
+                <div class="options">
+                    <input type="checkbox" id="isLive" onchange="saveSettings()" checked />
+                    <label for="isLive">isLive</label>
+                    <input type="checkbox" id="withCredentials" onchange="saveSettings()" />
+                    <label for="withCredentials">withCredentials</label>
+                    <input type="checkbox" id="liveBufferLatencyChasing" onchange="saveSettings()" checked />
+                    <label for="liveBufferLatencyChasing">liveBufferLatencyChasing</label>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <label>aribb24.js source:</label>
+                    <input type="radio" id="radio_private_stream_1" value="private_stream_1" name="aribCaptionTransmitMode" onchange="saveSettings()" checked>
+                    <label for="radio_private_stream_1">private_stream_1</label>
+                    <input type="radio" id="radio_timed_id3" value="timed_id3" name="aribCaptionTransmitMode" onchange="saveSettings()">
+                    <label for="radio_timed_id3">ID3v2 (Timed ID3 Metadata)</label>
+                </div>
+            </div>
+            <div id="mediaSourceURL" class="hidden">
+                <div class="url-input">
+                    <label for="msURL">MediaDataSource JsonURL:</label>
+                    <input id="msURL" type="text" value="http://127.0.0.1/streamfiles/mds.json" />
+                    <button onclick="switch_url()">Switch to URL</button>
+                </div>
+            </div>
+        </div>
+        <div class="video-container">
+            <div>
+                <video name="videoElement" class="centeredVideo" controls autoplay>
+                    Your browser is too old which doesn't support HTML5 video.
+                </video>
+            </div>
+        </div>
+        <div class="controls">
+            <button onclick="player_load()">Load</button>
+            <button onclick="player_start()">Start</button>
+            <button onclick="player_pause()">Pause</button>
+            <button onclick="player_destroy()">Destroy</button>
+            <input style="width:100px" type="text" name="seekpoint"/>
+            <button onclick="player_seekto()">SeekTo</button>
+        </div>
+        <textarea name="logcatbox" class="logcatBox" rows="10" readonly></textarea>
+    </div>
+
+    <script src="../dist/mpegts.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aribb24.js@1.6.12/dist/aribb24.js"></script>
+
+    <script>
+        var checkBoxFields = ['isLive', 'withCredentials', 'liveBufferLatencyChasing'];
+        var streamURL, mediaSourceURL;
+        var arib_caption_transmit_mode;
+
+        function parseMalformedPES(data) {
+            var PES_scrambling_control = (data[0] & 0x30) >>> 4;
+            var PTS_DTS_flags = (data[1] & 0xC0) >>> 6;
+            var PES_header_data_length = data[2];
+
+            var payload_start_index = 3 + PES_header_data_length;
+            var payload_length = data.byteLength - payload_start_index;
+
+            var payload = data.subarray(payload_start_index, payload_start_index + payload_length);
+
+            return payload;
+        }
+
+        function player_load() {
+            console.log('isSupported: ' + mpegts.getFeatureList().mseLivePlayback);
+            if (mediaSourceURL.className === '') {
+                var url = document.getElementById('msURL').value;
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', url, true);
+                xhr.onload = function (e) {
+                    var mediaDataSource = JSON.parse(xhr.response);
+                    player_load_mds(mediaDataSource);
+                }
+                xhr.send();
+            } else {
+                var i;
+                var mediaDataSource = {
+                    type: 'mse'
+                };
+                for (i = 0; i < checkBoxFields.length; i++) {
+                    var field = checkBoxFields[i];
+                    /** @type {HTMLInputElement} */
+                    var checkbox = document.getElementById(field);
+                    mediaDataSource[field] = checkbox.checked;
+                }
+                mediaDataSource['url'] = document.getElementById('sURL').value;
+                console.log('MediaDataSource', mediaDataSource);
+                player_load_mds(mediaDataSource);
+            }
+        }
+
+        function player_load_mds(mediaDataSource) {
+            var element = document.getElementsByName('videoElement')[0];
+            if (typeof player !== "undefined") {
+                if (player != null) {
+                    player.unload();
+                    player.detachMediaElement();
+                    player.destroy();
+                    player = null;
+                }
+                if (captionRenderer != null) {
+                    captionRenderer.dispose();
+                    captionRenderer = null;
+                }
+                if (superimposeRenderer != null) {
+                    superimposeRenderer.dispose();
+                    superimposeRenderer = null;
+                }
+            }
+            player = mpegts.createPlayer(mediaDataSource, {
+                enableWorker: false,
+                liveBufferLatencyChasing: document.getElementById('liveBufferLatencyChasing').checked,
+            });
+            player.attachMediaElement(element);
+            player.load();
+
+            captionRenderer = new aribb24js.CanvasRenderer({
+                data_identifer: 0x80,
+                forceStrokeColor: 'black',
+                normalFont: '"Windows TV MaruGothic", "Hiragino Maru Gothic Pro", "HGMaruGothicMPRO", "Yu Gothic Medium", sans-serif',
+                gaijiFont: '"Windows TV MaruGothic", "Hiragino Maru Gothic Pro", "HGMaruGothicMPRO", "Yu Gothic Medium", sans-serif',
+                drcsReplacement: true,
+                useStrokeText: true,
+            });
+            captionRenderer.attachMedia(element);
+            captionRenderer.show();
+
+            superimposeRenderer = new aribb24js.CanvasRenderer({
+                data_identifer: 0x81,
+                forceStrokeColor: 'black',
+                normalFont: '"Windows TV MaruGothic", "Hiragino Maru Gothic Pro", "HGMaruGothicMPRO", "Yu Gothic Medium", sans-serif',
+                gaijiFont: '"Windows TV MaruGothic", "Hiragino Maru Gothic Pro", "HGMaruGothicMPRO", "Yu Gothic Medium", sans-serif',
+                drcsReplacement: true,
+                useStrokeText: true,
+            });
+            superimposeRenderer.attachMedia(element);
+            superimposeRenderer.show();
+
+            player.on(mpegts.Events.PES_PRIVATE_DATA_ARRIVED, function(data) {
+                if (arib_caption_transmit_mode !== 'private_stream_1') {
+                    return;
+                }
+                if (data.stream_id === 0xBD && data.data[0] === 0x80) {  // private_stream_1, caption
+                    captionRenderer.pushData(data.pid, data.data, data.pts / 1000);
+                } else if (data.stream_id === 0xBF) {  // private_stream_2, superimpose
+                    var payload = data.data;
+                    if (payload[0] !== 0x81) {
+                        payload = parseMalformedPES(data.data);
+                    }
+                    if (payload[0] !== 0x81) {
+                        return;
+                    }
+                    superimposeRenderer.pushData(data.pid, payload, data.nearest_pts / 1000);
+                }
+            });
+
+            player.on(mpegts.Events.TIMED_ID3_METADATA_ARRIVED, function(data) {
+                if (arib_caption_transmit_mode !== 'timed_id3') {
+                    return;
+                }
+                captionRenderer.pushID3v2Data(data.pts / 1000, data.data);
+            });
+
+            player.on(mpegts.Events.PES_PRIVATE_DATA_DESCRIPTOR, function(data) {
+                // var str = JSON.stringify(data);
+                // logcatbox.value = logcatbox.value + str + '\n';
+                // logcatbox.scrollTop = logcatbox.scrollHeight;
+            });
+        }
+
+        function player_start() {
+            player.play();
+        }
+
+        function player_pause() {
+            player.pause();
+        }
+
+        function player_destroy() {
+            player.pause();
+            player.unload();
+            player.detachMediaElement();
+            player.destroy();
+            player = null;
+        }
+
+        function player_seekto() {
+            var input = document.getElementsByName('seekpoint')[0];
+            player.currentTime = parseFloat(input.value);
+        }
+
+        function switch_url() {
+            streamURL.className = '';
+            mediaSourceURL.className = 'hidden';
+            saveSettings();
+        }
+
+        function switch_mds() {
+            streamURL.className = 'hidden';
+            mediaSourceURL.className = '';
+            saveSettings();
+        }
+
+        function ls_get(key, def) {
+            try {
+                var ret = localStorage.getItem('mpegts_demo.' + key);
+                if (ret === null) {
+                    ret = def;
+                }
+                return ret;
+            } catch (e) {}
+            return def;
+        }
+
+        function ls_set(key, value) {
+            try {
+                localStorage.setItem('mpegts_demo.' + key, value);
+            } catch (e) {}
+        }
+
+        function saveSettings() {
+            if (document.getElementById('radio_private_stream_1').checked) {
+                arib_caption_transmit_mode = 'private_stream_1';
+                ls_set('aribCaptionTransmitMode', 'private_stream_1');
+            } else if (document.getElementById('radio_timed_id3').checked) {
+                arib_caption_transmit_mode = 'timed_id3';
+                ls_set('aribCaptionTransmitMode', 'timed_id3');
+            }
+
+            if (mediaSourceURL.className === '') {
+                ls_set('inputMode', 'MediaDataSource');
+            } else {
+                ls_set('inputMode', 'StreamURL');
+            }
+            var i;
+            for (i = 0; i < checkBoxFields.length; i++) {
+                var field = checkBoxFields[i];
+                /** @type {HTMLInputElement} */
+                var checkbox = document.getElementById(field);
+                ls_set(field, checkbox.checked ? '1' : '0');
+            }
+            var msURL = document.getElementById('msURL');
+            var sURL = document.getElementById('sURL');
+            ls_set('msURL', msURL.value);
+            ls_set('sURL', sURL.value);
+            console.log('save');
+        }
+
+        function loadSettings() {
+            arib_caption_transmit_mode = ls_get('aribCaptionTransmitMode', 'private_stream_1');
+            if (arib_caption_transmit_mode == "timed_id3") {
+                document.getElementById('radio_private_stream_1').checked = false;
+                document.getElementById('radio_timed_id3').checked = true;
+            }
+
+            var i;
+            for (i = 0; i < checkBoxFields.length; i++) {
+                var field = checkBoxFields[i];
+                /** @type {HTMLInputElement} */
+                var checkbox = document.getElementById(field);
+                var c = ls_get(field, checkbox.checked ? '1' : '0');
+                checkbox.checked = c === '1' ? true : false;
+            }
+
+            var msURL = document.getElementById('msURL');
+            var sURL = document.getElementById('sURL');
+            msURL.value = ls_get('msURL', msURL.value);
+            sURL.value = ls_get('sURL', sURL.value);
+            if (ls_get('inputMode', 'StreamURL') === 'StreamURL') {
+                switch_url();
+            } else {
+                switch_mds();
+            }
+        }
+
+        function showVersion() {
+            var version = mpegts.version;
+            document.title = document.title + " (v" + version + ")";
+        }
+
+        var sURL = document.getElementById('sURL');
+        sURL.onkeyup = function(event) {
+            if (event.key === 'Enter' || event.keyCode === 13) {
+                saveSettings()
+                if (player != null) {
+                    player.unload();
+                    player.detachMediaElement();
+                    player.destroy();
+                    player = null;
+                }
+                player_load();
+            }
+        };
+
+        var logcatbox = document.getElementsByName('logcatbox')[0];
+        mpegts.LoggingControl.addLogListener(function(type, str) {
+            logcatbox.value = logcatbox.value + str + '\n';
+            logcatbox.scrollTop = logcatbox.scrollHeight;
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            streamURL = document.getElementById('streamURL');
+            mediaSourceURL = document.getElementById('mediaSourceURL');
+            loadSettings();
+            showVersion();
+            player_load();
+        });
+    </script>
+
+</body>
+
+</html>
