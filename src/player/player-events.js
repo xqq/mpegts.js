@@ -23,7 +23,7 @@ const PlayerEvents = {
     MEDIA_INFO: 'media_info',
     METADATA_ARRIVED: 'metadata_arrived',
     SCRIPTDATA_ARRIVED: 'scriptdata_arrived',
-    PES_TIMED_ID3_METADATA_ARRIVED: 'pes_timed_id3_metadata_arrived',
+    TIMED_ID3_METADATA_ARRIVED: 'timed_id3_metadata_arrived',
     PES_PRIVATE_DATA_DESCRIPTOR: 'pes_private_data_descriptor',
     PES_PRIVATE_DATA_ARRIVED: 'pes_private_data_arrived',
     STATISTICS_INFO: 'statistics_info'

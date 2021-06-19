@@ -62,7 +62,7 @@ class Transmuxer {
             ctl.on(TransmuxingEvents.MEDIA_INFO, this._onMediaInfo.bind(this));
             ctl.on(TransmuxingEvents.METADATA_ARRIVED, this._onMetaDataArrived.bind(this));
             ctl.on(TransmuxingEvents.SCRIPTDATA_ARRIVED, this._onScriptDataArrived.bind(this));
-            ctl.on(TransmuxingEvents.PES_TIMED_ID3_METADATA_ARRIVED, this._onPESTimedID3MetadataArrived.bind(this));
+            ctl.on(TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED, this._onPESTimedID3MetadataArrived.bind(this));
             ctl.on(TransmuxingEvents.PES_PRIVATE_DATA_DESCRIPTOR, this._onPESPrivateDataDescriptor.bind(this));
             ctl.on(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, this._onPESPrivateDataArrived.bind(this));
             ctl.on(TransmuxingEvents.STATISTICS_INFO, this._onStatisticsInfo.bind(this));
@@ -183,7 +183,7 @@ class Transmuxer {
 
     _onPESTimedID3MetadataArrived (data) {
         Promise.resolve().then(() => {
-            this._emitter.emit(TransmuxingEvents.PES_TIMED_ID3_METADATA_ARRIVED, data);
+            this._emitter.emit(TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED, data);
         })
     }
 
@@ -255,7 +255,7 @@ class Transmuxer {
                 break;
             case TransmuxingEvents.METADATA_ARRIVED:
             case TransmuxingEvents.SCRIPTDATA_ARRIVED:
-            case TransmuxingEvents.PES_TIMED_ID3_METADATA_ARRIVED:
+            case TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED:
             case TransmuxingEvents.PES_PRIVATE_DATA_DESCRIPTOR:
             case TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED:
             case TransmuxingEvents.STATISTICS_INFO:
