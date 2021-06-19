@@ -25,6 +25,7 @@ mpegts.js works by transmuxing MPEG2-TS stream into ISO BMFF (Fragmented MP4) se
 - Support chasing latency automatically for internal buffer of HTMLMediaElement
 - Low CPU overhead and low memory usage (JS heap takes about 10MiB for each instance)
 - Support extracting PES private data (stream_type=0x06) like ARIB B24 subtitles
+- Support Timed ID3 Metadata (stream_type=0x15) callback (TIMED_ID3_METADATA_ARRIVED)
 
 ## CORS
 If you use standalone video server for MPEG2-TS stream, `Access-Control-Allow-Origin` header must be configured correctly on video server for cross-origin resource fetching.
