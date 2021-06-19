@@ -270,7 +270,7 @@ class TSDemuxer extends BaseDemuxer {
                     if (pid === this.pmt_.common_pids.h264
                             || pid === this.pmt_.common_pids.adts_aac
                             || this.pmt_.pes_private_data_pids[pid] === true
-                            || this.pmt_.pes_timed_id3_pids[pid] === true) {
+                            || this.pmt_.timed_id3_pids[pid] === true) {
                         this.handlePESSlice(chunk,
                                             offset + ts_payload_start_index,
                                             ts_payload_length,
@@ -450,7 +450,7 @@ class TSDemuxer extends BaseDemuxer {
                     this.dispatchPESPrivateDataDescriptor(elementary_PID, stream_type, descriptor);
                 }
             } else if (stream_type === StreamType.kID3) {
-                pmt.pes_timed_id3_pids[elementary_PID] = true;
+                pmt.timed_id3_pids[elementary_PID] = true;
             }
 
             i += 5 + ES_info_length;
