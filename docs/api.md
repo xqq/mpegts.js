@@ -194,6 +194,7 @@ A series of constants that can be used with `Player.on()` / `Player.off()`. They
 | MEDIA_INFO          | Provides technical information of the media like video/audio codec, bitrate, etc. |
 | METADATA_ARRIVED    | Provides metadata which FLV file(stream) can contain with an "onMetaData" marker.  |
 | SCRIPTDATA_ARRIVED  | Provides scriptdata (OnCuePoint / OnTextData) which FLV file(stream) can contain. |
+| PES_TIMED_ID3_METADATA_ARRIVED |  Provides Timed ID3 Metadata packets containing private data (stream_type=0x15) callback |
 | PES_PRIVATE_DATA_ARRIVED | Provides ISO/IEC 13818-1 PES packets containing private data (stream_type=0x06) callback |
 | STATISTICS_INFO     | Provides playback statistics information like dropped frames, current speed, etc. |
 

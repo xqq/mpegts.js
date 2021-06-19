@@ -253,6 +253,7 @@ class TransmuxingController {
             demuxer.onError = this._onDemuxException.bind(this);
             demuxer.onMediaInfo = this._onMediaInfo.bind(this);
             demuxer.onMetaDataArrived = this._onMetaDataArrived.bind(this);
+            demuxer.onTimedID3Metadata = this._onTimedID3Metadata.bind(this);
             demuxer.onPESPrivateDataDescriptor = this._onPESPrivateDataDescriptor.bind(this);
             demuxer.onPESPrivateData = this._onPESPrivateData.bind(this);
 
@@ -343,6 +344,20 @@ class TransmuxingController {
 
     _onScriptDataArrived(data) {
         this._emitter.emit(TransmuxingEvents.SCRIPTDATA_ARRIVED, data);
+    }
+
+    _onTimedID3Metadata(timed_id3_metadata) {
+        let timestamp_base = this._remuxer.getTimestampBase();
+
+        if (timed_id3_metadata.pts != undefined) {
+            timed_id3_metadata.pts -= timestamp_base;
+        }
+
+        if (timed_id3_metadata.dts != undefined) {
+            timed_id3_metadata.dts -= timestamp_base;
+        }
+
+        this._emitter.emit(TransmuxingEvents.PES_TIMED_ID3_METADATA_ARRIVED, timed_id3_metadata);
     }
 
     _onPESPrivateDataDescriptor(descriptor) {

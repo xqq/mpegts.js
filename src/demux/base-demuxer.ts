@@ -6,6 +6,7 @@ type OnMediaInfoCallback = (mediaInfo: MediaInfo) => void;
 type OnMetaDataArrivedCallback = (metadata: any) => void;
 type OnTrackMetadataCallback = (type: string, metadata: any) => void;
 type OnDataAvailableCallback = (videoTrack: any, audioTrack: any) => void;
+type OnTimedID3MetadataCallback = (timed_id3_data: PESPrivateData) => void;
 type OnPESPrivateDataCallback = (private_data: PESPrivateData) => void;
 type OnPESPrivateDataDescriptorCallback = (private_data_descriptor: PESPrivateDataDescriptor) => void;
 
@@ -16,6 +17,7 @@ export default abstract class BaseDemuxer {
     public onMetaDataArrived: OnMetaDataArrivedCallback;
     public onTrackMetadata: OnTrackMetadataCallback;
     public onDataAvailable: OnDataAvailableCallback;
+    public onTimedID3Metadata: OnTimedID3MetadataCallback;
     public onPESPrivateData: OnPESPrivateDataCallback;
     public onPESPrivateDataDescriptor: OnPESPrivateDataDescriptorCallback;
 
@@ -27,6 +29,7 @@ export default abstract class BaseDemuxer {
         this.onMetaDataArrived = null;
         this.onTrackMetadata = null;
         this.onDataAvailable = null;
+        this.onTimedID3Metadata = null;
         this.onPESPrivateData = null;
         this.onPESPrivateDataDescriptor = null;
     }
