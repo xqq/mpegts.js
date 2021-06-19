@@ -59,6 +59,6 @@ declare class TSDemuxer extends BaseDemuxer {
     private dispatchAudioInitSegment;
     private dispatchPESPrivateDataDescriptor;
     private parsePESPrivateDataPayload;
-    private parsePESTimedID3MetadataPayload;
+    private parseTimedID3MetadataPayload;
 }
 export default TSDemuxer;
