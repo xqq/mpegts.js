@@ -24,8 +24,10 @@ mpegts.js は、JavaScript で MPEG2-TS ストリームを解析しながら、�
 - Chrome, FireFox, Safari, Edge (Old or Chromium) または Chromium-based ブラウザで実行可能
 - HTMLMediaElement 内部バッファーの遅延を追いかける機能
 - 低い CPU 使用率とメモリ使用量 （1つのインスタンスが概ね 10MiB のメモリかかります）
-- ARIB-B24 字幕等の PES private data (stream_type=0x06) が抽出可能
+- ARIB-B24 字幕等の PES private data (stream_type=0x06) が抽出可能 （[aribb24.js][]と共同運用可能）
 - Timed ID3 Metadata (stream_type=0x15) のコールバック支援 (TIMED_ID3_METADATA_ARRIVED)
+
+[aribb24.js]: https://github.com/monyone/aribb24.js
 
 ## CORS
 MPEG2-TS ストリームが別のサーバー上にある場合、`Access-Control-Allow-Origin` は必須です。
