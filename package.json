@@ -17,9 +17,9 @@
     "dvb"
   ],
   "scripts": {
-    "build": "webpack --mode=production --progress --verbose",
-    "build:debug": "webpack --mode=development --progress --verbose",
-    "watch": "webpack --mode=development --progress --verbose --watch"
+    "build": "webpack --mode=production --progress",
+    "build:debug": "webpack --mode=development --progress",
+    "watch": "webpack --mode=development --progress --watch"
   },
   "dependencies": {
     "es6-promise": "^4.2.5",
