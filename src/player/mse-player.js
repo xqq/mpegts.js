@@ -297,6 +297,14 @@ class MSEPlayer {
         this._mediaElement.pause();
     }
 
+    switchPrimaryAudio() {
+        this._transmuxer._controller._demuxer.preferred_secondary_audio = false;
+    }
+
+    switchSecondaryAudio() {
+        this._transmuxer._controller._demuxer.preferred_secondary_audio = true;
+    }
+
     get type() {
         return this._type;
     }
