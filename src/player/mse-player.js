@@ -298,11 +298,15 @@ class MSEPlayer {
     }
 
     switchPrimaryAudio() {
-        this._transmuxer._controller._demuxer.preferred_secondary_audio = false;
+        if (this._transmuxer._controller._demuxer !== null) {
+            this._transmuxer._controller._demuxer.preferred_secondary_audio = false;
+        }
     }
 
     switchSecondaryAudio() {
-        this._transmuxer._controller._demuxer.preferred_secondary_audio = true;
+        if (this._transmuxer._controller._demuxer !== null) {
+            this._transmuxer._controller._demuxer.preferred_secondary_audio = true;
+        }
     }
 
     get type() {
