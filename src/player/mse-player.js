@@ -298,15 +298,11 @@ class MSEPlayer {
     }
 
     switchPrimaryAudio() {
-        if (this._transmuxer._controller._demuxer !== null) {
-            this._transmuxer._controller._demuxer.preferred_secondary_audio = false;
-        }
+        this._transmuxer.switchPrimaryAudio();
     }
 
     switchSecondaryAudio() {
-        if (this._transmuxer._controller._demuxer !== null) {
-            this._transmuxer._controller._demuxer.preferred_secondary_audio = true;
-        }
+        this._transmuxer.switchSecondaryAudio()
     }
 
     get type() {
