@@ -691,10 +691,6 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     private detectVideoMetadataChange(new_sps: H264NaluAVC1, new_sps_details: any): boolean {
-        if (new_sps.data.byteLength !== this.video_metadata_.sps.data.byteLength) {
-            return true;
-        }
-
         if (new_sps_details.codec_mimetype !== this.video_metadata_.sps_details.codec_mimetype) {
             Log.v(this.TAG, `H264: Codec mimeType changed from ` +
                             `${this.video_metadata_.sps_details.codec_mimetype} to ${new_sps_details.codec_mimetype}`);
