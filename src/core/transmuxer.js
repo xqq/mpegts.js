@@ -24,6 +24,7 @@ import TransmuxingController from './transmuxing-controller.js';
 import TransmuxingEvents from './transmuxing-events.js';
 import TransmuxingWorker from './transmuxing-worker.js';
 import MediaInfo from './media-info.js';
+import TSDemuxer from '../demux/ts-demuxer.ts';
 
 class Transmuxer {
 
@@ -135,6 +136,26 @@ class Transmuxer {
             this._worker.postMessage({cmd: 'resume'});
         } else {
             this._controller.resume();
+        }
+    }
+
+    switchPrimaryAudio() {
+        if (this._worker) {
+            this._worker.postMessage({cmd: 'switch_audio', param: 'primary'});
+        } else {
+            if (this._controller._demuxer instanceof TSDemuxer) {
+                this._controller._demuxer.preferred_secondary_audio = false;
+            }
+        }
+    }
+
+    switchSecondaryAudio() {
+        if (this._worker) {
+            this._worker.postMessage({cmd: 'switch_audio', param: 'secondary'});
+        } else {
+            if (this._controller._demuxer instanceof TSDemuxer) {
+                this._controller._demuxer.preferred_secondary_audio = true;
+            }
         }
     }
 

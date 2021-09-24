@@ -21,6 +21,7 @@ import LoggingControl from '../utils/logging-control.js';
 import Polyfill from '../utils/polyfill.js';
 import TransmuxingController from './transmuxing-controller.js';
 import TransmuxingEvents from './transmuxing-events.js';
+import TSDemuxer from '../demux/ts-demuxer.ts';
 
 /* post message to worker:
    data: {
@@ -95,6 +96,15 @@ let TransmuxingWorker = function (self) {
                 }
                 break;
             }
+            case 'switch_audio':
+                if (controller._demuxer instanceof TSDemuxer) {
+                    if (e.data.param === 'primary') {
+                        controller._demuxer.preferred_secondary_audio = false;
+                    } else if (e.data.param === 'secondary') {
+                        controller._demuxer.preferred_secondary_audio = true;
+                    }
+                }
+                break;
         }
     });
 
