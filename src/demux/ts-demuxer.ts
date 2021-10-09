@@ -509,7 +509,7 @@ class TSDemuxer extends BaseDemuxer {
         let slice_queue = this.pes_slice_queues_[misc.pid];
         slice_queue.slices.push(data);
         if (misc.payload_unit_start_indicator) {
-          slice_queue.expected_length = PES_packet_length === 0 ? 0 : PES_packet_length + 6;
+            slice_queue.expected_length = PES_packet_length === 0 ? 0 : PES_packet_length + 6;
         }
         slice_queue.total_length += data.byteLength;
 
