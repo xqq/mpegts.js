@@ -488,27 +488,9 @@ class TSDemuxer extends BaseDemuxer {
             let slice_queue = this.pes_slice_queues_[misc.pid];
             if (slice_queue) {
                 if (slice_queue.expected_length === 0 || slice_queue.expected_length === slice_queue.total_length) {
-                    let data = new Uint8Array(slice_queue.total_length);
-                    for (let i = 0, offset = 0; i < slice_queue.slices.length; i++) {
-                        let slice = slice_queue.slices[i];
-                        data.set(slice, offset);
-                        offset += slice.byteLength;
-                    }
-                    slice_queue.slices = [];
-                    slice_queue.expected_length = -1;
-                    slice_queue.total_length = 0;
-
-                    let pes_data = new PESData();
-                    pes_data.pid = misc.pid;
-                    pes_data.data = data;
-                    pes_data.stream_type = misc.stream_type;
-                    pes_data.file_position = slice_queue.file_position;
-                    pes_data.random_access_indicator = slice_queue.random_access_indicator;
-                    this.parsePES(pes_data);
+                    this.emitPESSlices(slice_queue, misc);
                 } else {
-                    slice_queue.slices = [];
-                    slice_queue.expected_length = -1;
-                    slice_queue.total_length = 0;
+                    this.cleanPESSlices(slice_queue, misc);
                 }
             }
 
@@ -532,28 +514,36 @@ class TSDemuxer extends BaseDemuxer {
         slice_queue.total_length += data.byteLength;
 
         if (slice_queue.expected_length > 0 && slice_queue.expected_length === slice_queue.total_length) {
-            let data = new Uint8Array(slice_queue.total_length);
-            for (let i = 0, offset = 0; i < slice_queue.slices.length; i++) {
-                let slice = slice_queue.slices[i];
-                data.set(slice, offset);
-                offset += slice.byteLength;
-            }
-            slice_queue.slices = [];
-            slice_queue.expected_length = -1;
-            slice_queue.total_length = 0;
-
-            let pes_data = new PESData();
-            pes_data.pid = misc.pid;
-            pes_data.data = data;
-            pes_data.stream_type = misc.stream_type;
-            pes_data.file_position = slice_queue.file_position;
-            pes_data.random_access_indicator = slice_queue.random_access_indicator;
-            this.parsePES(pes_data);
+            this.emitPESSlices(slice_queue, misc);
         } else if (slice_queue.expected_length > 0 && slice_queue.expected_length < slice_queue.total_length) {
-            slice_queue.slices = [];
-            slice_queue.expected_length = -1;
-            slice_queue.total_length = 0;
+            this.cleanPESSlices(slice_queue, misc);
         }
+    }
+
+    private emitPESSlices(slice_queue: SliceQueue, misc: any): void {
+        let data = new Uint8Array(slice_queue.total_length);
+        for (let i = 0, offset = 0; i < slice_queue.slices.length; i++) {
+            let slice = slice_queue.slices[i];
+            data.set(slice, offset);
+            offset += slice.byteLength;
+        }
+        slice_queue.slices = [];
+        slice_queue.expected_length = -1;
+        slice_queue.total_length = 0;
+
+        let pes_data = new PESData();
+        pes_data.pid = misc.pid;
+        pes_data.data = data;
+        pes_data.stream_type = misc.stream_type;
+        pes_data.file_position = slice_queue.file_position;
+        pes_data.random_access_indicator = slice_queue.random_access_indicator;
+        this.parsePES(pes_data);
+    }
+
+    private cleanPESSlices(slice_queue: SliceQueue, misc: any): void {
+       slice_queue.slices = [];
+       slice_queue.expected_length = -1;
+       slice_queue.total_length = 0;
     }
 
     private parsePES(pes_data: PESData): void {
