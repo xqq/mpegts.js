@@ -199,7 +199,7 @@ class MP4Remuxer {
 
     getTimestampBase() {
         if (!this._dtsBaseInited) {
-            return 0;
+            return undefined;
         }
         return this._dtsBase;
     }
