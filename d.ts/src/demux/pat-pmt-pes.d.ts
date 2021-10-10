@@ -44,13 +44,14 @@ export declare class PESData {
     file_position: number;
     random_access_indicator: number;
 }
-export declare class PESSliceQueue {
+export declare class SliceQueue {
     slices: Uint8Array[];
     total_length: number;
+    expected_length: number;
     file_position: number;
     random_access_indicator: 0;
 }
-export interface PIDToPESSliceQueues {
-    [pid: number]: PESSliceQueue;
+export interface PIDToSliceQueues {
+    [pid: number]: SliceQueue;
 }
 export {};

@@ -348,6 +348,7 @@ class TransmuxingController {
 
     _onTimedID3Metadata(timed_id3_metadata) {
         let timestamp_base = this._remuxer.getTimestampBase();
+        if (timestamp_base == undefined) { return; }
 
         if (timed_id3_metadata.pts != undefined) {
             timed_id3_metadata.pts -= timestamp_base;
@@ -366,6 +367,7 @@ class TransmuxingController {
 
     _onPESPrivateData(private_data) {
         let timestamp_base = this._remuxer.getTimestampBase();
+        if (timestamp_base == undefined) { return; }
 
         if (private_data.pts != undefined) {
             private_data.pts -= timestamp_base;

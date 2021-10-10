@@ -21,7 +21,7 @@ import DemuxErrors from './demux-errors';
 import MediaInfo from '../core/media-info';
 import {IllegalStateException} from '../utils/exception';
 import BaseDemuxer from './base-demuxer';
-import { PAT, PESData, PESSliceQueue, PIDToPESSliceQueues, PMT, ProgramToPMTMap, StreamType } from './pat-pmt-pes';
+import { PAT, PESData, SliceQueue, PIDToSliceQueues, PMT, ProgramToPMTMap, StreamType } from './pat-pmt-pes';
 import { AVCDecoderConfigurationRecord, H264AnnexBParser, H264NaluAVC1, H264NaluPayload, H264NaluType } from './h264';
 import SPSParser from './sps-parser';
 import { AACADTSParser, AACFrame, AudioSpecificConfig } from './aac';
@@ -48,7 +48,7 @@ class TSDemuxer extends BaseDemuxer {
     private pmt_: PMT;
     private program_pmt_map_: ProgramToPMTMap = {};
 
-    private pes_slice_queues_: PIDToPESSliceQueues = {};
+    private pes_slice_queues_: PIDToSliceQueues = {};
 
     private video_metadata_: {
         sps: H264NaluAVC1 | undefined,
@@ -489,26 +489,15 @@ class TSDemuxer extends BaseDemuxer {
             // Merge into a big Uint8Array then call parsePES()
             let slice_queue = this.pes_slice_queues_[misc.pid];
             if (slice_queue) {
-                let data = new Uint8Array(slice_queue.total_length);
-                for (let i = 0, offset = 0; i < slice_queue.slices.length; i++) {
-                    let slice = slice_queue.slices[i];
-                    data.set(slice, offset);
-                    offset += slice.byteLength;
+                if (slice_queue.expected_length === 0 || slice_queue.expected_length === slice_queue.total_length) {
+                    this.emitPESSlices(slice_queue, misc);
+                } else {
+                    this.cleanPESSlices(slice_queue, misc);
                 }
-                slice_queue.slices = [];
-                slice_queue.total_length = 0;
-
-                let pes_data = new PESData();
-                pes_data.pid = misc.pid;
-                pes_data.data = data;
-                pes_data.stream_type = misc.stream_type;
-                pes_data.file_position = slice_queue.file_position;
-                pes_data.random_access_indicator = slice_queue.random_access_indicator;
-                this.parsePES(pes_data);
             }
 
             // Make a new PES queue for new PES slices
-            this.pes_slice_queues_[misc.pid] = new PESSliceQueue();
+            this.pes_slice_queues_[misc.pid] = new SliceQueue();
             this.pes_slice_queues_[misc.pid].file_position = misc.file_position;
             this.pes_slice_queues_[misc.pid].random_access_indicator = misc.random_access_indicator;
         }
@@ -521,7 +510,42 @@ class TSDemuxer extends BaseDemuxer {
         // push subsequent PES slices into pes_queue
         let slice_queue = this.pes_slice_queues_[misc.pid];
         slice_queue.slices.push(data);
+        if (misc.payload_unit_start_indicator) {
+            slice_queue.expected_length = PES_packet_length === 0 ? 0 : PES_packet_length + 6;
+        }
         slice_queue.total_length += data.byteLength;
+
+        if (slice_queue.expected_length > 0 && slice_queue.expected_length === slice_queue.total_length) {
+            this.emitPESSlices(slice_queue, misc);
+        } else if (slice_queue.expected_length > 0 && slice_queue.expected_length < slice_queue.total_length) {
+            this.cleanPESSlices(slice_queue, misc);
+        }
+    }
+
+    private emitPESSlices(slice_queue: SliceQueue, misc: any): void {
+        let data = new Uint8Array(slice_queue.total_length);
+        for (let i = 0, offset = 0; i < slice_queue.slices.length; i++) {
+            let slice = slice_queue.slices[i];
+            data.set(slice, offset);
+            offset += slice.byteLength;
+        }
+        slice_queue.slices = [];
+        slice_queue.expected_length = -1;
+        slice_queue.total_length = 0;
+
+        let pes_data = new PESData();
+        pes_data.pid = misc.pid;
+        pes_data.data = data;
+        pes_data.stream_type = misc.stream_type;
+        pes_data.file_position = slice_queue.file_position;
+        pes_data.random_access_indicator = slice_queue.random_access_indicator;
+        this.parsePES(pes_data);
+    }
+
+    private cleanPESSlices(slice_queue: SliceQueue, misc: any): void {
+       slice_queue.slices = [];
+       slice_queue.expected_length = -1;
+       slice_queue.total_length = 0;
     }
 
     private parsePES(pes_data: PESData): void {
@@ -693,10 +717,6 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     private detectVideoMetadataChange(new_sps: H264NaluAVC1, new_sps_details: any): boolean {
-        if (new_sps.data.byteLength !== this.video_metadata_.sps.data.byteLength) {
-            return true;
-        }
-
         if (new_sps_details.codec_mimetype !== this.video_metadata_.sps_details.codec_mimetype) {
             Log.v(this.TAG, `H264: Codec mimeType changed from ` +
                             `${this.video_metadata_.sps_details.codec_mimetype} to ${new_sps_details.codec_mimetype}`);
