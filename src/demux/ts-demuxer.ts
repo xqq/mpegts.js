@@ -356,7 +356,7 @@ class TSDemuxer extends BaseDemuxer {
                 slice_queue.file_position = misc.file_position;
                 slice_queue.random_access_indicator = misc.random_access_indicator;
 
-                let remain_section = new Uint8Array(buffer, offset + i, Math.min(length - i, slice_queue.expected_length));
+                let remain_section = new Uint8Array(buffer, offset + i, Math.min(length - i, slice_queue.expected_length - slice_queue.total_length));
                 slice_queue.slices.push(remain_section);
                 slice_queue.total_length += remain_section.byteLength;
 
@@ -369,7 +369,7 @@ class TSDemuxer extends BaseDemuxer {
                 i += remain_section.byteLength;
             }
         } else if (slice_queue != undefined && slice_queue.total_length !== 0) {
-            let remain_section = new Uint8Array(buffer, offset, Math.min(length, slice_queue.expected_length));
+            let remain_section = new Uint8Array(buffer, offset, Math.min(length, slice_queue.expected_length - slice_queue.total_length));
             slice_queue.slices.push(remain_section);
             slice_queue.total_length += remain_section.byteLength;
 
