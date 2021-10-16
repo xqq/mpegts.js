@@ -44,6 +44,12 @@ export declare class PESData {
     file_position: number;
     random_access_indicator: number;
 }
+export declare class SectionData {
+    pid: number;
+    data: Uint8Array;
+    file_position: number;
+    random_access_indicator: number;
+}
 export declare class SliceQueue {
     slices: Uint8Array[];
     total_length: number;

@@ -21,7 +21,7 @@ import DemuxErrors from './demux-errors';
 import MediaInfo from '../core/media-info';
 import {IllegalStateException} from '../utils/exception';
 import BaseDemuxer from './base-demuxer';
-import { PAT, PESData, SliceQueue, PIDToSliceQueues, PMT, ProgramToPMTMap, StreamType } from './pat-pmt-pes';
+import { PAT, PESData, SectionData, SliceQueue, PIDToSliceQueues, PMT, ProgramToPMTMap, StreamType } from './pat-pmt-pes';
 import { AVCDecoderConfigurationRecord, H264AnnexBParser, H264NaluAVC1, H264NaluPayload, H264NaluType } from './h264';
 import SPSParser from './sps-parser';
 import { AACADTSParser, AACFrame, AudioSpecificConfig } from './aac';
@@ -49,6 +49,7 @@ class TSDemuxer extends BaseDemuxer {
     private program_pmt_map_: ProgramToPMTMap = {};
 
     private pes_slice_queues_: PIDToSliceQueues = {};
+    private section_slice_queues_: PIDToSliceQueues = {};
 
     private video_metadata_: {
         sps: H264NaluAVC1 | undefined,
@@ -243,24 +244,19 @@ class TSDemuxer extends BaseDemuxer {
 
             if (adaptation_field_control == 0x01 || adaptation_field_control == 0x03) {
                 if (pid === 0 || pid === this.current_pmt_pid_) {  // PAT(pid === 0) or PMT
-                    if (payload_unit_start_indicator) {
-                        let pointer_field = data[ts_payload_start_index];
-                        // skip pointer_field and strange data
-                        ts_payload_start_index += 1 + pointer_field;
-                    }
                     let ts_payload_length = 188 - ts_payload_start_index;
 
-                    if (pid === 0) {
-                        this.parsePAT(chunk,
-                                      offset + ts_payload_start_index,
-                                      ts_payload_length,
-                                      {payload_unit_start_indicator, continuity_conunter});
-                    } else {
-                        this.parsePMT(chunk,
-                                      offset + ts_payload_start_index,
-                                      ts_payload_length,
-                                      {payload_unit_start_indicator, continuity_conunter});
-                    }
+                    this.handleSectionSlice(chunk,
+                                        offset + ts_payload_start_index,
+                                        ts_payload_length,
+                                        {
+                                            pid,
+                                            file_position,
+                                            payload_unit_start_indicator,
+                                            continuity_conunter,
+                                            random_access_indicator: adaptation_field_info.random_access_indicator
+                                        });
+
                 } else if (this.pmt_ != undefined && this.pmt_.pid_stream_type[pid] != undefined) {
                     // PES
                     let ts_payload_length = 188 - ts_payload_start_index;
@@ -328,144 +324,59 @@ class TSDemuxer extends BaseDemuxer {
         return {};
     }
 
-    private parsePAT(buffer: ArrayBuffer, offset: number, length: number, misc: any): void {
+    private handleSectionSlice(buffer: ArrayBuffer, offset: number, length: number, misc: any): void {
         let data = new Uint8Array(buffer, offset, length);
+        let slice_queue = this.section_slice_queues_[misc.pid];
 
-        let table_id = data[0];
-        if (table_id !== 0x00) {
-            Log.e(this.TAG, `parsePAT: table_id ${table_id} is not corresponded to PAT!`);
-            return;
-        }
+        if (misc.payload_unit_start_indicator) {
+            let pointer_field = data[0];
 
-        let section_length = ((data[1] & 0x0F) << 8) | data[2];
+            if (slice_queue != undefined && slice_queue.total_length !== 0) {
+                let remain_section = new Uint8Array(buffer, offset + 1, Math.min(length, pointer_field));
+                slice_queue.slices.push(remain_section);
+                slice_queue.total_length += remain_section.byteLength;
 
-        let transport_stream_id = (data[3] << 8) | data[4];
-        let version_number = (data[5] & 0x3E) >>> 1;
-        let current_next_indicator = data[5] & 0x01;
-        let section_number = data[6];
-        let last_section_number = data[7];
-
-        let pat: PAT = null;
-
-        if (current_next_indicator === 1 && section_number === 0) {
-            pat = new PAT();
-            pat.version_number = version_number;
-        } else {
-            pat = this.pat_;
-            if (pat == undefined) {
-                return;
-            }
-        }
-
-        let program_start_index = 8;
-        let program_bytes = section_length - 5 - 4;  // section_length - (headers + crc)
-        let first_program_number = -1;
-        let first_pmt_pid = -1;
-
-        for (let i = program_start_index; i < program_start_index + program_bytes; i += 4) {
-            let program_number = (data[i] << 8) | data[i + 1];
-            let pid = ((data[i + 2] & 0x1F) << 8) | data[i + 3];
-
-            if (program_number === 0) {
-                // network_PID
-                pat.network_pid = pid;
-            } else {
-                // program_map_PID
-                pat.program_pmt_pid[program_number] = pid;
-
-                if (first_program_number === -1) {
-                    first_program_number = program_number;
-                }
-
-                if (first_pmt_pid === -1) {
-                    first_pmt_pid = pid;
+                if (slice_queue.total_length === slice_queue.expected_length) {
+                    this.emitSectionSlices(slice_queue, misc);
+                } else {
+                    this.clearSlices(slice_queue, misc);
                 }
             }
-        }
 
-        // Currently we only deal with first appeared PMT pid
-        if (current_next_indicator === 1 && section_number === 0) {
-            if (this.pat_ == undefined) {
-                Log.v(this.TAG, `Parsed first PAT: ${JSON.stringify(pat)}`);
-            }
-            this.pat_ = pat;
-            this.current_program_ = first_program_number;
-            this.current_pmt_pid_ = first_pmt_pid;
-        }
-    }
+            for (let i = 1 + pointer_field; i < data.byteLength; ){
+                let table_id = data[i + 0];
+                if (table_id === 0xFF) { break; }
 
-    private parsePMT(buffer: ArrayBuffer, offset: number, length: number, misc: any): void {
-        let data = new Uint8Array(buffer, offset, length);
+                let section_length = ((data[i + 1] & 0x0F) << 8) | data[i + 2];
 
-        let table_id = data[0];
-        if (table_id !== 0x02) {
-            Log.e(this.TAG, `parsePMT: table_id ${table_id} is not corresponded to PMT!`);
-            return;
-        }
+                this.section_slice_queues_[misc.pid] = new SliceQueue();
+                slice_queue = this.section_slice_queues_[misc.pid];
 
-        let section_length = ((data[1] & 0x0F) << 8) | data[2];
+                slice_queue.expected_length = section_length + 3;
+                slice_queue.file_position = misc.file_position;
+                slice_queue.random_access_indicator = misc.random_access_indicator;
 
-        let program_number = (data[3] << 8) | data[4];
-        let version_number = (data[5] & 0x3E) >>> 1;
-        let current_next_indicator = data[5] & 0x01;
-        let section_number = data[6];
-        let last_section_number = data[7];
+                let remain_section = new Uint8Array(buffer, offset + i, Math.min(length - i, slice_queue.expected_length));
+                slice_queue.slices.push(remain_section);
+                slice_queue.total_length += remain_section.byteLength;
 
-        let pmt: PMT = null;
-
-        if (current_next_indicator === 1 && section_number === 0) {
-            pmt = new PMT();
-            pmt.program_number = program_number;
-            pmt.version_number = version_number;
-            this.program_pmt_map_[program_number] = pmt;
-        } else {
-            pmt = this.program_pmt_map_[program_number];
-            if (pmt == undefined) {
-                return;
-            }
-        }
-
-        let PCR_PID = ((data[8] & 0x1F) << 8) | data[9];
-        let program_info_length = ((data[10] & 0x0F) << 8) | data[11];
-
-        let info_start_index = 12 + program_info_length;
-        let info_bytes = section_length - 9 - program_info_length - 4;
-
-        for (let i = info_start_index; i < info_start_index + info_bytes; ) {
-            let stream_type = data[i] as StreamType;
-            let elementary_PID = ((data[i + 1] & 0x1F) << 8) | data[i + 2];
-            let ES_info_length = ((data[i + 3] & 0x0F) << 8) | data[i + 4];
-
-            pmt.pid_stream_type[elementary_PID] = stream_type;
-
-            if (stream_type === StreamType.kH264 && !pmt.common_pids.h264) {
-                pmt.common_pids.h264 = elementary_PID;
-            } else if (stream_type === StreamType.kADTSAAC && !pmt.common_pids.adts_aac) {
-                pmt.common_pids.adts_aac = elementary_PID;
-            } else if (stream_type === StreamType.kPESPrivateData) {
-                pmt.pes_private_data_pids[elementary_PID] = true;
-                if (ES_info_length > 0) {
-                    // provide descriptor for PES private data via callback
-                    let descriptor = data.subarray(i + 5, i + 5 + ES_info_length);
-                    this.dispatchPESPrivateDataDescriptor(elementary_PID, stream_type, descriptor);
+                if (slice_queue.total_length === slice_queue.expected_length) {
+                    this.emitSectionSlices(slice_queue, misc);
+                } else if (slice_queue.total_length >= slice_queue.expected_length) {
+                    this.clearSlices(slice_queue, misc);
                 }
-            } else if (stream_type === StreamType.kID3) {
-                pmt.timed_id3_pids[elementary_PID] = true;
-            }
 
-            i += 5 + ES_info_length;
-        }
+                i += remain_section.byteLength;
+            }
+        } else if (slice_queue != undefined && slice_queue.total_length !== 0) {
+            let remain_section = new Uint8Array(buffer, offset, Math.min(length, slice_queue.expected_length));
+            slice_queue.slices.push(remain_section);
+            slice_queue.total_length += remain_section.byteLength;
 
-        if (program_number === this.current_program_) {
-            if (this.pmt_ == undefined) {
-                Log.v(this.TAG, `Parsed first PMT: ${JSON.stringify(pmt)}`);
-            }
-            this.pmt_ = pmt;
-            if (pmt.common_pids.h264) {
-                this.has_video_ = true;
-            }
-            if (pmt.common_pids.adts_aac) {
-                this.has_audio_ = true;
+            if (slice_queue.total_length === slice_queue.expected_length) {
+                this.emitSectionSlices(slice_queue, misc);
+            } else if (slice_queue.total_length >= slice_queue.expected_length) {
+                this.clearSlices(slice_queue, misc);
             }
         }
     }
@@ -490,7 +401,7 @@ class TSDemuxer extends BaseDemuxer {
                 if (slice_queue.expected_length === 0 || slice_queue.expected_length === slice_queue.total_length) {
                     this.emitPESSlices(slice_queue, misc);
                 } else {
-                    this.cleanPESSlices(slice_queue, misc);
+                    this.clearSlices(slice_queue, misc);
                 }
             }
 
@@ -516,8 +427,27 @@ class TSDemuxer extends BaseDemuxer {
         if (slice_queue.expected_length > 0 && slice_queue.expected_length === slice_queue.total_length) {
             this.emitPESSlices(slice_queue, misc);
         } else if (slice_queue.expected_length > 0 && slice_queue.expected_length < slice_queue.total_length) {
-            this.cleanPESSlices(slice_queue, misc);
+            this.clearSlices(slice_queue, misc);
         }
+    }
+
+    private emitSectionSlices(slice_queue: SliceQueue, misc: any): void {
+        let data = new Uint8Array(slice_queue.total_length);
+        for (let i = 0, offset = 0; i < slice_queue.slices.length; i++) {
+            let slice = slice_queue.slices[i];
+            data.set(slice, offset);
+            offset += slice.byteLength;
+        }
+        slice_queue.slices = [];
+        slice_queue.expected_length = -1;
+        slice_queue.total_length = 0;
+
+        let section_data = new SectionData();
+        section_data.pid = misc.pid;
+        section_data.data = data;
+        section_data.file_position = slice_queue.file_position;
+        section_data.random_access_indicator = slice_queue.random_access_indicator;
+        this.parseSection(section_data);
     }
 
     private emitPESSlices(slice_queue: SliceQueue, misc: any): void {
@@ -540,10 +470,21 @@ class TSDemuxer extends BaseDemuxer {
         this.parsePES(pes_data);
     }
 
-    private cleanPESSlices(slice_queue: SliceQueue, misc: any): void {
+    private clearSlices(slice_queue: SliceQueue, misc: any): void {
        slice_queue.slices = [];
        slice_queue.expected_length = -1;
        slice_queue.total_length = 0;
+    }
+
+    private parseSection(section_data: SectionData): void {
+        let data = section_data.data;
+        let pid = section_data.pid;
+
+        if (pid === 0x00) {
+            this.parsePAT(data);
+        } else if (pid === this.current_pmt_pid_) {
+            this.parsePMT(data);
+        }
     }
 
     private parsePES(pes_data: PESData): void {
@@ -644,6 +585,144 @@ class TSDemuxer extends BaseDemuxer {
 
                 let payload = data.subarray(payload_start_index, payload_start_index + payload_length);
                 this.parsePESPrivateDataPayload(payload, undefined, undefined, pes_data.pid, stream_id);
+            }
+        }
+    }
+
+    private parsePAT(data: Uint8Array): void {
+        let table_id = data[0];
+        if (table_id !== 0x00) {
+            Log.e(this.TAG, `parsePAT: table_id ${table_id} is not corresponded to PAT!`);
+            return;
+        }
+
+        let section_length = ((data[1] & 0x0F) << 8) | data[2];
+
+        let transport_stream_id = (data[3] << 8) | data[4];
+        let version_number = (data[5] & 0x3E) >>> 1;
+        let current_next_indicator = data[5] & 0x01;
+        let section_number = data[6];
+        let last_section_number = data[7];
+
+        let pat: PAT = null;
+
+        if (current_next_indicator === 1 && section_number === 0) {
+            pat = new PAT();
+            pat.version_number = version_number;
+        } else {
+            pat = this.pat_;
+            if (pat == undefined) {
+                return;
+            }
+        }
+
+        let program_start_index = 8;
+        let program_bytes = section_length - 5 - 4;  // section_length - (headers + crc)
+        let first_program_number = -1;
+        let first_pmt_pid = -1;
+
+        for (let i = program_start_index; i < program_start_index + program_bytes; i += 4) {
+            let program_number = (data[i] << 8) | data[i + 1];
+            let pid = ((data[i + 2] & 0x1F) << 8) | data[i + 3];
+
+            if (program_number === 0) {
+                // network_PID
+                pat.network_pid = pid;
+            } else {
+                // program_map_PID
+                pat.program_pmt_pid[program_number] = pid;
+
+                if (first_program_number === -1) {
+                    first_program_number = program_number;
+                }
+
+                if (first_pmt_pid === -1) {
+                    first_pmt_pid = pid;
+                }
+            }
+        }
+
+        // Currently we only deal with first appeared PMT pid
+        if (current_next_indicator === 1 && section_number === 0) {
+            if (this.pat_ == undefined) {
+                Log.v(this.TAG, `Parsed first PAT: ${JSON.stringify(pat)}`);
+            }
+            this.pat_ = pat;
+            this.current_program_ = first_program_number;
+            this.current_pmt_pid_ = first_pmt_pid;
+        }
+    }
+
+    private parsePMT(data: Uint8Array): void {
+        let table_id = data[0];
+        if (table_id !== 0x02) {
+            Log.e(this.TAG, `parsePMT: table_id ${table_id} is not corresponded to PMT!`);
+            return;
+        }
+
+        let section_length = ((data[1] & 0x0F) << 8) | data[2];
+
+        let program_number = (data[3] << 8) | data[4];
+        let version_number = (data[5] & 0x3E) >>> 1;
+        let current_next_indicator = data[5] & 0x01;
+        let section_number = data[6];
+        let last_section_number = data[7];
+
+        let pmt: PMT = null;
+
+        if (current_next_indicator === 1 && section_number === 0) {
+            pmt = new PMT();
+            pmt.program_number = program_number;
+            pmt.version_number = version_number;
+            this.program_pmt_map_[program_number] = pmt;
+        } else {
+            pmt = this.program_pmt_map_[program_number];
+            if (pmt == undefined) {
+                return;
+            }
+        }
+
+        let PCR_PID = ((data[8] & 0x1F) << 8) | data[9];
+        let program_info_length = ((data[10] & 0x0F) << 8) | data[11];
+
+        let info_start_index = 12 + program_info_length;
+        let info_bytes = section_length - 9 - program_info_length - 4;
+
+        for (let i = info_start_index; i < info_start_index + info_bytes; ) {
+            let stream_type = data[i] as StreamType;
+            let elementary_PID = ((data[i + 1] & 0x1F) << 8) | data[i + 2];
+            let ES_info_length = ((data[i + 3] & 0x0F) << 8) | data[i + 4];
+
+            pmt.pid_stream_type[elementary_PID] = stream_type;
+
+            if (stream_type === StreamType.kH264 && !pmt.common_pids.h264) {
+                pmt.common_pids.h264 = elementary_PID;
+            } else if (stream_type === StreamType.kADTSAAC && !pmt.common_pids.adts_aac) {
+                pmt.common_pids.adts_aac = elementary_PID;
+            } else if (stream_type === StreamType.kPESPrivateData) {
+                pmt.pes_private_data_pids[elementary_PID] = true;
+                if (ES_info_length > 0) {
+                    // provide descriptor for PES private data via callback
+                    let descriptor = data.subarray(i + 5, i + 5 + ES_info_length);
+                    this.dispatchPESPrivateDataDescriptor(elementary_PID, stream_type, descriptor);
+                }
+            } else if (stream_type === StreamType.kID3) {
+                pmt.timed_id3_pids[elementary_PID] = true;
+            }
+
+            i += 5 + ES_info_length;
+        }
+
+        if (program_number === this.current_program_) {
+            if (this.pmt_ == undefined) {
+                Log.v(this.TAG, `Parsed first PMT: ${JSON.stringify(pmt)}`);
+            }
+            this.pmt_ = pmt;
+            if (pmt.common_pids.h264) {
+                this.has_video_ = true;
+            }
+            if (pmt.common_pids.adts_aac) {
+                this.has_audio_ = true;
             }
         }
     }
