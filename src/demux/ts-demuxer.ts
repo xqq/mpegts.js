@@ -97,6 +97,7 @@ class TSDemuxer extends BaseDemuxer {
     public destroy() {
         this.media_info_ = null;
         this.pes_slice_queues_ = null;
+        this.section_slice_queues_ = null;
 
         this.video_metadata_ = null;
         this.audio_metadata_ = null;
@@ -247,16 +248,15 @@ class TSDemuxer extends BaseDemuxer {
                     let ts_payload_length = 188 - ts_payload_start_index;
 
                     this.handleSectionSlice(chunk,
-                                        offset + ts_payload_start_index,
-                                        ts_payload_length,
-                                        {
-                                            pid,
-                                            file_position,
-                                            payload_unit_start_indicator,
-                                            continuity_conunter,
-                                            random_access_indicator: adaptation_field_info.random_access_indicator
-                                        });
-
+                                            offset + ts_payload_start_index,
+                                            ts_payload_length,
+                                            {
+                                                pid,
+                                                file_position,
+                                                payload_unit_start_indicator,
+                                                continuity_conunter,
+                                                random_access_indicator: adaptation_field_info.random_access_indicator
+                                            });
                 } else if (this.pmt_ != undefined && this.pmt_.pid_stream_type[pid] != undefined) {
                     // PES
                     let ts_payload_length = 188 - ts_payload_start_index;
@@ -471,9 +471,9 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     private clearSlices(slice_queue: SliceQueue, misc: any): void {
-       slice_queue.slices = [];
-       slice_queue.expected_length = -1;
-       slice_queue.total_length = 0;
+        slice_queue.slices = [];
+        slice_queue.expected_length = -1;
+        slice_queue.total_length = 0;
     }
 
     private parseSection(section_data: SectionData): void {
