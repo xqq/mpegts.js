@@ -59,6 +59,13 @@ export class PESData {
     random_access_indicator: number;
 }
 
+export class SectionData {
+    pid: number;
+    data: Uint8Array;
+    file_position: number;
+    random_access_indicator: number;
+}
+
 export class SliceQueue {
     slices: Uint8Array[] = [];
     total_length: number = 0;

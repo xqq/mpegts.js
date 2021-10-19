@@ -14,6 +14,7 @@ declare class TSDemuxer extends BaseDemuxer {
     private pmt_;
     private program_pmt_map_;
     private pes_slice_queues_;
+    private section_slice_queues_;
     private video_metadata_;
     private audio_metadata_;
     private aac_last_sample_pts_;
@@ -44,12 +45,15 @@ declare class TSDemuxer extends BaseDemuxer {
     resetMediaInfo(): void;
     parseChunks(chunk: ArrayBuffer, byte_start: number): number;
     private parseAdaptationField;
+    private handleSectionSlice;
+    private handlePESSlice;
+    private emitSectionSlices;
+    private emitPESSlices;
+    private clearSlices;
+    private parseSection;
+    private parsePES;
     private parsePAT;
     private parsePMT;
-    private handlePESSlice;
-    private emitPESSlices;
-    private cleanPESSlices;
-    private parsePES;
     private parseH264Payload;
     private detectVideoMetadataChange;
     private isInitSegmentDispatched;
