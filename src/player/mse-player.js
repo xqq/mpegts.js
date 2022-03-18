@@ -255,8 +255,8 @@ class MSEPlayer {
         this._transmuxer.on(TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED, (timed_id3_metadata) => {
             this._emitter.emit(PlayerEvents.TIMED_ID3_METADATA_ARRIVED, timed_id3_metadata);
         });
-        this._transmuxer.on(TransmuxingEvents.SCTE35_METADATA_ARRIVED, (timed_id3_metadata) => {
-            this._emitter.emit(PlayerEvents.SCTE35_METADATA_ARRIVED, timed_id3_metadata);
+        this._transmuxer.on(TransmuxingEvents.SCTE35_METADATA_ARRIVED, (scte35_metadata) => {
+            this._emitter.emit(PlayerEvents.SCTE35_METADATA_ARRIVED, scte35_metadata);
         });
         this._transmuxer.on(TransmuxingEvents.PES_PRIVATE_DATA_DESCRIPTOR, (descriptor) => {
             this._emitter.emit(PlayerEvents.PES_PRIVATE_DATA_DESCRIPTOR, descriptor);
