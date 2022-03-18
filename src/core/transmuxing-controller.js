@@ -254,6 +254,7 @@ class TransmuxingController {
             demuxer.onMediaInfo = this._onMediaInfo.bind(this);
             demuxer.onMetaDataArrived = this._onMetaDataArrived.bind(this);
             demuxer.onTimedID3Metadata = this._onTimedID3Metadata.bind(this);
+            demuxer.onSCTE35Metadata = this._onSCTE35Metadata.bind(this);
             demuxer.onPESPrivateDataDescriptor = this._onPESPrivateDataDescriptor.bind(this);
             demuxer.onPESPrivateData = this._onPESPrivateData.bind(this);
 
@@ -359,6 +360,21 @@ class TransmuxingController {
         }
 
         this._emitter.emit(TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED, timed_id3_metadata);
+    }
+
+    _onSCTE35Metadata(scte35) {
+        let timestamp_base = this._remuxer.getTimestampBase();
+        if (timestamp_base == undefined) { return; }
+
+        if (scte35.pts != undefined) {
+            scte35.pts -= timestamp_base;
+        }
+
+        if (scte35.nearest_pts != undefined) {
+            scte35.nearest_pts -= timestamp_base;
+        }
+
+        this._emitter.emit(TransmuxingEvents.SCTE35_METADATA_ARRIVED, scte35);
     }
 
     _onPESPrivateDataDescriptor(descriptor) {
