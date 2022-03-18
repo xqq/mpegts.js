@@ -12,6 +12,7 @@ export declare enum StreamType {
     kPESPrivateData = 6,
     kADTSAAC = 15,
     kID3 = 21,
+    kSCTE35 = 134,
     kH264 = 27,
     kH265 = 36
 }
@@ -31,6 +32,9 @@ export declare class PMT {
         [pid: number]: boolean;
     };
     timed_id3_pids: {
+        [pid: number]: boolean;
+    };
+    scte_35_pids: {
         [pid: number]: boolean;
     };
 }

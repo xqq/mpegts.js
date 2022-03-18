@@ -1,5 +1,6 @@
 import MediaInfo from '../core/media-info';
 import { PESPrivateData, PESPrivateDataDescriptor } from './pes-private-data';
+import { SCTE35Data } from './scte35';
 
 type OnErrorCallback = (type: string, info: string) => void;
 type OnMediaInfoCallback = (mediaInfo: MediaInfo) => void;
@@ -7,6 +8,7 @@ type OnMetaDataArrivedCallback = (metadata: any) => void;
 type OnTrackMetadataCallback = (type: string, metadata: any) => void;
 type OnDataAvailableCallback = (videoTrack: any, audioTrack: any) => void;
 type OnTimedID3MetadataCallback = (timed_id3_data: PESPrivateData) => void;
+type OnSCTE35MetadataCallback = (scte35_data: SCTE35Data) => void;
 type OnPESPrivateDataCallback = (private_data: PESPrivateData) => void;
 type OnPESPrivateDataDescriptorCallback = (private_data_descriptor: PESPrivateDataDescriptor) => void;
 
@@ -18,6 +20,7 @@ export default abstract class BaseDemuxer {
     public onTrackMetadata: OnTrackMetadataCallback;
     public onDataAvailable: OnDataAvailableCallback;
     public onTimedID3Metadata: OnTimedID3MetadataCallback;
+    public onSCTE35Metadata: OnSCTE35MetadataCallback;
     public onPESPrivateData: OnPESPrivateDataCallback;
     public onPESPrivateDataDescriptor: OnPESPrivateDataDescriptorCallback;
 
@@ -30,6 +33,7 @@ export default abstract class BaseDemuxer {
         this.onTrackMetadata = null;
         this.onDataAvailable = null;
         this.onTimedID3Metadata = null;
+        this.onSCTE35Metadata = null;
         this.onPESPrivateData = null;
         this.onPESPrivateDataDescriptor = null;
     }
