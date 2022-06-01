@@ -27,6 +27,7 @@ import SPSParser from './sps-parser';
 import { AACADTSParser, AACFrame, AudioSpecificConfig } from './aac';
 import { MPEG4AudioObjectTypes, MPEG4SamplingFrequencyIndex } from './mpeg4-audio';
 import { PESPrivateData, PESPrivateDataDescriptor } from './pes-private-data';
+import { readSCTE35, SCTE35Data } from './scte35';
 
 class TSDemuxer extends BaseDemuxer {
 
@@ -246,7 +247,7 @@ class TSDemuxer extends BaseDemuxer {
             }
 
             if (adaptation_field_control == 0x01 || adaptation_field_control == 0x03) {
-                if (pid === 0 || pid === this.current_pmt_pid_) {  // PAT(pid === 0) or PMT
+                if (pid === 0 || pid === this.current_pmt_pid_ || (this.pmt_ != undefined && this.pmt_.pid_stream_type[pid] === StreamType.kSCTE35)) {  // PAT(pid === 0) or PMT or SCTE35
                     let ts_payload_length = 188 - ts_payload_start_index;
 
                     this.handleSectionSlice(chunk,
@@ -486,6 +487,8 @@ class TSDemuxer extends BaseDemuxer {
             this.parsePAT(data);
         } else if (pid === this.current_pmt_pid_) {
             this.parsePMT(data);
+        } else if (this.pmt_ != undefined && this.pmt_.scte_35_pids[pid]) {
+            this.parseSCTE35(data);
         }
     }
 
@@ -710,6 +713,8 @@ class TSDemuxer extends BaseDemuxer {
                 }
             } else if (stream_type === StreamType.kID3) {
                 pmt.timed_id3_pids[elementary_PID] = true;
+            } else if (stream_type === StreamType.kSCTE35) {
+                pmt.scte_35_pids[elementary_PID] = true;
             }
 
             i += 5 + ES_info_length;
@@ -726,6 +731,21 @@ class TSDemuxer extends BaseDemuxer {
             if (pmt.common_pids.adts_aac) {
                 this.has_audio_ = true;
             }
+        }
+    }
+
+    private parseSCTE35(data: Uint8Array): void {
+        const scte35 = readSCTE35(data);
+
+        if (scte35.pts != undefined) {
+            let pts_ms = Math.floor(scte35.pts / this.timescale_);
+            scte35.pts = pts_ms;
+        } else {
+            scte35.nearest_pts = this.aac_last_sample_pts_;
+        }
+
+        if (this.onSCTE35Metadata) {
+            this.onSCTE35Metadata(scte35);
         }
     }
 
