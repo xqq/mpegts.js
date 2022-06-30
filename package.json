@@ -19,7 +19,8 @@
   "scripts": {
     "build": "webpack --mode=production --progress",
     "build:debug": "webpack --mode=development --progress",
-    "watch": "webpack --mode=development --progress --watch"
+    "watch": "webpack --mode=development --progress --watch",
+    "serve": "webpack serve --mode=development --progress"
   },
   "dependencies": {
     "es6-promise": "^4.2.5",
@@ -29,6 +30,7 @@
     "@types/node": "^10.12.18",
     "@typescript-eslint/eslint-plugin": "^1.4.2",
     "@typescript-eslint/parser": "^1.4.2",
+    "@webpack-cli/serve": "^1.7.0",
     "browser-sync": "^2.26.10",
     "eslint": "^5.15.0",
     "exports-loader": "^0.7.0",
@@ -39,7 +41,8 @@
     "ts-loader": "^5.3.2",
     "typescript": "^3.2.2",
     "webpack": "^4.28.3",
-    "webpack-cli": "^3.3.12",
+    "webpack-cli": "^4.4.0",
+    "webpack-dev-server": "^4.9.3",
     "ws": ">=7.4.6",
     "xmlhttprequest-ssl": ">=1.6.2"
   },
