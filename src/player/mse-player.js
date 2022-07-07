@@ -57,7 +57,8 @@ class MSEPlayer {
             onvSeeking: this._onvSeeking.bind(this),
             onvCanPlay: this._onvCanPlay.bind(this),
             onvStalled: this._onvStalled.bind(this),
-            onvProgress: this._onvProgress.bind(this)
+            onvProgress: this._onvProgress.bind(this),
+            onvTimeupdate: this._onvTimeupdate.bind(this),
         };
 
         if (self.performance && self.performance.now) {
@@ -140,6 +141,9 @@ class MSEPlayer {
         mediaElement.addEventListener('canplay', this.e.onvCanPlay);
         mediaElement.addEventListener('stalled', this.e.onvStalled);
         mediaElement.addEventListener('progress', this.e.onvProgress);
+        if (this._config.isLive && this._config.liveSync) {
+            mediaElement.addEventListener('timeupdate', this.e.onvTimeupdate);
+        }
 
         this._msectl = new MSEController(this._config);
 
@@ -363,6 +367,21 @@ class MSEPlayer {
         }
         this._statisticsInfo = this._fillStatisticsInfo(this._statisticsInfo);
         return Object.assign({}, this._statisticsInfo);
+    }
+
+    get latency() {
+        if (!this._mediaElement) {
+            return 0;
+        }
+        let buffered = this._mediaElement.buffered;
+        let currentTime = this._mediaElement.currentTime;
+
+        if (buffered.length > 0) {
+            let buffered_end = buffered.end(buffered.length - 1);
+            return buffered_end - currentTime;
+        }
+
+        return 0;
     }
 
     _fillStatisticsInfo(statInfo) {
@@ -647,6 +666,16 @@ class MSEPlayer {
         this._checkAndResumeStuckPlayback();
     }
 
+    _onvTimeupdate(e) {
+        const latency = this.latency;
+
+        if (latency > this._config.liveSyncMaxLatency + 0.05) {
+            const playbackRate = Math.min(2, Math.max(1, this._config.liveSyncPlaybackRate));
+            this._mediaElement.playbackRate = playbackRate;
+        } else if (this._mediaElement.playbackRate !== 1 && this._mediaElement.playbackRate !== 0) {
+            this._mediaElement.playbackRate = 1;
+        }
+    }
 }
 
 export default MSEPlayer;
