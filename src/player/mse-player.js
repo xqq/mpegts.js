@@ -185,6 +185,7 @@ class MSEPlayer {
             this._mediaElement.removeEventListener('canplay', this.e.onvCanPlay);
             this._mediaElement.removeEventListener('stalled', this.e.onvStalled);
             this._mediaElement.removeEventListener('progress', this.e.onvProgress);
+            this._mediaElement.removeEventListener('timeupdate', this.e.onvTimeupdate);
             this._mediaElement = null;
         }
         if (this._msectl) {
