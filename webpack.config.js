@@ -50,5 +50,15 @@ module.exports = {
                 use: 'source-map-loader'
             }
         ]
+    },
+
+    devServer: {
+        static: ['demo'],
+        proxy: {
+            '/dist': {
+                target: 'http://localhost:8080',
+                pathRewrite: {'^/dist' : ''}
+            }
+        }
     }
 };
