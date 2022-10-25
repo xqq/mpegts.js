@@ -33,9 +33,11 @@ export class PMT {
 
     common_pids: {
         h264: number | undefined,
+        h265: number | undefined;
         adts_aac: number | undefined
     } = {
         h264: undefined,
+        h265: undefined,
         adts_aac: undefined
     };
 
