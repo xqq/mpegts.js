@@ -24,6 +24,7 @@ class MP4 {
         MP4.types = {
             avc1: [], avcC: [], btrt: [], dinf: [],
             dref: [], esds: [], ftyp: [], hdlr: [],
+            hvc1: [], hvcC: [],
             mdat: [], mdhd: [], mdia: [], mfhd: [],
             minf: [], moof: [], moov: [], mp4a: [],
             mvex: [], mvhd: [], sdtp: [], stbl: [],
@@ -323,6 +324,8 @@ class MP4 {
             }
             // else: aac -> mp4a
             return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.mp4a(meta));
+        } else if (meta.type === 'video' && meta.codec.startsWith('hvc1')) {
+            return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.hvc1(meta));
         } else {
             return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.avc1(meta));
         }
@@ -430,6 +433,40 @@ class MP4 {
             0xFF, 0xFF               // pre_defined = -1
         ]);
         return MP4.box(MP4.types.avc1, data, MP4.box(MP4.types.avcC, avcc));
+    }
+
+    static hvc1(meta) {
+        let hvcc = meta.hvcc;
+        let width = meta.codecWidth, height = meta.codecHeight;
+
+        let data = new Uint8Array([
+            0x00, 0x00, 0x00, 0x00,  // reserved(4)
+            0x00, 0x00, 0x00, 0x01,  // reserved(2) + data_reference_index(2)
+            0x00, 0x00, 0x00, 0x00,  // pre_defined(2) + reserved(2)
+            0x00, 0x00, 0x00, 0x00,  // pre_defined: 3 * 4 bytes
+            0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+            (width >>> 8) & 0xFF,    // width: 2 bytes
+            (width) & 0xFF,
+            (height >>> 8) & 0xFF,   // height: 2 bytes
+            (height) & 0xFF,
+            0x00, 0x48, 0x00, 0x00,  // horizresolution: 4 bytes
+            0x00, 0x48, 0x00, 0x00,  // vertresolution: 4 bytes
+            0x00, 0x00, 0x00, 0x00,  // reserved: 4 bytes
+            0x00, 0x01,              // frame_count
+            0x0A,                    // strlen
+            0x78, 0x71, 0x71, 0x2F,  // compressorname: 32 bytes
+            0x66, 0x6C, 0x76, 0x2E,
+            0x6A, 0x73, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00,
+            0x00, 0x18,              // depth
+            0xFF, 0xFF               // pre_defined = -1
+        ]);
+        return MP4.box(MP4.types.hvc1, data, MP4.box(MP4.types.hvcC, hvcc));
     }
 
     // Movie Extends box

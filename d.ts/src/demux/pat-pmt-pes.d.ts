@@ -26,6 +26,7 @@ export declare class PMT {
     pid_stream_type: PIDToStreamTypeMap;
     common_pids: {
         h264: number | undefined;
+        h265: number | undefined;
         adts_aac: number | undefined;
     };
     pes_private_data_pids: {
