@@ -44,7 +44,7 @@ export class H265AnnexBParser {
         this.data_ = data;
         this.current_startcode_offset_ = this.findNextStartCodeOffset(0);
         if (this.eof_flag_) {
-            Log.e(this.TAG, "Could not found H264 startcode until payload end!");
+            Log.e(this.TAG, "Could not find H265 startcode until payload end!");
         }
     }
 
