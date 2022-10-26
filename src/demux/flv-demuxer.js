@@ -22,6 +22,7 @@ import SPSParser from './sps-parser.js';
 import DemuxErrors from './demux-errors.js';
 import MediaInfo from '../core/media-info.js';
 import {IllegalStateException} from '../utils/exception.js';
+import H265Parser from './h265-parser.js';
 
 function Swap16(src) {
     return (((src >>> 8) & 0xFF) |
@@ -454,7 +455,7 @@ class FLVDemuxer {
         let times = [];
         let filepositions = [];
 
-        // ignore first keyframe which is actually AVC Sequence Header (AVCDecoderConfigurationRecord)
+        // ignore first keyframe which is actually AVC/HEVC Sequence Header (AVCDecoderConfigurationRecord or HEVCDecoderConfigurationRecord)
         for (let i = 1; i < keyframes.times.length; i++) {
             let time = this._timestampBase + Math.floor(keyframes.times[i] * 1000);
             times.push(time);
@@ -837,12 +838,14 @@ class FLVDemuxer {
         let frameType = (spec & 240) >>> 4;
         let codecId = spec & 15;
 
-        if (codecId !== 7) {
+        if (codecId === 7) { // AVC
+            this._parseAVCVideoPacket(arrayBuffer, dataOffset + 1, dataSize - 1, tagTimestamp, tagPosition, frameType);
+        } else if (codecId === 12) { // HEVC
+            this._parseHEVCVideoPacket(arrayBuffer, dataOffset + 1, dataSize - 1, tagTimestamp, tagPosition, frameType);
+        } else {
             this._onError(DemuxErrors.CODEC_UNSUPPORTED, `Flv: Unsupported codec in video frame: ${codecId}`);
             return;
         }
-
-        this._parseAVCVideoPacket(arrayBuffer, dataOffset + 1, dataSize - 1, tagTimestamp, tagPosition, frameType);
     }
 
     _parseAVCVideoPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType) {
@@ -864,6 +867,31 @@ class FLVDemuxer {
             this._parseAVCVideoData(arrayBuffer, dataOffset + 4, dataSize - 4, tagTimestamp, tagPosition, frameType, cts);
         } else if (packetType === 2) {
             // empty, AVC end of sequence
+        } else {
+            this._onError(DemuxErrors.FORMAT_ERROR, `Flv: Invalid video packet type ${packetType}`);
+            return;
+        }
+    }
+
+    _parseHEVCVideoPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType) {
+        if (dataSize < 4) {
+            Log.w(this.TAG, 'Flv: Invalid HEVC packet, missing HEVCPacketType or/and CompositionTime');
+            return;
+        }
+
+        let le = this._littleEndian;
+        let v = new DataView(arrayBuffer, dataOffset, dataSize);
+
+        let packetType = v.getUint8(0);
+        let cts_unsigned = v.getUint32(0, !le) & 0x00FFFFFF;
+        let cts = (cts_unsigned << 8) >> 8;  // convert to 24-bit signed int
+
+        if (packetType === 0) {  // HEVCDecoderConfigurationRecord
+            this._parseHEVCDecoderConfigurationRecord(arrayBuffer, dataOffset + 4, dataSize - 4);
+        } else if (packetType === 1) {  // One or more Nalus
+            this._parseHEVCVideoData(arrayBuffer, dataOffset + 4, dataSize - 4, tagTimestamp, tagPosition, frameType, cts);
+        } else if (packetType === 2) {
+            // empty, HEVC end of sequence
         } else {
             this._onError(DemuxErrors.FORMAT_ERROR, `Flv: Invalid video packet type ${packetType}`);
             return;
@@ -1038,6 +1066,136 @@ class FLVDemuxer {
         this._onTrackMetadata('video', meta);
     }
 
+    _parseHEVCDecoderConfigurationRecord(arrayBuffer, dataOffset, dataSize) {
+        if (dataSize < 22) {
+            Log.w(this.TAG, 'Flv: Invalid HEVCDecoderConfigurationRecord, lack of data!');
+            return;
+        }
+
+        let meta = this._videoMetadata;
+        let track = this._videoTrack;
+        let le = this._littleEndian;
+        let v = new DataView(arrayBuffer, dataOffset, dataSize);
+
+        if (!meta) {
+            if (this._hasVideo === false && this._hasVideoFlagOverrided === false) {
+                this._hasVideo = true;
+                this._mediaInfo.hasVideo = true;
+            }
+
+            meta = this._videoMetadata = {};
+            meta.type = 'video';
+            meta.id = track.id;
+            meta.timescale = this._timescale;
+            meta.duration = this._duration;
+        } else {
+            if (typeof meta.hvcc !== 'undefined') {
+                Log.w(this.TAG, 'Found another HEVCDecoderConfigurationRecord!');
+            }
+        }
+
+        let version = v.getUint8(0);  // configurationVersion
+        let hevcProfile = v.getUint8(1) & 0x1F;  // hevcProfileIndication
+
+        if (version !== 1 || hevcProfile === 0) {
+            this._onError(DemuxErrors.FORMAT_ERROR, 'Flv: Invalid HEVCDecoderConfigurationRecord');
+            return;
+        }
+
+        this._naluLengthSize = (v.getUint8(21) & 3) + 1;  // lengthSizeMinusOne
+        if (this._naluLengthSize !== 3 && this._naluLengthSize !== 4) {  // holy shit!!!
+            this._onError(DemuxErrors.FORMAT_ERROR, `Flv: Strange NaluLengthSizeMinusOne: ${this._naluLengthSize - 1}`);
+            return;
+        }
+
+        let numOfArrays = v.getUint8(22);
+        for (let i = 0, offset = 23; i < numOfArrays; i++) {
+            let nalUnitType = v.getUint8(offset + 0) & 0x3F;
+            let numNalus = v.getUint16(offset + 1, !le);
+
+            offset += 3;
+            for (let j = 0; j < numNalus; j++) {
+                let len = v.getUint16(offset + 0, !le);
+                if (j !== 0) {
+                    offset += 2 + len;
+                    continue;
+                }
+
+                if (nalUnitType === 33) {
+                    offset += 2;
+                    let sps = new Uint8Array(arrayBuffer, dataOffset + offset, len);
+
+                    let config = H265Parser.parseSPS(sps);
+                    meta.codecWidth = config.codec_size.width;
+                    meta.codecHeight = config.codec_size.height;
+                    meta.presentWidth = config.present_size.width;
+                    meta.presentHeight = config.present_size.height;
+
+                    meta.profile = config.profile_string;
+                    meta.level = config.level_string;
+                    meta.bitDepth = config.bit_depth;
+                    meta.chromaFormat = config.chroma_format;
+                    meta.sarRatio = config.sar_ratio;
+                    meta.frameRate = config.frame_rate;
+
+                    if (config.frame_rate.fixed === false ||
+                        config.frame_rate.fps_num === 0 ||
+                        config.frame_rate.fps_den === 0) {
+                        meta.frameRate = this._referenceFrameRate;
+                    }
+
+                    let fps_den = meta.frameRate.fps_den;
+                    let fps_num = meta.frameRate.fps_num;
+                    meta.refSampleDuration = meta.timescale * (fps_den / fps_num);
+                    meta.codec = config.codec_mimetype;
+        
+                    let mi = this._mediaInfo;
+                    mi.width = meta.codecWidth;
+                    mi.height = meta.codecHeight;
+                    mi.fps = meta.frameRate.fps;
+                    mi.profile = meta.profile;
+                    mi.level = meta.level;
+                    mi.refFrames = config.ref_frames;
+                    mi.chromaFormat = config.chroma_format_string;
+                    mi.sarNum = meta.sarRatio.width;
+                    mi.sarDen = meta.sarRatio.height;
+                    mi.videoCodec = config.codec_mimetype;
+        
+                    if (mi.hasAudio) {
+                        if (mi.audioCodec != null) {
+                            mi.mimeType = 'video/x-flv; codecs="' + mi.videoCodec + ',' + mi.audioCodec + '"';
+                        }
+                    } else {
+                        mi.mimeType = 'video/x-flv; codecs="' + mi.videoCodec + '"';
+                    }
+                    if (mi.isComplete()) {
+                        this._onMediaInfo(mi);
+                    }
+
+                    offset += len;
+                } else {
+                    offset += 2 + len;
+                }
+            }
+        }
+
+        meta.hvcc = new Uint8Array(dataSize);
+        meta.hvcc.set(new Uint8Array(arrayBuffer, dataOffset, dataSize), 0);
+        Log.v(this.TAG, 'Parsed HEVCDecoderConfigurationRecord');
+
+        if (this._isInitialMetadataDispatched()) {
+            // flush parsed frames
+            if (this._dispatch && (this._audioTrack.length || this._videoTrack.length)) {
+                this._onDataAvailable(this._audioTrack, this._videoTrack);
+            }
+        } else {
+            this._videoInitialMetadataDispatched = true;
+        }
+        // notify new metadata
+        this._dispatch = false;
+        this._onTrackMetadata('video', meta);
+    }
+
     _parseAVCVideoData(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, cts) {
         let le = this._littleEndian;
         let v = new DataView(arrayBuffer, dataOffset, dataSize);
@@ -1092,6 +1250,64 @@ class FLVDemuxer {
                 avcSample.fileposition = tagPosition;
             }
             track.samples.push(avcSample);
+            track.length += length;
+        }
+    }
+
+    _parseHEVCVideoData(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, cts) {
+        let le = this._littleEndian;
+        let v = new DataView(arrayBuffer, dataOffset, dataSize);
+
+        let units = [], length = 0;
+
+        let offset = 0;
+        const lengthSize = this._naluLengthSize;
+        let dts = this._timestampBase + tagTimestamp;
+        let keyframe = (frameType === 1);  // from FLV Frame Type constants
+
+        while (offset < dataSize) {
+            if (offset + 4 >= dataSize) {
+                Log.w(this.TAG, `Malformed Nalu near timestamp ${dts}, offset = ${offset}, dataSize = ${dataSize}`);
+                break;  // data not enough for next Nalu
+            }
+            // Nalu with length-header (HVC1)
+            let naluSize = v.getUint32(offset, !le);  // Big-Endian read
+            if (lengthSize === 3) {
+                naluSize >>>= 8;
+            }
+            if (naluSize > dataSize - lengthSize) {
+                Log.w(this.TAG, `Malformed Nalus near timestamp ${dts}, NaluSize > DataSize!`);
+                return;
+            }
+
+            let unitType = v.getUint8(offset + lengthSize) & 0x1F;
+
+            if (unitType === 19 || unitType === 20) {  // IDR
+                keyframe = true;
+            }
+
+            let data = new Uint8Array(arrayBuffer, dataOffset + offset, lengthSize + naluSize);
+            let unit = {type: unitType, data: data};
+            units.push(unit);
+            length += data.byteLength;
+
+            offset += lengthSize + naluSize;
+        }
+
+        if (units.length) {
+            let track = this._videoTrack;
+            let hevcSample = {
+                units: units,
+                length: length,
+                isKeyframe: keyframe,
+                dts: dts,
+                cts: cts,
+                pts: (dts + cts)
+            };
+            if (keyframe) {
+                hevcSample.fileposition = tagPosition;
+            }
+            track.samples.push(hevcSample);
             track.length += length;
         }
     }
