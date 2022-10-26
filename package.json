@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "^10.12.18",
+    "@types/express-serve-static-core": "4.17.30",
     "@typescript-eslint/eslint-plugin": "^1.4.2",
     "@typescript-eslint/parser": "^1.4.2",
     "@webpack-cli/serve": "^1.7.0",
