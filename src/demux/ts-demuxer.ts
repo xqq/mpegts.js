@@ -837,7 +837,7 @@ class TSDemuxer extends BaseDemuxer {
                     let details = H265Parser.parseVPS(nalu_payload.data);
                     this.video_metadata_.vps = nalu_hvc1;
                     this.video_metadata_.details = {
-                        ... this.video_metadata_.details, 
+                        ... this.video_metadata_.details,
                         ... details
                     };
                 }
@@ -846,7 +846,7 @@ class TSDemuxer extends BaseDemuxer {
                 if (!this.video_init_segment_dispatched_) {
                     this.video_metadata_.sps = nalu_hvc1;
                     this.video_metadata_.details = {
-                        ... this.video_metadata_.details, 
+                        ... this.video_metadata_.details,
                         ... details
                     };
                 } else if (this.detectVideoMetadataChange(nalu_hvc1, details) === true) {
@@ -859,7 +859,7 @@ class TSDemuxer extends BaseDemuxer {
                     let details = H265Parser.parsePPS(nalu_payload.data);
                     this.video_metadata_.pps = nalu_hvc1;
                     this.video_metadata_.details = {
-                        ... this.video_metadata_.details, 
+                        ... this.video_metadata_.details,
                         ... details
                     };
 
