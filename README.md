@@ -13,13 +13,17 @@ mpegts.js works by transmuxing MPEG2-TS stream into ISO BMFF (Fragmented MP4) se
 
 [Media Source Extensions]: https://w3c.github.io/media-source/
 
+## News
+H.265/HEVC over MPEG-TS/FLV support has been introduced in v1.7.0!
+
 ## Demo
 [http://xqq.github.io/mpegts.js/demo/](http://xqq.github.io/mpegts.js/demo/)
 
 [demo with aribb24.js](http://xqq.github.io/mpegts.js/demo/arib.html)
 
 ## Features
-- Playback for MPEG2-TS stream with H.264 + AAC codec transported in http(s) or WebSocket
+- Playback for MPEG2-TS stream with H.264/H.265 + AAC codec transported in http(s) or WebSocket
+- Playback for FLV stream with H.264/H.265 + AAC codec transported in http(s) or WebSocket
 - Extremely low latency of less than 1 second in the best case
 - Playback for `.m2ts` file like BDAV/BDMV with 192 bytes TS packet, or 204 bytes TS packet
 - Support handling dynamic codec parameters change (e.g. video resolution change)
@@ -72,7 +76,6 @@ mpegts.js could be tested with [Simple Realtime Server](https://github.com/ossrs
 
 ## TODO
 - MPEG2-TS static file playback (seeking is not supported now)
-- H.265/HEVC video codec support (only Safari support HEVC for now)
 - MP3/AC3 audio codec support
 - AV1/OPUS codec over MPEG2-TS stream support (?)
 
