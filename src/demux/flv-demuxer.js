@@ -1148,7 +1148,7 @@ class FLVDemuxer {
                     let fps_num = meta.frameRate.fps_num;
                     meta.refSampleDuration = meta.timescale * (fps_den / fps_num);
                     meta.codec = config.codec_mimetype;
-        
+
                     let mi = this._mediaInfo;
                     mi.width = meta.codecWidth;
                     mi.height = meta.codecHeight;
@@ -1160,7 +1160,7 @@ class FLVDemuxer {
                     mi.sarNum = meta.sarRatio.width;
                     mi.sarDen = meta.sarRatio.height;
                     mi.videoCodec = config.codec_mimetype;
-        
+
                     if (mi.hasAudio) {
                         if (mi.audioCodec != null) {
                             mi.mimeType = 'video/x-flv; codecs="' + mi.videoCodec + ',' + mi.audioCodec + '"';
