@@ -11,6 +11,9 @@ mpegts.js は、JavaScript で MPEG2-TS ストリームを解析しながら、�
 
 [Media Source Extensions]: https://w3c.github.io/media-source/
 
+## News
+H.265/HEVC 再生支援（over FLV/MPEG-TS）は v1.7.0 から導入されています。
+
 ## Demo
 [http://xqq.github.io/mpegts.js/demo/](http://xqq.github.io/mpegts.js/demo/)
 

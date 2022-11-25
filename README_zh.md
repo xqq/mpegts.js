@@ -11,6 +11,9 @@ mpegts.js 通过在 JavaScript 中渐进化解析 MPEG2-TS 流并实时转封装
 
 [Media Source Extensions]: https://w3c.github.io/media-source/
 
+## News
+H.265/HEVC 播放支持（FLV 或 MPEG-TS 均已支持）已在 v1.7.0 版本登场！
+
 ## Demo
 [http://xqq.github.io/mpegts.js/demo/](http://xqq.github.io/mpegts.js/demo/)
 
