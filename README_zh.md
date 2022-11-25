@@ -71,7 +71,6 @@ npm run build               # packaged & minimized js will be emitted in dist fo
 
 ## TODO
 - MPEG2-TS 静态文件回放 （目前还不支持 seek）
-- H.265/HEVC 支持 （但是似乎只有 Safari 支持？)
 - MP3/AC3 音频编码支持
 - AV1/OPUS codec over MPEG2-TS stream support (?)
 
