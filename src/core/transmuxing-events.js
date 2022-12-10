@@ -27,6 +27,7 @@ const TransmuxingEvents = {
     METADATA_ARRIVED: 'metadata_arrived',
     SCRIPTDATA_ARRIVED: 'scriptdata_arrived',
     TIMED_ID3_METADATA_ARRIVED: 'timed_id3_metadata_arrived',
+    SMPTE2038_METADATA_ARRIVED: 'smpte2038_metadata_arrived',
     SCTE35_METADATA_ARRIVED: 'scte35_metadata_arrived',
     PES_PRIVATE_DATA_DESCRIPTOR: 'pes_private_data_descriptor',
     PES_PRIVATE_DATA_ARRIVED: 'pes_private_data_arrived',

@@ -197,6 +197,7 @@ A series of constants that can be used with `Player.on()` / `Player.off()`. They
 | METADATA_ARRIVED    | Provides metadata which FLV file(stream) can contain with an "onMetaData" marker.  |
 | SCRIPTDATA_ARRIVED  | Provides scriptdata (OnCuePoint / OnTextData) which FLV file(stream) can contain. |
 | TIMED_ID3_METADATA_ARRIVED |  Provides Timed ID3 Metadata packets containing private data (stream_type=0x15) callback |
+| SMPTE2038_METADATA_ARRIVED |  Provides SMPTE2038 Metadata packets containing private data callback |
 | SCTE35_METADATA_ARRIVED |  Provides SCTE35 Metadata packets containing section (stream_type=0x86) callback |
 | PES_PRIVATE_DATA_ARRIVED | Provides ISO/IEC 13818-1 PES packets containing private data (stream_type=0x06) callback |
 | STATISTICS_INFO     | Provides playback statistics information like dropped frames, current speed, etc. |

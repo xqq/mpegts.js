@@ -38,6 +38,9 @@ export declare class PMT {
     scte_35_pids: {
         [pid: number]: boolean;
     };
+    smpte2038_pids: {
+        [oid: number]: boolean;
+    };
 }
 export interface ProgramToPMTMap {
     [program: number]: PMT;

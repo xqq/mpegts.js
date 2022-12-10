@@ -30,6 +30,7 @@ import { PESPrivateData, PESPrivateDataDescriptor } from './pes-private-data';
 import { readSCTE35, SCTE35Data } from './scte35';
 import { H265AnnexBParser, H265NaluHVC1, H265NaluPayload, H265NaluType, HEVCDecoderConfigurationRecord } from './h265';
 import H265Parser from './h265-parser';
+import { SMPTE2038Data, smpte2038parse } from './smpte2038';
 
 class TSDemuxer extends BaseDemuxer {
 
@@ -559,7 +560,11 @@ class TSDemuxer extends BaseDemuxer {
                 case StreamType.kMPEG2Audio:
                     break;
                 case StreamType.kPESPrivateData:
-                    this.parsePESPrivateDataPayload(payload, pts, dts, pes_data.pid, stream_id);
+                    if (this.pmt_.smpte2038_pids[pes_data.pid]) {
+                        this.parseSMPTE2038MetadataPayload(payload, pts, dts, pes_data.pid, stream_id);
+                    } else {
+                        this.parsePESPrivateDataPayload(payload, pts, dts, pes_data.pid, stream_id);
+                    }
                     break;
                 case StreamType.kADTSAAC:
                     this.parseAACPayload(payload, pts);
@@ -714,9 +719,22 @@ class TSDemuxer extends BaseDemuxer {
             } else if (stream_type === StreamType.kPESPrivateData) {
                 pmt.pes_private_data_pids[elementary_PID] = true;
                 if (ES_info_length > 0) {
+                    // parse descriptor for PES private data
+                    for (let offset = i + 5; offset < i + 5 + ES_info_length; ) {
+                        let tag = data[offset + 0];
+                        let length = data[offset + 1];
+                        if (tag === 0x05) { // Registration Descriptor
+                            let registration = String.fromCharCode(... Array.from(data.subarray(offset + 2, offset + 2 + length)));
+
+                            if (registration === 'VANC') {
+                                pmt.smpte2038_pids[elementary_PID] = true;
+                            }
+                        }
+                        offset += 2 + length;
+                    }
                     // provide descriptor for PES private data via callback
-                    let descriptor = data.subarray(i + 5, i + 5 + ES_info_length);
-                    this.dispatchPESPrivateDataDescriptor(elementary_PID, stream_type, descriptor);
+                    let descriptors = data.subarray(i + 5, i + 5 + ES_info_length);
+                    this.dispatchPESPrivateDataDescriptor(elementary_PID, stream_type, descriptors);
                 }
             } else if (stream_type === StreamType.kID3) {
                 pmt.timed_id3_pids[elementary_PID] = true;
@@ -1244,6 +1262,31 @@ class TSDemuxer extends BaseDemuxer {
 
         if (this.onTimedID3Metadata) {
             this.onTimedID3Metadata(timed_id3_metadata);
+        }
+    }
+
+    private parseSMPTE2038MetadataPayload(data: Uint8Array, pts: number, dts: number, pid: number, stream_id: number) {
+        let smpte2038_data = new SMPTE2038Data();
+
+        smpte2038_data.pid = pid;
+        smpte2038_data.stream_id = stream_id;
+        smpte2038_data.len = data.byteLength;
+        smpte2038_data.data = data;
+
+        if (pts != undefined) {
+            let pts_ms = Math.floor(pts / this.timescale_);
+            smpte2038_data.pts = pts_ms;
+        }
+        smpte2038_data.nearest_pts = this.aac_last_sample_pts_;
+
+        if (dts != undefined) {
+            let dts_ms = Math.floor(dts / this.timescale_);
+            smpte2038_data.dts = dts_ms;
+        }
+
+        smpte2038_data.ancillaries = smpte2038parse(data);
+        if (this.onSMPTE2038Metadata) {
+            this.onSMPTE2038Metadata(smpte2038_data);
         }
     }
 }
