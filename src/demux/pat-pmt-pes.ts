@@ -52,6 +52,10 @@ export class PMT {
     scte_35_pids: {
         [pid: number]: boolean
     } = {};
+
+    smpte2038_pids: {
+        [oid: number]: boolean
+    } = {};
 }
 
 export interface ProgramToPMTMap {
