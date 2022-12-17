@@ -315,7 +315,7 @@ class H265NaluParser {
                                 low_delay_hrd_flag = gb.readBool();
                             }
                             if (!low_delay_hrd_flag) {
-                                cpbcnt = gb.readUEG() + 1;
+                                cpbCnt = gb.readUEG() + 1;
                             }
                             if (nal_hrd_parameters_present_flag) {
                                 for (let j = 0; j < cpbCnt; j++) {
