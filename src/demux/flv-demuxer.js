@@ -23,6 +23,7 @@ import DemuxErrors from './demux-errors.js';
 import MediaInfo from '../core/media-info.js';
 import {IllegalStateException} from '../utils/exception.js';
 import H265Parser from './h265-parser.js';
+import buffersAreEqual from '../utils/typedarray-equality.ts';
 
 function Swap16(src) {
     return (((src >>> 8) & 0xFF) |
@@ -531,7 +532,12 @@ class FLVDemuxer {
 
             if (aacData.packetType === 0) {  // AAC sequence header (AudioSpecificConfig)
                 if (meta.config) {
-                    Log.w(this.TAG, 'Found another AudioSpecificConfig!');
+                    if (buffersAreEqual(aacData.data.config, meta.config)) {
+                        // If AudioSpecificConfig is not changed, ignore it to avoid generating initialization segment repeatedly
+                        return;
+                    } else {
+                        Log.w(this.TAG, 'AudioSpecificConfig has been changed, re-generate initialization segment');
+                    }
                 }
                 let misc = aacData.data;
                 meta.audioSampleRate = misc.samplingRate;
@@ -922,7 +928,13 @@ class FLVDemuxer {
             meta.duration = this._duration;
         } else {
             if (typeof meta.avcc !== 'undefined') {
-                Log.w(this.TAG, 'Found another AVCDecoderConfigurationRecord!');
+                let new_avcc = new Uint8Array(arrayBuffer, dataOffset, dataSize);
+                if (buffersAreEqual(new_avcc, meta.avcc)) {
+                    // AVCDecoderConfigurationRecord is not changed, ignore it to avoid initializaiton segment re-generating
+                    return;
+                } else {
+                    Log.w(this.TAG, 'AVCDecoderConfigurationRecord has been changed, re-generate initialization segment');
+                }
             }
         }
 
@@ -1090,7 +1102,13 @@ class FLVDemuxer {
             meta.duration = this._duration;
         } else {
             if (typeof meta.hvcc !== 'undefined') {
-                Log.w(this.TAG, 'Found another HEVCDecoderConfigurationRecord!');
+                let new_hvcc = new Uint8Array(arrayBuffer, dataOffset, dataSize);
+                if (buffersAreEqual(new_hvcc, meta.hvcc)) {
+                    // HEVCDecoderConfigurationRecord not changed, ignore it to avoid initializaiton segment re-generating
+                    return;
+                } else {
+                    Log.w(this.TAG, 'HEVCDecoderConfigurationRecord has been changed, re-generate initialization segment');
+                }
             }
         }
 
