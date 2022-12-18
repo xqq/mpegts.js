@@ -121,8 +121,7 @@ class TSDemuxer extends BaseDemuxer {
         let ts_packet_size = 188;
 
         if (data.byteLength <= 3 * ts_packet_size) {
-            Log.e('TSDemuxer', `Probe data ${data.byteLength} bytes is too few for judging MPEG-TS stream format!`);
-            return {match: false};
+            return {needMoreData: true};
         }
 
         while (sync_offset === -1) {
