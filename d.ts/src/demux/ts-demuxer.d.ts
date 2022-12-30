@@ -71,6 +71,7 @@ declare class TSDemuxer extends BaseDemuxer {
     private dispatchAudioMediaSegment;
     private dispatchAudioVideoMediaSegment;
     private parseAACPayload;
+    private parseMP3Payload;
     private detectAudioMetadataChange;
     private dispatchAudioInitSegment;
     private dispatchPESPrivateDataDescriptor;

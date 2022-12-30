@@ -35,10 +35,12 @@ export class PMT {
         h264: number | undefined,
         h265: number | undefined;
         adts_aac: number | undefined
+        mp3: number | undefined
     } = {
         h264: undefined,
         h265: undefined,
-        adts_aac: undefined
+        adts_aac: undefined,
+        mp3: undefined
     };
 
     pes_private_data_pids: {
