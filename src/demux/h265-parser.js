@@ -107,7 +107,7 @@ class H265NaluParser {
                 gb.readByte(); gb.readByte(); gb.readByte(); gb.readByte(); // sub_layer_profile_compatibility_flag
                 gb.readByte(); gb.readByte(); gb.readByte(); gb.readByte(); gb.readByte(); gb.readByte();
             }
-            if (sub_layer_profile_present_flag[i]) {
+            if (sub_layer_level_present_flag[i]) {
                 gb.readByte();
             }
         }

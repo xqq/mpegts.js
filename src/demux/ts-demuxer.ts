@@ -889,7 +889,7 @@ class TSDemuxer extends BaseDemuxer {
                         this.dispatchVideoInitSegment();
                     }
                 }
-            } else if (nalu_hvc1.type === H265NaluType.kSliceIDR_W_RADL || nalu_hvc1.type === H265NaluType.kSliceIDR_N_LP) {
+            } else if (nalu_hvc1.type === H265NaluType.kSliceIDR_W_RADL || nalu_hvc1.type === H265NaluType.kSliceIDR_N_LP || nalu_hvc1.type === H265NaluType.kSliceCRA_NUT) {
                 keyframe = true;
             }
 
