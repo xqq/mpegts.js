@@ -33,10 +33,14 @@ export class PMT {
 
     common_pids: {
         h264: number | undefined,
+        h265: number | undefined;
         adts_aac: number | undefined
+        mp3: number | undefined
     } = {
         h264: undefined,
-        adts_aac: undefined
+        h265: undefined,
+        adts_aac: undefined,
+        mp3: undefined
     };
 
     pes_private_data_pids: {
@@ -49,6 +53,10 @@ export class PMT {
 
     scte_35_pids: {
         [pid: number]: boolean
+    } = {};
+
+    smpte2038_pids: {
+        [oid: number]: boolean
     } = {};
 }
 

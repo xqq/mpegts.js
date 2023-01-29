@@ -26,7 +26,9 @@ export declare class PMT {
     pid_stream_type: PIDToStreamTypeMap;
     common_pids: {
         h264: number | undefined;
+        h265: number | undefined;
         adts_aac: number | undefined;
+        mp3: number | undefined;
     };
     pes_private_data_pids: {
         [pid: number]: boolean;
@@ -36,6 +38,9 @@ export declare class PMT {
     };
     scte_35_pids: {
         [pid: number]: boolean;
+    };
+    smpte2038_pids: {
+        [oid: number]: boolean;
     };
 }
 export interface ProgramToPMTMap {

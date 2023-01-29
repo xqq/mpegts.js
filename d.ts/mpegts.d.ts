@@ -261,6 +261,7 @@ declare namespace Mpegts {
         networkStreamIO: boolean;
         networkLoaderName: string;
         nativeMP4H264Playback: boolean;
+        nativeMP4H265Playback: boolean;
         nativeWebmVP8Playback: boolean;
         nativeWebmVP9Playback: boolean;
     }
@@ -380,6 +381,7 @@ declare namespace Mpegts {
         METADATA_ARRIVED: string;
         SCRIPTDATA_ARRIVED: string;
         TIMED_ID3_METADATA_ARRIVED: string;
+        SMPTE2038_METADATA_ARRIVED: string;
         PES_PRIVATE_DATA_DESCRIPTOR: string;
         PES_PRIVATE_DATA_ARRIVED: string;
         STATISTICS_INFO: string;

@@ -1,6 +1,6 @@
 {
   "name": "mpegts.js",
-  "version": "1.6.10",
+  "version": "1.7.2",
   "description": "HTML5 MPEG2-TS Stream Player",
   "main": "./dist/mpegts.js",
   "types": "./d.ts/mpegts.d.ts",
@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "^10.12.18",
+    "@types/express-serve-static-core": "4.17.30",
     "@typescript-eslint/eslint-plugin": "^1.4.2",
     "@typescript-eslint/parser": "^1.4.2",
     "@webpack-cli/serve": "^1.7.0",
@@ -44,7 +45,10 @@
     "webpack-cli": "^4.4.0",
     "webpack-dev-server": "^4.9.3",
     "ws": ">=7.4.6",
-    "xmlhttprequest-ssl": ">=1.6.2"
+    "xmlhttprequest-ssl": ">=1.6.2",
+    "loader-utils": ">=1.4.1",
+    "socket.io-parser": ">=3.3.3",
+    "minimist": ">=1.2.6"
   },
   "author": "zheng qian <xqq@xqq.im>",
   "license": "Apache-2.0"

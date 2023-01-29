@@ -234,7 +234,6 @@ class TransmuxingController {
     }
 
     _onInitChunkArrival(data, byteStart) {
-        let probeData = null;
         let consumed = 0;
 
         if (byteStart > 0) {
@@ -243,74 +242,97 @@ class TransmuxingController {
             this._demuxer.timestampBase = this._mediaDataSource.segments[this._currentSegmentIndex].timestampBase;
 
             consumed = this._demuxer.parseChunks(data, byteStart);
-        } else if ((probeData = TSDemuxer.probe(data)).match) {
-            let demuxer = this._demuxer = new TSDemuxer(probeData, this._config);
-
-            if (!this._remuxer) {
-                this._remuxer = new MP4Remuxer(this._config);
-            }
-
-            demuxer.onError = this._onDemuxException.bind(this);
-            demuxer.onMediaInfo = this._onMediaInfo.bind(this);
-            demuxer.onMetaDataArrived = this._onMetaDataArrived.bind(this);
-            demuxer.onTimedID3Metadata = this._onTimedID3Metadata.bind(this);
-            demuxer.onSCTE35Metadata = this._onSCTE35Metadata.bind(this);
-            demuxer.onPESPrivateDataDescriptor = this._onPESPrivateDataDescriptor.bind(this);
-            demuxer.onPESPrivateData = this._onPESPrivateData.bind(this);
-
-            this._remuxer.bindDataSource(this._demuxer);
-            this._demuxer.bindDataSource(this._ioctl);
-
-            this._remuxer.onInitSegment = this._onRemuxerInitSegmentArrival.bind(this);
-            this._remuxer.onMediaSegment = this._onRemuxerMediaSegmentArrival.bind(this);
-
-            consumed = this._demuxer.parseChunks(data, byteStart);
-        } else if ((probeData = FLVDemuxer.probe(data)).match) {
-            // Always create new FLVDemuxer
-            this._demuxer = new FLVDemuxer(probeData, this._config);
-
-            if (!this._remuxer) {
-                this._remuxer = new MP4Remuxer(this._config);
-            }
-
-            let mds = this._mediaDataSource;
-            if (mds.duration != undefined && !isNaN(mds.duration)) {
-                this._demuxer.overridedDuration = mds.duration;
-            }
-            if (typeof mds.hasAudio === 'boolean') {
-                this._demuxer.overridedHasAudio = mds.hasAudio;
-            }
-            if (typeof mds.hasVideo === 'boolean') {
-                this._demuxer.overridedHasVideo = mds.hasVideo;
-            }
-
-            this._demuxer.timestampBase = mds.segments[this._currentSegmentIndex].timestampBase;
-
-            this._demuxer.onError = this._onDemuxException.bind(this);
-            this._demuxer.onMediaInfo = this._onMediaInfo.bind(this);
-            this._demuxer.onMetaDataArrived = this._onMetaDataArrived.bind(this);
-            this._demuxer.onScriptDataArrived = this._onScriptDataArrived.bind(this);
-
-            this._remuxer.bindDataSource(this._demuxer
-                         .bindDataSource(this._ioctl
-            ));
-
-            this._remuxer.onInitSegment = this._onRemuxerInitSegmentArrival.bind(this);
-            this._remuxer.onMediaSegment = this._onRemuxerMediaSegmentArrival.bind(this);
-
-            consumed = this._demuxer.parseChunks(data, byteStart);
         } else {
-            probeData = null;
-            Log.e(this.TAG, 'Non MPEG-TS/FLV, Unsupported media type!');
-            Promise.resolve().then(() => {
-                this._internalAbort();
-            });
-            this._emitter.emit(TransmuxingEvents.DEMUX_ERROR, DemuxErrors.FORMAT_UNSUPPORTED, 'Non MPEG-TS/FLV, Unsupported media type!');
+            // byteStart == 0, Initial data, probe it first
+            let probeData = null;
 
-            consumed = 0;
+            // Try probing input data as FLV first
+            probeData = FLVDemuxer.probe(data);
+            if (probeData.match) {
+                // Hit as FLV
+                this._setupFLVDemuxerRemuxer(probeData);
+                consumed = this._demuxer.parseChunks(data, byteStart);
+            }
+
+            if (!probeData.match && !probeData.needMoreData) {
+                // Non-FLV, try MPEG-TS probe
+                probeData = TSDemuxer.probe(data);
+                if (probeData.match) {
+                    // Hit as MPEG-TS
+                    this._setupTSDemuxerRemuxer(probeData);
+                    consumed = this._demuxer.parseChunks(data, byteStart);
+                }
+            }
+
+            if (!probeData.match && !probeData.needMoreData) {
+                // Both probing as FLV / MPEG-TS failed, report error
+                probeData = null;
+                Log.e(this.TAG, 'Non MPEG-TS/FLV, Unsupported media type!');
+                Promise.resolve().then(() => {
+                    this._internalAbort();
+                });
+                this._emitter.emit(TransmuxingEvents.DEMUX_ERROR, DemuxErrors.FORMAT_UNSUPPORTED, 'Non MPEG-TS/FLV, Unsupported media type!');
+                // Leave consumed as 0
+            }
         }
 
         return consumed;
+    }
+
+    _setupFLVDemuxerRemuxer(probeData) {
+        this._demuxer = new FLVDemuxer(probeData, this._config);
+
+        if (!this._remuxer) {
+            this._remuxer = new MP4Remuxer(this._config);
+        }
+
+        let mds = this._mediaDataSource;
+        if (mds.duration != undefined && !isNaN(mds.duration)) {
+            this._demuxer.overridedDuration = mds.duration;
+        }
+        if (typeof mds.hasAudio === 'boolean') {
+            this._demuxer.overridedHasAudio = mds.hasAudio;
+        }
+        if (typeof mds.hasVideo === 'boolean') {
+            this._demuxer.overridedHasVideo = mds.hasVideo;
+        }
+
+        this._demuxer.timestampBase = mds.segments[this._currentSegmentIndex].timestampBase;
+
+        this._demuxer.onError = this._onDemuxException.bind(this);
+        this._demuxer.onMediaInfo = this._onMediaInfo.bind(this);
+        this._demuxer.onMetaDataArrived = this._onMetaDataArrived.bind(this);
+        this._demuxer.onScriptDataArrived = this._onScriptDataArrived.bind(this);
+
+        this._remuxer.bindDataSource(this._demuxer
+                        .bindDataSource(this._ioctl
+        ));
+
+        this._remuxer.onInitSegment = this._onRemuxerInitSegmentArrival.bind(this);
+        this._remuxer.onMediaSegment = this._onRemuxerMediaSegmentArrival.bind(this);
+    }
+
+    _setupTSDemuxerRemuxer(probeData) {
+        let demuxer = this._demuxer = new TSDemuxer(probeData, this._config);
+
+        if (!this._remuxer) {
+            this._remuxer = new MP4Remuxer(this._config);
+        }
+
+        demuxer.onError = this._onDemuxException.bind(this);
+        demuxer.onMediaInfo = this._onMediaInfo.bind(this);
+        demuxer.onMetaDataArrived = this._onMetaDataArrived.bind(this);
+        demuxer.onTimedID3Metadata = this._onTimedID3Metadata.bind(this);
+        demuxer.onSMPTE2038Metadata = this._onSMPTE2038Metadata.bind(this);
+        demuxer.onSCTE35Metadata = this._onSCTE35Metadata.bind(this);
+        demuxer.onPESPrivateDataDescriptor = this._onPESPrivateDataDescriptor.bind(this);
+        demuxer.onPESPrivateData = this._onPESPrivateData.bind(this);
+
+        this._remuxer.bindDataSource(this._demuxer);
+        this._demuxer.bindDataSource(this._ioctl);
+
+        this._remuxer.onInitSegment = this._onRemuxerInitSegmentArrival.bind(this);
+        this._remuxer.onMediaSegment = this._onRemuxerMediaSegmentArrival.bind(this);
     }
 
     _onMediaInfo(mediaInfo) {
@@ -360,6 +382,25 @@ class TransmuxingController {
         }
 
         this._emitter.emit(TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED, timed_id3_metadata);
+    }
+
+    _onSMPTE2038Metadata(smpte2038_metadata) {
+        let timestamp_base = this._remuxer.getTimestampBase();
+        if (timestamp_base == undefined) { return; }
+
+        if (smpte2038_metadata.pts != undefined) {
+            smpte2038_metadata.pts -= timestamp_base;
+        }
+
+        if (smpte2038_metadata.dts != undefined) {
+            smpte2038_metadata.dts -= timestamp_base;
+        }
+
+        if (smpte2038_metadata.nearest_pts != undefined) {
+            smpte2038_metadata.nearest_pts -= timestamp_base;
+        }
+
+        this._emitter.emit(TransmuxingEvents.SMPTE2038_METADATA_ARRIVED, smpte2038_metadata);
     }
 
     _onSCTE35Metadata(scte35) {

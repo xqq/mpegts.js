@@ -112,10 +112,12 @@ Return a `FeatureList` object which has following details:
 | Field                   | Type      | Description                              |
 | ----------------------- | --------- | ---------------------------------------- |
 | `msePlayback`           | `boolean` | Same to `mpegts.isSupported()`, indicates whether basic playback works on your browser. |
-| `mseLivePlayback`       | `boolean` | Indicates whether HTTP MPEG2-TS/FLV live stream can works on your browser. |
+| `mseLivePlayback`       | `boolean` | Indicates whether HTTP MPEG2-TS/FLV live stream can work on your browser. |
+| `mseH265Playback`       | `boolean` | Indicates whether H265 over MPEG2-TS/FLV stream can work on your browser. |
 | `networkStreamIO`       | `boolean` | Indicates whether the network loader is streaming. |
 | `networkLoaderName`     | `string`  | Indicates the network loader type name.  |
 | `nativeMP4H264Playback` | `boolean` | Indicates whether your browser support H.264 MP4 video file natively. |
+| `nativeMP4H265Playback` | `boolean` | Indicates whether your browser support H.265 MP4 video file natively. |
 | `nativeWebmVP8Playback` | `boolean` | Indicates whether your browser support WebM VP8 video file natively. |
 | `nativeWebmVP9Playback` | `boolean` | Indicates whether your browser support WebM VP9 video file natively. |
 
@@ -195,6 +197,7 @@ A series of constants that can be used with `Player.on()` / `Player.off()`. They
 | METADATA_ARRIVED    | Provides metadata which FLV file(stream) can contain with an "onMetaData" marker.  |
 | SCRIPTDATA_ARRIVED  | Provides scriptdata (OnCuePoint / OnTextData) which FLV file(stream) can contain. |
 | TIMED_ID3_METADATA_ARRIVED |  Provides Timed ID3 Metadata packets containing private data (stream_type=0x15) callback |
+| SMPTE2038_METADATA_ARRIVED |  Provides SMPTE2038 Metadata packets containing private data callback |
 | SCTE35_METADATA_ARRIVED |  Provides SCTE35 Metadata packets containing section (stream_type=0x86) callback |
 | PES_PRIVATE_DATA_ARRIVED | Provides ISO/IEC 13818-1 PES packets containing private data (stream_type=0x06) callback |
 | STATISTICS_INFO     | Provides playback statistics information like dropped frames, current speed, etc. |

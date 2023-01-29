@@ -31,7 +31,14 @@ declare class TSDemuxer extends BaseDemuxer {
     constructor(probe_data: any, config: any);
     destroy(): void;
     static probe(buffer: ArrayBuffer): {
+        needMoreData: boolean;
+        match?: undefined;
+        consumed?: undefined;
+        ts_packet_size?: undefined;
+        sync_offset?: undefined;
+    } | {
         match: boolean;
+        needMoreData?: undefined;
         consumed?: undefined;
         ts_packet_size?: undefined;
         sync_offset?: undefined;
@@ -40,6 +47,7 @@ declare class TSDemuxer extends BaseDemuxer {
         consumed: number;
         ts_packet_size: number;
         sync_offset: number;
+        needMoreData?: undefined;
     };
     bindDataSource(loader: any): this;
     resetMediaInfo(): void;
@@ -56,6 +64,7 @@ declare class TSDemuxer extends BaseDemuxer {
     private parsePMT;
     private parseSCTE35;
     private parseH264Payload;
+    private parseH265Payload;
     private detectVideoMetadataChange;
     private isInitSegmentDispatched;
     private dispatchVideoInitSegment;
@@ -63,10 +72,12 @@ declare class TSDemuxer extends BaseDemuxer {
     private dispatchAudioMediaSegment;
     private dispatchAudioVideoMediaSegment;
     private parseAACPayload;
+    private parseMP3Payload;
     private detectAudioMetadataChange;
     private dispatchAudioInitSegment;
     private dispatchPESPrivateDataDescriptor;
     private parsePESPrivateDataPayload;
     private parseTimedID3MetadataPayload;
+    private parseSMPTE2038MetadataPayload;
 }
 export default TSDemuxer;
