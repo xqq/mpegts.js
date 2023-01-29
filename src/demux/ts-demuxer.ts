@@ -110,6 +110,8 @@ class TSDemuxer extends BaseDemuxer {
     private video_track_ = {type: 'video', id: 1, sequenceNumber: 0, samples: [], length: 0};
     private audio_track_ = {type: 'audio', id: 2, sequenceNumber: 0, samples: [], length: 0};
 
+    public preferred_secondary_audio = false;
+
     public constructor(probe_data: any, config: any) {
         super();
 
@@ -733,7 +735,7 @@ class TSDemuxer extends BaseDemuxer {
                 pmt.common_pids.h264 = elementary_PID;
             } else if (stream_type === StreamType.kH265 && !pmt.common_pids.h264 && !pmt.common_pids.h265) {
                 pmt.common_pids.h265 = elementary_PID;
-            } else if (stream_type === StreamType.kADTSAAC && !pmt.common_pids.adts_aac) {
+            } else if (stream_type === StreamType.kADTSAAC && (!pmt.common_pids.adts_aac || this.preferred_secondary_audio)) {
                 pmt.common_pids.adts_aac = elementary_PID;
             } else if ((stream_type === StreamType.kMPEG1Audio || stream_type === StreamType.kMPEG2Audio) && !pmt.common_pids.mp3) {
                 pmt.common_pids.mp3 = elementary_PID;
@@ -1416,7 +1418,7 @@ class TSDemuxer extends BaseDemuxer {
         if (pts != undefined) {
             let pts_ms = Math.floor(pts / this.timescale_);
             timed_id3_metadata.pts = pts_ms;
-        } 
+        }
 
         if (dts != undefined) {
             let dts_ms = Math.floor(dts / this.timescale_);
