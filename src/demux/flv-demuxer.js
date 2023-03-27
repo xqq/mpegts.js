@@ -845,16 +845,29 @@ class FLVDemuxer {
 
         let spec = (new Uint8Array(arrayBuffer, dataOffset, dataSize))[0];
 
-        let frameType = (spec & 240) >>> 4;
-        let codecId = spec & 15;
+        let isExHeader = (spec & 0b10000000) !== 0;
+        let frameType = (spec & 0b01110000) >>> 4;
 
-        if (codecId === 7) { // AVC
-            this._parseAVCVideoPacket(arrayBuffer, dataOffset + 1, dataSize - 1, tagTimestamp, tagPosition, frameType);
-        } else if (codecId === 12) { // HEVC
-            this._parseHEVCVideoPacket(arrayBuffer, dataOffset + 1, dataSize - 1, tagTimestamp, tagPosition, frameType);
+        if (!isExHeader) {
+            let codecId = spec & 0b00001111;
+            if (codecId === 7) { // AVC
+                this._parseAVCVideoPacket(arrayBuffer, dataOffset + 1, dataSize - 1, tagTimestamp, tagPosition, frameType);
+            } else if (codecId === 12) { // HEVC
+                this._parseHEVCVideoPacket(arrayBuffer, dataOffset + 1, dataSize - 1, tagTimestamp, tagPosition, frameType);
+            } else {
+                this._onError(DemuxErrors.CODEC_UNSUPPORTED, `Flv: Unsupported codec in video frame: ${codecId}`);
+                return;
+            }
         } else {
-            this._onError(DemuxErrors.CODEC_UNSUPPORTED, `Flv: Unsupported codec in video frame: ${codecId}`);
-            return;
+            let packetType = spec & 0b00001111;
+            let fourcc = String.fromCharCode(... (new Uint8Array(arrayBuffer, dataOffset, dataSize)).slice(1, 5));
+
+            if (fourcc === 'hvc1') { // HEVC
+                this._parseEnhancedHEVCVideoPacket(arrayBuffer, dataOffset + 5, dataSize - 5, tagTimestamp, tagPosition, frameType, packetType);
+            } else {
+                this._onError(DemuxErrors.CODEC_UNSUPPORTED, `Flv: Unsupported codec in video frame: ${fourcc}`);
+                return;
+            }
         }
     }
 
@@ -900,6 +913,32 @@ class FLVDemuxer {
             this._parseHEVCDecoderConfigurationRecord(arrayBuffer, dataOffset + 4, dataSize - 4);
         } else if (packetType === 1) {  // One or more Nalus
             this._parseHEVCVideoData(arrayBuffer, dataOffset + 4, dataSize - 4, tagTimestamp, tagPosition, frameType, cts);
+        } else if (packetType === 2) {
+            // empty, HEVC end of sequence
+        } else {
+            this._onError(DemuxErrors.FORMAT_ERROR, `Flv: Invalid video packet type ${packetType}`);
+            return;
+        }
+    }
+
+    _parseEnhancedHEVCVideoPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, packetType) {
+        if (dataSize < 4) {
+            Log.w(this.TAG, 'Flv: Invalid HEVC packet, missing HEVCPacketType or/and CompositionTime');
+            return;
+        }
+
+        let le = this._littleEndian;
+        let v = new DataView(arrayBuffer, dataOffset, dataSize);
+
+        if (packetType === 0) {  // HEVCDecoderConfigurationRecord
+            this._parseHEVCDecoderConfigurationRecord(arrayBuffer, dataOffset, dataSize);
+        } else if (packetType === 1) {  // One or more Nalus
+            let cts_unsigned = v.getUint32(0, !le) & 0x00FFFFFF;
+            let cts = (cts_unsigned << 8) >> 8;  // convert to 24-bit signed int
+
+            this._parseHEVCVideoData(arrayBuffer, dataOffset + 3, dataSize - 3, tagTimestamp, tagPosition, frameType, cts);
+        } else if (packetType === 3) {
+            this._parseHEVCVideoData(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, cts);
         } else if (packetType === 2) {
             // empty, HEVC end of sequence
         } else {
