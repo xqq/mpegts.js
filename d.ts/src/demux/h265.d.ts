@@ -35,6 +35,7 @@ export declare type VPSHEVCDecoderConfigurationRecordType = {
 export declare type SPSHEVCDecoderConfigurationRecordType = {
     general_profile_space: number;
     general_tier_flag: number;
+    general_level_idc: number;
     general_profile_idc: number;
     general_profile_compatibility_flags_1: number;
     general_profile_compatibility_flags_2: number;

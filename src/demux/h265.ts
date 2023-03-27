@@ -130,6 +130,7 @@ export type VPSHEVCDecoderConfigurationRecordType = {
 export type SPSHEVCDecoderConfigurationRecordType = {
     general_profile_space: number;
     general_tier_flag: number;
+    general_level_idc: number;
     general_profile_idc: number;
     general_profile_compatibility_flags_1: number;
     general_profile_compatibility_flags_2: number;
@@ -173,7 +174,7 @@ export class HEVCDecoderConfigurationRecord {
         data[9] = detail.general_constraint_indicator_flags_4;
         data[10] = detail.general_constraint_indicator_flags_5;
         data[11] = detail.general_constraint_indicator_flags_6;
-        data[12] = 0x3C;
+        data[12] = detail.general_level_idc;
         data[13] = 0xF0 | ((detail.min_spatial_segmentation_idc & 0x0F00) >> 8)
         data[14] = (detail.min_spatial_segmentation_idc & 0xFF);
         data[15] = 0xFC | (detail.parallelismType & 0x03);
