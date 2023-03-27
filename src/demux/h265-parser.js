@@ -229,7 +229,7 @@ class H265NaluParser {
                 let sar_w_table = [1, 12, 10, 16, 40, 24, 20, 32, 80, 18, 15, 64, 160, 4, 3, 2];
                 let sar_h_table = [1, 11, 11, 11, 33, 11, 11, 11, 33, 11, 11, 33,  99, 3, 2, 1];
 
-                if (aspect_ratio_idc > 0 && aspect_ratio_idc < 16) {
+                if (aspect_ratio_idc > 0 && aspect_ratio_idc <= 16) {
                     sar_width = sar_w_table[aspect_ratio_idc - 1];
                     sar_height = sar_h_table[aspect_ratio_idc - 1];
                 } else if (aspect_ratio_idc === 255) {
@@ -262,10 +262,10 @@ class H265NaluParser {
             let frame_field_info_present_flag = gb.readBool();
             default_display_window_flag = gb.readBool();
             if (default_display_window_flag) {
-                left_offset += gb.readUEG();
-                right_offset += gb.readUEG();
-                top_offset += gb.readUEG();
-                bottom_offset += gb.readUEG();
+                gb.readUEG();
+                gb.readUEG();
+                gb.readUEG();
+                gb.readUEG();
             }
             let vui_timing_info_present_flag = gb.readBool();
             if (vui_timing_info_present_flag) {
@@ -354,8 +354,11 @@ class H265NaluParser {
 
         // for meta data
         let codec_mimetype = `hvc1.${general_profile_idc}.1.L${general_level_idc}.B0`;
-        let codec_width = pic_width_in_luma_samples;
-        let codec_height = pic_height_in_luma_samples;
+
+        let sub_wc = (chroma_format_idc === 1 || chroma_format_idc === 2) ? 2 : 1;
+        let sub_hc = (chroma_format_idc === 1) ? 2 : 1;
+        let codec_width = pic_width_in_luma_samples - (left_offset + right_offset) * sub_wc;
+        let codec_height = pic_height_in_luma_samples - (top_offset + bottom_offset) * sub_hc;
         let sar_scale = 1;
         if (sar_width !== 1 && sar_height !== 1) {
             sar_scale = sar_width / sar_height;
