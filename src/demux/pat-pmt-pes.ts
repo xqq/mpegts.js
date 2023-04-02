@@ -14,6 +14,7 @@ export enum StreamType {
     kMPEG2Audio = 0x04,
     kPESPrivateData = 0x06,
     kADTSAAC = 0x0F,
+    kLOASAAC = 0x11,
     kID3 = 0x15,
     kSCTE35 = 0x86,
     kH264 = 0x1b,
@@ -34,12 +35,14 @@ export class PMT {
     common_pids: {
         h264: number | undefined,
         h265: number | undefined;
-        adts_aac: number | undefined
+        adts_aac: number | undefined,
+        loas_aac: number | undefined,
         mp3: number | undefined
     } = {
         h264: undefined,
         h265: undefined,
         adts_aac: undefined,
+        loas_aac: undefined,
         mp3: undefined
     };
 
