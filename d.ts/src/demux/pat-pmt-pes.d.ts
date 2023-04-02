@@ -11,6 +11,7 @@ export declare enum StreamType {
     kMPEG2Audio = 4,
     kPESPrivateData = 6,
     kADTSAAC = 15,
+    kLOASAAC = 17,
     kID3 = 21,
     kSCTE35 = 134,
     kH264 = 27,
@@ -28,6 +29,7 @@ export declare class PMT {
         h264: number | undefined;
         h265: number | undefined;
         adts_aac: number | undefined;
+        loas_aac: number | undefined;
         mp3: number | undefined;
     };
     pes_private_data_pids: {

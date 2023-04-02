@@ -24,7 +24,7 @@ import BaseDemuxer from './base-demuxer';
 import { PAT, PESData, SectionData, SliceQueue, PIDToSliceQueues, PMT, ProgramToPMTMap, StreamType } from './pat-pmt-pes';
 import { AVCDecoderConfigurationRecord, H264AnnexBParser, H264NaluAVC1, H264NaluPayload, H264NaluType } from './h264';
 import SPSParser from './sps-parser';
-import { AACADTSParser, AACFrame, AudioSpecificConfig } from './aac';
+import { AACADTSParser, AACFrame, AACLOASParser, AudioSpecificConfig, LOASAACFrame } from './aac';
 import { MPEG4AudioObjectTypes, MPEG4SamplingFrequencyIndex } from './mpeg4-audio';
 import { PESPrivateData, PESPrivateDataDescriptor } from './pes-private-data';
 import { readSCTE35, SCTE35Data } from './scte35';
@@ -106,6 +106,7 @@ class TSDemuxer extends BaseDemuxer {
     private audio_init_segment_dispatched_ = false;
     private video_metadata_changed_ = false;
     private audio_metadata_changed_ = false;
+    private loas_previous_frame: LOASAACFrame | null = null;
 
     private video_track_ = {type: 'video', id: 1, sequenceNumber: 0, samples: [], length: 0};
     private audio_track_ = {type: 'audio', id: 2, sequenceNumber: 0, samples: [], length: 0};
@@ -289,6 +290,7 @@ class TSDemuxer extends BaseDemuxer {
                     if (pid === this.pmt_.common_pids.h264
                             || pid === this.pmt_.common_pids.h265
                             || pid === this.pmt_.common_pids.adts_aac
+                            || pid === this.pmt_.common_pids.loas_aac
                             || pid === this.pmt_.common_pids.mp3
                             || this.pmt_.pes_private_data_pids[pid] === true
                             || this.pmt_.timed_id3_pids[pid] === true) {
@@ -586,7 +588,10 @@ class TSDemuxer extends BaseDemuxer {
                     }
                     break;
                 case StreamType.kADTSAAC:
-                    this.parseAACPayload(payload, pts);
+                    this.parseADTSAACPayload(payload, pts);
+                    break;
+                case StreamType.kLOASAAC:
+                    this.parseLOASAACPayload(payload, pts);
                     break;
                 case StreamType.kID3:
                     this.parseTimedID3MetadataPayload(payload, pts, dts, pes_data.pid, stream_id);
@@ -733,9 +738,11 @@ class TSDemuxer extends BaseDemuxer {
                 pmt.common_pids.h264 = elementary_PID;
             } else if (stream_type === StreamType.kH265 && !pmt.common_pids.h264 && !pmt.common_pids.h265) {
                 pmt.common_pids.h265 = elementary_PID;
-            } else if (stream_type === StreamType.kADTSAAC && !pmt.common_pids.adts_aac) {
+            } else if (stream_type === StreamType.kADTSAAC && !pmt.common_pids.adts_aac && !pmt.common_pids.loas_aac && !pmt.common_pids.mp3) {
                 pmt.common_pids.adts_aac = elementary_PID;
-            } else if ((stream_type === StreamType.kMPEG1Audio || stream_type === StreamType.kMPEG2Audio) && !pmt.common_pids.mp3) {
+            } else if (stream_type === StreamType.kLOASAAC && !pmt.common_pids.adts_aac && !pmt.common_pids.loas_aac && !pmt.common_pids.mp3) {
+                pmt.common_pids.loas_aac = elementary_PID;
+            } else if ((stream_type === StreamType.kMPEG1Audio || stream_type === StreamType.kMPEG2Audio) && !pmt.common_pids.adts_aac && !pmt.common_pids.loas_aac && !pmt.common_pids.mp3) {
                 pmt.common_pids.mp3 = elementary_PID;
             } else if (stream_type === StreamType.kPESPrivateData) {
                 pmt.pes_private_data_pids[elementary_PID] = true;
@@ -774,7 +781,7 @@ class TSDemuxer extends BaseDemuxer {
             if (pmt.common_pids.h264 || pmt.common_pids.h265) {
                 this.has_video_ = true;
             }
-            if (pmt.common_pids.adts_aac || pmt.common_pids.mp3) {
+            if (pmt.common_pids.adts_aac || pmt.common_pids.loas_aac || pmt.common_pids.mp3) {
                 this.has_audio_ = true;
             }
         }
@@ -1079,7 +1086,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseAACPayload(data: Uint8Array, pts: number) {
+    private parseADTSAACPayload(data: Uint8Array, pts: number) {
         if (this.has_video_ && !this.video_init_segment_dispatched_) {
             // If first video IDR frame hasn't been detected,
             // Wait for first IDR frame and video init segment being dispatched
@@ -1165,6 +1172,100 @@ class TSDemuxer extends BaseDemuxer {
 
         if (adts_parser.hasIncompleteData()) {
             this.aac_last_incomplete_data_ = adts_parser.getIncompleteData();
+        }
+
+        if (last_sample_pts_ms) {
+            this.aac_last_sample_pts_ = last_sample_pts_ms;
+        }
+    }
+
+    private parseLOASAACPayload(data: Uint8Array, pts: number) {
+        if (this.has_video_ && !this.video_init_segment_dispatched_) {
+            // If first video IDR frame hasn't been detected,
+            // Wait for first IDR frame and video init segment being dispatched
+            return;
+        }
+
+        if (this.aac_last_incomplete_data_) {
+            let buf = new Uint8Array(data.byteLength + this.aac_last_incomplete_data_.byteLength);
+            buf.set(this.aac_last_incomplete_data_, 0);
+            buf.set(data, this.aac_last_incomplete_data_.byteLength);
+            data = buf;
+        }
+
+        let ref_sample_duration: number;
+        let base_pts_ms: number;
+
+        if (pts != undefined) {
+            base_pts_ms = pts / this.timescale_;
+        }
+        if (this.audio_metadata_.codec === 'aac') {
+            if (pts == undefined && this.aac_last_sample_pts_ != undefined) {
+                ref_sample_duration = 1024 / this.audio_metadata_.sampling_frequency * 1000;
+                base_pts_ms = this.aac_last_sample_pts_ + ref_sample_duration;
+            } else if (pts == undefined){
+                Log.w(this.TAG, `AAC: Unknown pts`);
+                return;
+            }
+
+            if (this.aac_last_incomplete_data_ && this.aac_last_sample_pts_) {
+                ref_sample_duration = 1024 / this.audio_metadata_.sampling_frequency * 1000;
+                let new_pts_ms = this.aac_last_sample_pts_ + ref_sample_duration;
+
+                if (Math.abs(new_pts_ms - base_pts_ms) > 1) {
+                    Log.w(this.TAG, `AAC: Detected pts overlapped, ` +
+                                    `expected: ${new_pts_ms}ms, PES pts: ${base_pts_ms}ms`);
+                    base_pts_ms = new_pts_ms;
+                }
+            }
+        }
+
+        let loas_parser = new AACLOASParser(data);
+        let aac_frame: LOASAACFrame = null;
+        let sample_pts_ms = base_pts_ms;
+        let last_sample_pts_ms: number;
+
+        while ((aac_frame = loas_parser.readNextAACFrame(this.loas_previous_frame ?? undefined)) != null) {
+            this.loas_previous_frame = aac_frame;
+            ref_sample_duration = 1024 / aac_frame.sampling_frequency * 1000;
+            const audio_sample = {
+                codec: 'aac',
+                data: aac_frame
+            } as const;
+
+            if (this.audio_init_segment_dispatched_ == false) {
+                this.audio_metadata_ = {
+                    codec: 'aac',
+                    audio_object_type: aac_frame.audio_object_type,
+                    sampling_freq_index: aac_frame.sampling_freq_index,
+                    sampling_frequency: aac_frame.sampling_frequency,
+                    channel_config: aac_frame.channel_config
+                };
+                this.dispatchAudioInitSegment(audio_sample);
+            } else if (this.detectAudioMetadataChange(audio_sample)) {
+                // flush stashed frames before notify new AudioSpecificConfig
+                this.dispatchAudioMediaSegment();
+                // notify new AAC AudioSpecificConfig
+                this.dispatchAudioInitSegment(audio_sample);
+            }
+
+            last_sample_pts_ms = sample_pts_ms;
+            let sample_pts_ms_int = Math.floor(sample_pts_ms);
+
+            let aac_sample = {
+                unit: aac_frame.data,
+                length: aac_frame.data.byteLength,
+                pts: sample_pts_ms_int,
+                dts: sample_pts_ms_int
+            };
+            this.audio_track_.samples.push(aac_sample);
+            this.audio_track_.length += aac_frame.data.byteLength;
+
+            sample_pts_ms += ref_sample_duration;
+        }
+
+        if (loas_parser.hasIncompleteData()) {
+            this.aac_last_incomplete_data_ = loas_parser.getIncompleteData();
         }
 
         if (last_sample_pts_ms) {
