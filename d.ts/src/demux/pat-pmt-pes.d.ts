@@ -30,6 +30,7 @@ export declare class PMT {
         h265: number | undefined;
         adts_aac: number | undefined;
         loas_aac: number | undefined;
+        opus: number | undefined;
         mp3: number | undefined;
     };
     pes_private_data_pids: {
