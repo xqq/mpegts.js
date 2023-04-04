@@ -37,12 +37,14 @@ export class PMT {
         h265: number | undefined;
         adts_aac: number | undefined,
         loas_aac: number | undefined,
+        opus: number | undefined,
         mp3: number | undefined
     } = {
         h264: undefined,
         h265: undefined,
         adts_aac: undefined,
         loas_aac: undefined,
+        opus: undefined,
         mp3: undefined
     };
 
