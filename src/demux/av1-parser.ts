@@ -43,8 +43,8 @@ class AV1OBUParser {
                 size = 0;
                 for (let j = 0; ; j++) {
                     size |= (uint8array[i] & 0x7F) << (j * 7);
-                    if ((uint8array[i] & 0x80) === 0) { break; }
                     i += 1;
+                    if ((uint8array[i] & 0x80) === 0) { break; }
                 }
             }
             if (type === 1) { // OBU_SEQUENCE_HEADER
