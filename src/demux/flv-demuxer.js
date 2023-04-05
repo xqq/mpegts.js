@@ -24,6 +24,7 @@ import MediaInfo from '../core/media-info.js';
 import {IllegalStateException} from '../utils/exception.js';
 import H265Parser from './h265-parser.js';
 import buffersAreEqual from '../utils/typedarray-equality.ts';
+import AV1OBUParser from './av1-parser.ts';
 
 function Swap16(src) {
     return (((src >>> 8) & 0xFF) |
@@ -864,6 +865,8 @@ class FLVDemuxer {
 
             if (fourcc === 'hvc1') { // HEVC
                 this._parseEnhancedHEVCVideoPacket(arrayBuffer, dataOffset + 5, dataSize - 5, tagTimestamp, tagPosition, frameType, packetType);
+            } else if (fourcc === 'av01') { // HEVC
+                this._parseEnhancedAV1VideoPacket(arrayBuffer, dataOffset + 5, dataSize - 5, tagTimestamp, tagPosition, frameType, packetType);
             } else {
                 this._onError(DemuxErrors.CODEC_UNSUPPORTED, `Flv: Unsupported codec in video frame: ${fourcc}`);
                 return;
@@ -922,11 +925,6 @@ class FLVDemuxer {
     }
 
     _parseEnhancedHEVCVideoPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, packetType) {
-        if (dataSize < 4) {
-            Log.w(this.TAG, 'Flv: Invalid HEVC packet, missing HEVCPacketType or/and CompositionTime');
-            return;
-        }
-
         let le = this._littleEndian;
         let v = new DataView(arrayBuffer, dataOffset, dataSize);
 
@@ -941,6 +939,25 @@ class FLVDemuxer {
             this._parseHEVCVideoData(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, 0);
         } else if (packetType === 2) {
             // empty, HEVC end of sequence
+        } else {
+            this._onError(DemuxErrors.FORMAT_ERROR, `Flv: Invalid video packet type ${packetType}`);
+            return;
+        }
+    }
+
+    _parseEnhancedAV1VideoPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, packetType) {
+        let le = this._littleEndian;
+        let v = new DataView(arrayBuffer, dataOffset, dataSize);
+
+        if (packetType === 0) {  // AV1CodecConfigurationRecord
+            this._parseAV1CodecConfigurationRecord(arrayBuffer, dataOffset, dataSize);
+        } else if (packetType === 1) {  // One or more OBUs
+            this._parseAV1VideoData(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, 0);
+        } else if (packetType === 5) {
+            this._onError(DemuxErrors.FORMAT_ERROR, `Flv: Not Suported MP2T AV1 video packet type ${packetType}`);
+            return;
+        } else if (packetType === 2) {
+            // empty, AV1 end of sequence
         } else {
             this._onError(DemuxErrors.FORMAT_ERROR, `Flv: Invalid video packet type ${packetType}`);
             return;
@@ -1257,6 +1274,109 @@ class FLVDemuxer {
         this._onTrackMetadata('video', meta);
     }
 
+    _parseAV1CodecConfigurationRecord(arrayBuffer, dataOffset, dataSize) {
+        if (dataSize < 4) {
+            Log.w(this.TAG, 'Flv: Invalid AV1CodecConfigurationRecord, lack of data!');
+            return;
+        }
+
+        let meta = this._videoMetadata;
+        let track = this._videoTrack;
+        let le = this._littleEndian;
+        let v = new DataView(arrayBuffer, dataOffset, dataSize);
+
+        if (!meta) {
+            if (this._hasVideo === false && this._hasVideoFlagOverrided === false) {
+                this._hasVideo = true;
+                this._mediaInfo.hasVideo = true;
+            }
+
+            meta = this._videoMetadata = {};
+            meta.type = 'video';
+            meta.id = track.id;
+            meta.timescale = this._timescale;
+            meta.duration = this._duration;
+        } else {
+            if (typeof meta.av1c !== 'undefined') {
+                Log.w(this.TAG, 'Found another AV1CodecConfigurationRecord!');
+            }
+        }
+
+        let version = v.getUint8(0) & 0x7F;
+        let seq_profile = (v.getUint8(1) & 0xE0) >> 5;
+        let seq_level_idx = (v.getUint8(1) & 0x8F) >> 0;
+        let seq_tier = (v.getUint8(2) & 0x80) >> 7;
+
+        if (version !== 1) {
+            this._onError(DemuxErrors.FORMAT_ERROR, 'Flv: Invalid AV1CodecConfigurationRecord');
+            return;
+        }
+
+        const config = AV1OBUParser.parseOBUs(new Uint8Array(arrayBuffer, dataOffset + 4, dataSize - 4));
+        if (config == null) {
+            this._onError(DemuxErrors.FORMAT_ERROR, 'Flv: Invalid AV1CodecConfigurationRecord');
+            return;
+        }
+        meta.codecWidth = config.codec_size.width;
+        meta.codecHeight = config.codec_size.height;
+        meta.presentWidth = config.present_size.width;
+        meta.presentHeight = config.present_size.height;
+
+        meta.profile = config.profile_string;
+        meta.level = config.level_string;
+        meta.bitDepth = config.bit_depth;
+        meta.chromaFormat = config.chroma_format;
+        meta.sarRatio = config.sar_ratio;
+        meta.frameRate = config.frame_rate;
+        if (config.frame_rate.fixed === false ||
+            config.frame_rate.fps_num === 0 ||
+            config.frame_rate.fps_den === 0) {
+            meta.frameRate = this._referenceFrameRate;
+        }
+        let fps_den = meta.frameRate.fps_den;
+        let fps_num = meta.frameRate.fps_num;
+        meta.refSampleDuration = meta.timescale * (fps_den / fps_num);
+        meta.codec = config.codec_mimetype;
+
+        let mi = this._mediaInfo;
+        mi.width = meta.codecWidth;
+        mi.height = meta.codecHeight;
+        mi.fps = meta.frameRate.fps;
+        mi.profile = meta.profile;
+        mi.level = meta.level;
+        mi.refFrames = config.ref_frames;
+        mi.chromaFormat = config.chroma_format_string;
+        mi.sarNum = meta.sarRatio.width;
+        mi.sarDen = meta.sarRatio.height;
+        mi.videoCodec = config.codec_mimetype;
+
+        if (mi.hasAudio) {
+            if (mi.audioCodec != null) {
+                mi.mimeType = 'video/x-flv; codecs="' + mi.videoCodec + ',' + mi.audioCodec + '"';
+            }
+        } else {
+            mi.mimeType = 'video/x-flv; codecs="' + mi.videoCodec + '"';
+        }
+        if (mi.isComplete()) {
+            this._onMediaInfo(mi);
+        }
+        meta.av1c = new Uint8Array(dataSize);
+        meta.av1c.set(new Uint8Array(arrayBuffer, dataOffset, dataSize), 0);
+        Log.v(this.TAG, 'Parsed AV1CodecConfigurationRecord');
+
+        if (this._isInitialMetadataDispatched()) {
+            // flush parsed frames
+            if (this._dispatch && (this._audioTrack.length || this._videoTrack.length)) {
+                this._onDataAvailable(this._audioTrack, this._videoTrack);
+            }
+        } else {
+            this._videoInitialMetadataDispatched = true;
+        }
+        // notify new metadata
+        this._dispatch = false;
+        this._onTrackMetadata('video', meta);
+    }
+
     _parseAVCVideoData(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, cts) {
         let le = this._littleEndian;
         let v = new DataView(arrayBuffer, dataOffset, dataSize);
@@ -1373,6 +1493,40 @@ class FLVDemuxer {
         }
     }
 
+    _parseAV1VideoData(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, cts) {
+        let le = this._littleEndian;
+        let v = new DataView(arrayBuffer, dataOffset, dataSize);
+
+        let units = [], length = 0;
+
+        let offset = 0;
+        let dts = this._timestampBase + tagTimestamp;
+        let keyframe = (frameType === 1);  // from FLV Frame Type constants
+
+        /* FIXME: NEEDS Inspect Per OBUs */
+        length = dataSize;
+        units.push({
+            unitType: 0,
+            data: new Uint8Array(arrayBuffer, dataOffset + offset, dataSize)
+        });
+
+        if (units.length) {
+            let track = this._videoTrack;
+            let av1Sample = {
+                units: units,
+                length: length,
+                isKeyframe: keyframe,
+                dts: dts,
+                cts: cts,
+                pts: (dts + cts)
+            };
+            if (keyframe) {
+                av1Sample.fileposition = tagPosition;
+            }
+            track.samples.push(av1Sample);
+            track.length += length;
+        }
+    }
 }
 
 export default FLVDemuxer;
