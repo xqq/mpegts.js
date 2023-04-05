@@ -933,12 +933,12 @@ class FLVDemuxer {
         if (packetType === 0) {  // HEVCDecoderConfigurationRecord
             this._parseHEVCDecoderConfigurationRecord(arrayBuffer, dataOffset, dataSize);
         } else if (packetType === 1) {  // One or more Nalus
-            let cts_unsigned = v.getUint32(0, !le) & 0x00FFFFFF;
-            let cts = (cts_unsigned << 8) >> 8;  // convert to 24-bit signed int
+            let cts_unsigned = v.getUint32(0, !le) & 0xFFFFFF00;
+            let cts = cts_unsigned >> 8;  // convert to 24-bit signed int
 
             this._parseHEVCVideoData(arrayBuffer, dataOffset + 3, dataSize - 3, tagTimestamp, tagPosition, frameType, cts);
         } else if (packetType === 3) {
-            this._parseHEVCVideoData(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, cts);
+            this._parseHEVCVideoData(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, 0);
         } else if (packetType === 2) {
             // empty, HEVC end of sequence
         } else {
