@@ -16,6 +16,7 @@ export enum StreamType {
     kADTSAAC = 0x0F,
     kLOASAAC = 0x11,
     kAC3 = 0x81,
+    kEAC3 = 0x87,
     kID3 = 0x15,
     kSCTE35 = 0x86,
     kH264 = 0x1b,
@@ -40,6 +41,7 @@ export class PMT {
         loas_aac: number | undefined,
         opus: number | undefined,
         ac3: number | undefined,
+        eac3: number | undefined,
         mp3: number | undefined
     } = {
         h264: undefined,
@@ -48,6 +50,7 @@ export class PMT {
         loas_aac: undefined,
         opus: undefined,
         ac3: undefined,
+        eac3: undefined,
         mp3: undefined
     };
 

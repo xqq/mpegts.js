@@ -32,7 +32,7 @@ class MP4 {
             stts: [], tfdt: [], tfhd: [], traf: [],
             trak: [], trun: [], trex: [], tkhd: [],
             vmhd: [], smhd: [], '.mp3': [],
-            Opus: [], dOps: [], 'ac-3': [], dac3: [],
+            Opus: [], dOps: [], 'ac-3': [], dac3: [], 'ec-3': [], dec3: [],
         };
 
         for (let name in MP4.types) {
@@ -324,6 +324,8 @@ class MP4 {
                 return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.mp3(meta));
             } else if (meta.codec === 'ac-3') {
                 return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.ac3(meta));
+            } else if (meta.codec === 'ec-3') {
+                return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.ec3(meta));
             } else if(meta.codec === 'opus') {
                 return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.Opus(meta));
             }
@@ -394,6 +396,26 @@ class MP4 {
         ]);
 
         return MP4.box(MP4.types['ac-3'], data, MP4.box(MP4.types.dac3, new Uint8Array(meta.config)));
+    }
+
+    static ec3(meta) {
+        let channelCount = meta.channelCount;
+        let sampleRate = meta.audioSampleRate;
+
+        let data = new Uint8Array([
+            0x00, 0x00, 0x00, 0x00,  // reserved(4)
+            0x00, 0x00, 0x00, 0x01,  // reserved(2) + data_reference_index(2)
+            0x00, 0x00, 0x00, 0x00,  // reserved: 2 * 4 bytes
+            0x00, 0x00, 0x00, 0x00,
+            0x00, channelCount,      // channelCount(2)
+            0x00, 0x10,              // sampleSize(2)
+            0x00, 0x00, 0x00, 0x00,  // reserved(4)
+            (sampleRate >>> 8) & 0xFF,  // Audio sample rate
+            (sampleRate) & 0xFF,
+            0x00, 0x00
+        ]);
+
+        return MP4.box(MP4.types['ec-3'], data, MP4.box(MP4.types.dec3, new Uint8Array(meta.config)));
     }
 
     static esds(meta) {

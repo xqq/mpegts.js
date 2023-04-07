@@ -33,3 +33,38 @@ export declare class AC3Config {
     original_codec_mimetype: string;
     constructor(frame: AC3Frame);
 }
+export declare class EAC3Frame {
+    sampling_frequency: number;
+    sampling_rate_code: number;
+    bit_stream_identification: number;
+    low_frequency_effects_channel_on: number;
+    num_blks: number;
+    frame_size: number;
+    channel_count: number;
+    channel_mode: number;
+    data: Uint8Array;
+}
+export declare class EAC3Parser {
+    private readonly TAG;
+    private data_;
+    private current_syncword_offset_;
+    private eof_flag_;
+    private has_last_incomplete_data;
+    constructor(data: Uint8Array);
+    private findNextSyncwordOffset;
+    readNextEAC3Frame(): EAC3Frame | null;
+    hasIncompleteData(): boolean;
+    getIncompleteData(): Uint8Array;
+}
+export declare class EAC3Config {
+    config: Array<number>;
+    sampling_rate: number;
+    bit_stream_identification: number;
+    num_blks: number;
+    low_frequency_effects_channel_on: number;
+    channel_count: number;
+    channel_mode: number;
+    codec_mimetype: string;
+    original_codec_mimetype: string;
+    constructor(frame: EAC3Frame);
+}
