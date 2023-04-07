@@ -141,8 +141,6 @@ export class AC3Parser {
         return this.data_.subarray(this.current_syncword_offset_);
     }
 }
-
-
 export class AC3Config {
 
     public config: Array<number>;
@@ -173,5 +171,165 @@ export class AC3Config {
         this.channel_mode = frame.channel_mode;
         this.codec_mimetype = 'ac-3';
         this.original_codec_mimetype = 'ac-3';
+    }
+}
+
+export class EAC3Frame {
+    sampling_frequency: number;
+    sampling_rate_code: number;
+    bit_stream_identification: number;
+    low_frequency_effects_channel_on: number;
+    num_blks: number;
+    frame_size: number;
+    channel_count: number;
+    channel_mode: number;
+
+    data: Uint8Array;
+}
+export class EAC3Parser {
+
+    private readonly TAG: string = "EAC3Parser";
+
+    private data_: Uint8Array;
+    private current_syncword_offset_: number;
+    private eof_flag_: boolean;
+    private has_last_incomplete_data: boolean;
+
+    public constructor(data: Uint8Array) {
+        this.data_ = data;
+        this.current_syncword_offset_ = this.findNextSyncwordOffset(0);
+        if (this.eof_flag_) {
+            Log.e(this.TAG, `Could not found AC3 syncword until payload end`);
+        }
+    }
+
+    private findNextSyncwordOffset(syncword_offset: number): number {
+        let i = syncword_offset;
+        let data = this.data_;
+
+        while (true) {
+            if (i + 7 >= data.byteLength) {
+                this.eof_flag_ = true;
+                return data.byteLength;
+            }
+
+            // search 16-bit 0x0B77 syncword
+            let syncword = (data[i + 0] << 8) | (data[i + 1] << 0)
+            if (syncword === 0x0B77) {
+                return i;
+            } else {
+                i++;
+            }
+        }
+    }
+
+    public readNextEAC3Frame(): EAC3Frame | null {
+        let data = this.data_;
+        let eac3_frame: EAC3Frame = null;
+
+        while (eac3_frame == null) {
+            if (this.eof_flag_) {
+                break;
+            }
+
+            let syncword_offset = this.current_syncword_offset_;
+            let offset = syncword_offset;
+
+            let gb = new ExpGolomb(data.subarray(offset + 2));
+
+            let stream_type = gb.readBits(2);
+            let sub_stream_id = gb.readBits(3);
+            let frame_size = (gb.readBits(11) + 1) << 1;
+            let sampling_rate_code = gb.readBits(2);
+            let sampling_frequency: number | null = null;
+            let num_blocks_code: number | null = null;
+            if (sampling_rate_code === 0x03) {
+                sampling_rate_code = gb.readBits(2);
+                sampling_frequency = [24000, 22060, 16000][sampling_rate_code];
+                num_blocks_code = 3
+            } else {
+                sampling_frequency = [48000, 44100, 32000][sampling_rate_code];
+                num_blocks_code = gb.readBits(2);
+            }
+
+            let channel_mode = gb.readBits(3);
+            let low_frequency_effects_channel_on = gb.readBits(1);
+            let bit_stream_identification = gb.readBits(5);
+
+            if (offset + frame_size > this.data_.byteLength) {
+                // data not enough for extracting last sample
+                this.eof_flag_ = true;
+                this.has_last_incomplete_data = true;
+                break;
+            }
+
+            let next_syncword_offset = this.findNextSyncwordOffset(offset + frame_size);
+            this.current_syncword_offset_ = next_syncword_offset;
+
+            let channel_count = [2, 1, 2, 3, 3, 4, 4, 5][channel_mode] + low_frequency_effects_channel_on;
+
+            gb.destroy();
+
+            eac3_frame = new EAC3Frame();
+            eac3_frame.sampling_frequency = sampling_frequency;
+            eac3_frame.channel_count = channel_count;
+            eac3_frame.channel_mode = channel_mode;
+            eac3_frame.bit_stream_identification = bit_stream_identification;
+            eac3_frame.low_frequency_effects_channel_on = low_frequency_effects_channel_on;
+            eac3_frame.frame_size = frame_size;
+            eac3_frame.num_blks = [1, 2, 3, 6][num_blocks_code];
+            eac3_frame.data = data.subarray(offset, offset + frame_size);
+        }
+
+        return eac3_frame;
+    }
+
+    public hasIncompleteData(): boolean {
+        return this.has_last_incomplete_data;
+    }
+
+    public getIncompleteData(): Uint8Array {
+        if (!this.has_last_incomplete_data) {
+            return null;
+        }
+
+        return this.data_.subarray(this.current_syncword_offset_);
+    }
+}
+export class EAC3Config {
+
+    public config: Array<number>;
+    public sampling_rate: number;
+    public bit_stream_identification: number;
+    public num_blks: number;
+    public low_frequency_effects_channel_on: number;
+    public channel_count: number;
+    public channel_mode: number;
+    public codec_mimetype: string;
+    public original_codec_mimetype: string;
+
+    public constructor(frame: EAC3Frame) {
+        let config: Array<number> = null;
+
+        const data_rate_sub = Math.floor((frame.frame_size * frame.sampling_frequency) / (frame.num_blks * 16))
+
+        config = [
+            (data_rate_sub & 0x1FE0 >> 5),
+            (data_rate_sub & 0x001F << 3), // num_ind_sub = zero
+            (frame.sampling_rate_code << 6) | (frame.bit_stream_identification << 1) | (0 << 0),
+            (0 << 7) | (0 << 4) | (frame.channel_mode << 1) | (frame.low_frequency_effects_channel_on << 0),
+            (0 << 5) | (0 << 1) | (0 << 0)
+        ];
+
+
+        this.config = config;
+        this.sampling_rate = frame.sampling_frequency;
+        this.bit_stream_identification = frame.bit_stream_identification;
+        this.num_blks = frame.num_blks;
+        this.low_frequency_effects_channel_on = frame.low_frequency_effects_channel_on;
+        this.channel_count = frame.channel_count;
+        this.channel_mode = frame.channel_mode;
+        this.codec_mimetype = 'ec-3';
+        this.original_codec_mimetype = 'ec-3';
     }
 }
