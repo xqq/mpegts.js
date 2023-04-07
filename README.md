@@ -14,8 +14,19 @@ mpegts.js works by transmuxing MPEG2-TS stream into ISO BMFF (Fragmented MP4) se
 [Media Source Extensions]: https://w3c.github.io/media-source/
 
 ## News
-H.265/HEVC over MPEG-TS/FLV support has been introduced in v1.7.0!
+- v1.7.3
 
+    Introduced [Enhanced RTMP] with HEVC support for FLV.
+
+    Introduced Opus and ATSC AC-3 audio codec support for MPEG-TS.
+
+    Introduced LOAS AAC support for MPEG-TS.
+
+- v1.7.0
+
+    Introduced H.265/HEVC over MPEG-TS/FLV support.
+
+[Enhanced RTMP]: https://github.com/veovera/enhanced-rtmp
 ## Demo
 [http://xqq.github.io/mpegts.js/demo/](http://xqq.github.io/mpegts.js/demo/)
 
