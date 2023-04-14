@@ -274,64 +274,64 @@ class H265NaluParser {
                 let vui_poc_proportional_to_timing_flag = gb.readBool();
                 if (vui_poc_proportional_to_timing_flag) {
                     gb.readUEG();
-                    let vui_hrd_parameters_present_flag = gb.readBool();
-                    if (vui_hrd_parameters_present_flag) {
-                        let commonInfPresentFlag = 1;
-                        let nal_hrd_parameters_present_flag = false;
-                        let vcl_hrd_parameters_present_flag = false;
-                        let sub_pic_hrd_params_present_flag = false;
-                        if (commonInfPresentFlag) {
-                            nal_hrd_parameters_present_flag = gb.readBool();
-                            vcl_hrd_parameters_present_flag = gb.readBool();
-                            if( nal_hrd_parameters_present_flag || vcl_hrd_parameters_present_flag ){
-                                sub_pic_hrd_params_present_flag = gb.readBool();
+                }
+                let vui_hrd_parameters_present_flag = gb.readBool();
+                if (vui_hrd_parameters_present_flag) {
+                    let commonInfPresentFlag = 1;
+                    let nal_hrd_parameters_present_flag = false;
+                    let vcl_hrd_parameters_present_flag = false;
+                    let sub_pic_hrd_params_present_flag = false;
+                    if (commonInfPresentFlag) {
+                        nal_hrd_parameters_present_flag = gb.readBool();
+                        vcl_hrd_parameters_present_flag = gb.readBool();
+                        if( nal_hrd_parameters_present_flag || vcl_hrd_parameters_present_flag ){
+                            sub_pic_hrd_params_present_flag = gb.readBool();
+                            if (sub_pic_hrd_params_present_flag) {
+                                gb.readByte();
+                                gb.readBits(5);
+                                gb.readBool();
+                                gb.readBits(5);
+                            }
+                            let bit_rate_scale = gb.readBits(4);
+                            let cpb_size_scale = gb.readBits(4);
+                            if (sub_pic_hrd_params_present_flag) {
+                                gb.readBits(4);
+                            }
+                            gb.readBits(5);
+                            gb.readBits(5);
+                            gb.readBits(5);
+                        }
+                    }
+                    for (let i = 0; i <= max_sub_layers_minus1; i++) {
+                        let fixed_pic_rate_general_flag = gb.readBool();
+                        fps_fixed = fixed_pic_rate_general_flag;
+                        let fixed_pic_rate_within_cvs_flag = false;
+                        let cpbCnt = 1;
+                        if (!fixed_pic_rate_general_flag) {
+                            fixed_pic_rate_within_cvs_flag = gb.readBool();
+                        }
+                        let low_delay_hrd_flag = false;
+                        if (fixed_pic_rate_within_cvs_flag) {
+                            gb.readSEG();
+                        } else {
+                            low_delay_hrd_flag = gb.readBool();
+                        }
+                        if (!low_delay_hrd_flag) {
+                            cpbCnt = gb.readUEG() + 1;
+                        }
+                        if (nal_hrd_parameters_present_flag) {
+                            for (let j = 0; j < cpbCnt; j++) {
+                                gb.readUEG(); gb.readUEG();
                                 if (sub_pic_hrd_params_present_flag) {
-                                    gb.readByte();
-                                    gb.readBits(5);
-                                    gb.readBool();
-                                    gb.readBits(5);
+                                    gb.readUEG(); gb.readUEG();
                                 }
-                                let bit_rate_scale = gb.readBits(4);
-                                let cpb_size_scale = gb.readBits(4);
-                                if (sub_pic_hrd_params_present_flag) {
-                                    gb.readBits(4);
-                                }
-                                gb.readBits(5);
-                                gb.readBits(5);
-                                gb.readBits(5);
                             }
                         }
-                        for (let i = 0; i <= max_sub_layers_minus1; i++) {
-                            let fixed_pic_rate_general_flag = gb.readBool();
-                            fps_fixed = fixed_pic_rate_general_flag;
-                            let fixed_pic_rate_within_cvs_flag = false;
-                            let cpbCnt = 1;
-                            if (!fixed_pic_rate_general_flag) {
-                                fixed_pic_rate_within_cvs_flag = gb.readBool();
-                            }
-                            let low_delay_hrd_flag = false;
-                            if (fixed_pic_rate_within_cvs_flag) {
-                                gb.readSEG();
-                            } else {
-                                low_delay_hrd_flag = gb.readBool();
-                            }
-                            if (!low_delay_hrd_flag) {
-                                cpbCnt = gb.readUEG() + 1;
-                            }
-                            if (nal_hrd_parameters_present_flag) {
-                                for (let j = 0; j < cpbCnt; j++) {
+                        if (vcl_hrd_parameters_present_flag) {
+                            for (let j = 0; j < cpbCnt; j++) {
+                                gb.readUEG(); gb.readUEG();
+                                if (sub_pic_hrd_params_present_flag) {
                                     gb.readUEG(); gb.readUEG();
-                                    if (sub_pic_hrd_params_present_flag) {
-                                        gb.readUEG(); gb.readUEG();
-                                    }
-                                }
-                            }
-                            if (vcl_hrd_parameters_present_flag) {
-                                for (let j = 0; j < cpbCnt; j++) {
-                                    gb.readUEG(); gb.readUEG();
-                                    if (sub_pic_hrd_params_present_flag) {
-                                        gb.readUEG(); gb.readUEG();
-                                    }
                                 }
                             }
                         }
