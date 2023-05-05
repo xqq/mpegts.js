@@ -305,14 +305,14 @@ class H265NaluParser {
                     for (let i = 0; i <= max_sub_layers_minus1; i++) {
                         let fixed_pic_rate_general_flag = gb.readBool();
                         fps_fixed = fixed_pic_rate_general_flag;
-                        let fixed_pic_rate_within_cvs_flag = false;
+                        let fixed_pic_rate_within_cvs_flag = true;
                         let cpbCnt = 1;
                         if (!fixed_pic_rate_general_flag) {
                             fixed_pic_rate_within_cvs_flag = gb.readBool();
                         }
                         let low_delay_hrd_flag = false;
                         if (fixed_pic_rate_within_cvs_flag) {
-                            gb.readSEG();
+                            gb.readUEG();
                         } else {
                             low_delay_hrd_flag = gb.readBool();
                         }
@@ -326,6 +326,7 @@ class H265NaluParser {
                                     gb.readUEG(); gb.readUEG();
                                 }
                             }
+                            gb.readBool()
                         }
                         if (vcl_hrd_parameters_present_flag) {
                             for (let j = 0; j < cpbCnt; j++) {
@@ -334,6 +335,7 @@ class H265NaluParser {
                                     gb.readUEG(); gb.readUEG();
                                 }
                             }
+                            gb.readBool()
                         }
                     }
                 }
