@@ -258,6 +258,7 @@ declare namespace Mpegts {
     interface FeatureList {
         msePlayback: boolean;
         mseLivePlayback: boolean;
+        mseH265Playback: boolean;
         networkStreamIO: boolean;
         networkLoaderName: string;
         nativeMP4H264Playback: boolean;
