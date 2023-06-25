@@ -954,7 +954,7 @@ class FLVDemuxer {
         } else if (packetType === 1) {  // One or more OBUs
             this._parseAV1VideoData(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, 0);
         } else if (packetType === 5) {
-            this._onError(DemuxErrors.FORMAT_ERROR, `Flv: Not Suported MP2T AV1 video packet type ${packetType}`);
+            this._onError(DemuxErrors.FORMAT_ERROR, `Flv: Not Supported MP2T AV1 video packet type ${packetType}`);
             return;
         } else if (packetType === 2) {
             // empty, AV1 end of sequence
@@ -990,7 +990,7 @@ class FLVDemuxer {
             if (typeof meta.avcc !== 'undefined') {
                 let new_avcc = new Uint8Array(arrayBuffer, dataOffset, dataSize);
                 if (buffersAreEqual(new_avcc, meta.avcc)) {
-                    // AVCDecoderConfigurationRecord is not changed, ignore it to avoid initializaiton segment re-generating
+                    // AVCDecoderConfigurationRecord is not changed, ignore it to avoid initialization segment re-generating
                     return;
                 } else {
                     Log.w(this.TAG, 'AVCDecoderConfigurationRecord has been changed, re-generate initialization segment');
@@ -1164,7 +1164,7 @@ class FLVDemuxer {
             if (typeof meta.hvcc !== 'undefined') {
                 let new_hvcc = new Uint8Array(arrayBuffer, dataOffset, dataSize);
                 if (buffersAreEqual(new_hvcc, meta.hvcc)) {
-                    // HEVCDecoderConfigurationRecord not changed, ignore it to avoid initializaiton segment re-generating
+                    // HEVCDecoderConfigurationRecord not changed, ignore it to avoid initialization segment re-generating
                     return;
                 } else {
                     Log.w(this.TAG, 'HEVCDecoderConfigurationRecord has been changed, re-generate initialization segment');
