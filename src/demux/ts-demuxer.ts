@@ -1384,7 +1384,7 @@ class TSDemuxer extends BaseDemuxer {
 
         if (this.audio_metadata_.codec === 'ac-3') {
             if (pts == undefined && this.aac_last_sample_pts_ != undefined) {
-                ref_sample_duration = 1536 / this.audio_metadata_.sampling_frequency * 1000;;
+                ref_sample_duration = 1536 / this.audio_metadata_.sampling_frequency * 1000;
                 base_pts_ms = this.aac_last_sample_pts_ + ref_sample_duration;
             } else if (pts == undefined){
                 Log.w(this.TAG, `AC3: Unknown pts`);

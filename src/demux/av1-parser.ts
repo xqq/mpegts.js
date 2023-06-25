@@ -192,7 +192,7 @@ class AV1OBUParser {
             } else {
                 seq_force_screen_content_tools = gb.readBits(1);
             }
-            if (seq_force_screen_content_tools) {;
+            if (seq_force_screen_content_tools) {
                 let seq_choose_integer_mv = gb.readBool();
                 if (seq_choose_integer_mv) {
                     seq_force_integer_mv = SELECT_INTEGER_MV;
