@@ -12,13 +12,28 @@ mpegts.js 通过在 JavaScript 中渐进化解析 MPEG2-TS 流并实时转封装
 [Media Source Extensions]: https://w3c.github.io/media-source/
 
 ## News
-H.265/HEVC 播放支持（FLV 或 MPEG-TS 均已支持）已在 v1.7.0 版本登场！
+- v1.7.3
+
+    支持 [Enhanced RTMP] 中关于 FLV 传输 HEVC 的规范
+
+    MPEG-TS 新增了对 Opus 和 ATSC AC-3 音频编码支持
+
+    MPEG-TS 新增了 LOAS AAC 播放支持
+
+- v1.7.0
+
+    H.265/HEVC 播放支持（FLV 或 MPEG-TS 均已支持）
+
+[Enhanced RTMP]: https://github.com/veovera/enhanced-rtmp
 
 ## Demo
 [http://xqq.github.io/mpegts.js/demo/](http://xqq.github.io/mpegts.js/demo/)
 
+[demo with aribb24.js](http://xqq.github.io/mpegts.js/demo/arib.html)
+
 ## Features
-- 回放 http(s) 或 WebSocket 上承载的 H.264 + AAC 编码的 MPEG2-TS 流
+- 回放 http(s) 或 WebSocket 上承载的 H.264/H.265 + AAC 编码的 MPEG2-TS 流
+- 回放 http(s) 或 WebSocket 上承载的 H.264/H.265 + AAC 编码的 FLV 流
 - 超低延迟，最佳情况延迟可低达 1 秒以内
 - 回放 TS packet 为 192 字节的 `.m2ts` 文件（BDAV/BDMV）或 204 字节的 TS 流
 - 支持动态编码参数切换，如视频分辨率动态变化
@@ -42,7 +57,7 @@ npm install --save mpegts.js
 
 ## Build
 ```bash
-npm install                 # install dev-dependences
+npm install                 # install dev-dependencies
 npm install -g webpack-cli  # install build tool
 npm run build               # packaged & minimized js will be emitted in dist folder
 ```
@@ -102,7 +117,7 @@ npm run build               # packaged & minimized js will be emitted in dist fo
 
 ## Debug
 ```bash
-npm install                 # install dev-dependences
+npm install                 # install dev-dependencies
 npm install -g webpack-cli  # install build tool
 npm run build:debug         # packaged & minimized js will be emitted in dist folder
 ```

@@ -44,7 +44,7 @@ npm install --save mpegts.js
 
 ## Build
 ```bash
-npm install                 # install dev-dependences
+npm install                 # install dev-dependencies
 npm install -g webpack-cli  # install build tool
 npm run build               # packaged & minimized js will be emitted in dist folder
 ```
@@ -102,7 +102,7 @@ npm run build               # packaged & minimized js will be emitted in dist fo
 
 ## Debug
 ```bash
-npm install                 # install dev-dependences
+npm install                 # install dev-dependencies
 npm install -g webpack-cli  # install build tool
 npm run build:debug         # packaged & minimized js will be emitted in dist folder
 ```
