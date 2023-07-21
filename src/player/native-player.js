@@ -58,6 +58,7 @@ class NativePlayer {
     }
 
     destroy() {
+        this._emitter.emit(PlayerEvents.DESTROYING);
         if (this._mediaElement) {
             this.unload();
             this.detachMediaElement();

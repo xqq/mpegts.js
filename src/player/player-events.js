@@ -28,7 +28,8 @@ const PlayerEvents = {
     SCTE35_METADATA_ARRIVED: 'scte35_metadata_arrived',
     PES_PRIVATE_DATA_DESCRIPTOR: 'pes_private_data_descriptor',
     PES_PRIVATE_DATA_ARRIVED: 'pes_private_data_arrived',
-    STATISTICS_INFO: 'statistics_info'
+    STATISTICS_INFO: 'statistics_info',
+    DESTROYING: 'destroying'
 };
 
 export default PlayerEvents;

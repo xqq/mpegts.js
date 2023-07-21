@@ -188,19 +188,20 @@ interface LoggingControl {
 
 A series of constants that can be used with `Player.on()` / `Player.off()`. They require the prefix `mpegts.Events`.
 
-| Event               | Description                              |
-| ------------------- | ---------------------------------------- |
-| ERROR               | An error occurred by any cause during the playback |
-| LOADING_COMPLETE    | The input MediaDataSource has been completely buffered to end |
-| RECOVERED_EARLY_EOF | An unexpected network EOF occurred during buffering but automatically recovered |
-| MEDIA_INFO          | Provides technical information of the media like video/audio codec, bitrate, etc. |
-| METADATA_ARRIVED    | Provides metadata which FLV file(stream) can contain with an "onMetaData" marker.  |
-| SCRIPTDATA_ARRIVED  | Provides scriptdata (OnCuePoint / OnTextData) which FLV file(stream) can contain. |
-| TIMED_ID3_METADATA_ARRIVED |  Provides Timed ID3 Metadata packets containing private data (stream_type=0x15) callback |
-| SMPTE2038_METADATA_ARRIVED |  Provides SMPTE2038 Metadata packets containing private data callback |
-| SCTE35_METADATA_ARRIVED |  Provides SCTE35 Metadata packets containing section (stream_type=0x86) callback |
-| PES_PRIVATE_DATA_ARRIVED | Provides ISO/IEC 13818-1 PES packets containing private data (stream_type=0x06) callback |
-| STATISTICS_INFO     | Provides playback statistics information like dropped frames, current speed, etc. |
+| Event                      | Description                              |
+| -------------------------- | ---------------------------------------- |
+| ERROR                      | An error occurred by any cause during the playback |
+| LOADING_COMPLETE           | The input MediaDataSource has been completely buffered to end |
+| RECOVERED_EARLY_EOF        | An unexpected network EOF occurred during buffering but automatically recovered |
+| MEDIA_INFO                 | Provides technical information of the media like video/audio codec, bitrate, etc. |
+| METADATA_ARRIVED           | Provides metadata which FLV file(stream) can contain with an "onMetaData" marker.  |
+| SCRIPTDATA_ARRIVED         | Provides scriptdata (OnCuePoint / OnTextData) which FLV file(stream) can contain. |
+| TIMED_ID3_METADATA_ARRIVED | Provides Timed ID3 Metadata packets containing private data (stream_type=0x15) callback |
+| SMPTE2038_METADATA_ARRIVED | Provides SMPTE2038 Metadata packets containing private data callback |
+| SCTE35_METADATA_ARRIVED    | Provides SCTE35 Metadata packets containing section (stream_type=0x86) callback |
+| PES_PRIVATE_DATA_ARRIVED   | Provides ISO/IEC 13818-1 PES packets containing private data (stream_type=0x06) callback |
+| STATISTICS_INFO            | Provides playback statistics information like dropped frames, current speed, etc. |
+| DESTROYING                 | Fired when the player begins teardown |
 
 ### mpegts.ErrorTypes
 
