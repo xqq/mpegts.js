@@ -82,6 +82,8 @@ declare class TSDemuxer extends BaseDemuxer {
     private dispatchPESPrivateDataDescriptor;
     private parsePESPrivateDataPayload;
     private parseTimedID3MetadataPayload;
+    private parseSynchronousKLVMetadataPayload;
+    private parseAsynchronousKLVMetadataPayload;
     private parseSMPTE2038MetadataPayload;
 }
 export default TSDemuxer;

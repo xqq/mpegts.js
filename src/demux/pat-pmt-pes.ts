@@ -17,7 +17,7 @@ export enum StreamType {
     kLOASAAC = 0x11,
     kAC3 = 0x81,
     kEAC3 = 0x87,
-    kID3 = 0x15,
+    kMetadata = 0x15,
     kSCTE35 = 0x86,
     kH264 = 0x1b,
     kH265 = 0x24
@@ -59,6 +59,14 @@ export class PMT {
     } = {};
 
     timed_id3_pids: {
+        [pid: number]: boolean
+    } = {};
+
+    synchronous_klv_pids: {
+        [pid: number]: boolean
+    } = {};
+
+    asynchronous_klv_pids: {
         [pid: number]: boolean
     } = {};
 

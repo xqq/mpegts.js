@@ -63,6 +63,8 @@ class Transmuxer {
             ctl.on(TransmuxingEvents.METADATA_ARRIVED, this._onMetaDataArrived.bind(this));
             ctl.on(TransmuxingEvents.SCRIPTDATA_ARRIVED, this._onScriptDataArrived.bind(this));
             ctl.on(TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED, this._onTimedID3MetadataArrived.bind(this));
+            ctl.on(TransmuxingEvents.SYNCHRONOUS_KLV_METADATA_ARRIVED, this._onSynchronousKLVMetadataArrived.bind(this));
+            ctl.on(TransmuxingEvents.ASYNCHRONOUS_KLV_METADATA_ARRIVED, this._onAsynchronousKLVMetadataArrived.bind(this));
             ctl.on(TransmuxingEvents.SMPTE2038_METADATA_ARRIVED, this._onSMPTE2038MetadataArrived.bind(this));
             ctl.on(TransmuxingEvents.SCTE35_METADATA_ARRIVED, this._onSCTE35MetadataArrived.bind(this));
             ctl.on(TransmuxingEvents.PES_PRIVATE_DATA_DESCRIPTOR, this._onPESPrivateDataDescriptor.bind(this));
@@ -189,6 +191,18 @@ class Transmuxer {
         })
     }
 
+    _onSynchronousKLVMetadataArrived (data) {
+        Promise.resolve().then(() => {
+            this._emitter.emit(TransmuxingEvents.SYNCHRONOUS_KLV_METADATA_ARRIVED, data);
+        })
+    }
+
+    _onAsynchronousKLVMetadataArrived (data) {
+        Promise.resolve().then(() => {
+            this._emitter.emit(TransmuxingEvents.ASYNCHRONOUS_KLV_METADATA_ARRIVED, data);
+        })
+    }
+
     _onSMPTE2038MetadataArrived (data) {
         Promise.resolve().then(() => {
             this._emitter.emit(TransmuxingEvents.SMPTE2038_METADATA_ARRIVED, data);
@@ -270,6 +284,8 @@ class Transmuxer {
             case TransmuxingEvents.METADATA_ARRIVED:
             case TransmuxingEvents.SCRIPTDATA_ARRIVED:
             case TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED:
+            case TransmuxingEvents.SYNCHRONOUS_KLV_METADATA_ARRIVED:
+            case TransmuxingEvents.ASYNCHRONOUS_KLV_METADATA_ARRIVED:
             case TransmuxingEvents.SMPTE2038_METADATA_ARRIVED:
             case TransmuxingEvents.SCTE35_METADATA_ARRIVED:
             case TransmuxingEvents.PES_PRIVATE_DATA_DESCRIPTOR:

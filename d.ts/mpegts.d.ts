@@ -380,6 +380,8 @@ declare namespace Mpegts {
         METADATA_ARRIVED: string;
         SCRIPTDATA_ARRIVED: string;
         TIMED_ID3_METADATA_ARRIVED: string;
+        SYNCHRONOUS_KLV_METADATA_ARRIVED: string;
+        ASYNCHRONOUS_KLV_METADATA_ARRIVED: string;
         SMPTE2038_METADATA_ARRIVED: string;
         PES_PRIVATE_DATA_DESCRIPTOR: string;
         PES_PRIVATE_DATA_ARRIVED: string;

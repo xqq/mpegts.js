@@ -323,6 +323,8 @@ class TransmuxingController {
         demuxer.onMediaInfo = this._onMediaInfo.bind(this);
         demuxer.onMetaDataArrived = this._onMetaDataArrived.bind(this);
         demuxer.onTimedID3Metadata = this._onTimedID3Metadata.bind(this);
+        demuxer.onSynchronousKLVMetadata = this._onSynchronousKLVMetadata.bind(this);
+        demuxer.onAsynchronousKLVMetadata = this._onAsynchronousKLVMetadata.bind(this);
         demuxer.onSMPTE2038Metadata = this._onSMPTE2038Metadata.bind(this);
         demuxer.onSCTE35Metadata = this._onSCTE35Metadata.bind(this);
         demuxer.onPESPrivateDataDescriptor = this._onPESPrivateDataDescriptor.bind(this);
@@ -382,6 +384,25 @@ class TransmuxingController {
         }
 
         this._emitter.emit(TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED, timed_id3_metadata);
+    }
+
+    _onSynchronousKLVMetadata(synchronous_klv_metadata) {
+        let timestamp_base = this._remuxer.getTimestampBase();
+        if (timestamp_base == undefined) { return; }
+
+        if (synchronous_klv_metadata.pts != undefined) {
+            synchronous_klv_metadata.pts -= timestamp_base;
+        }
+
+        if (synchronous_klv_metadata.dts != undefined) {
+            synchronous_klv_metadata.dts -= timestamp_base;
+        }
+
+        this._emitter.emit(TransmuxingEvents.SYNCHRONOUS_KLV_METADATA_ARRIVED, synchronous_klv_metadata);
+    }
+
+    _onAsynchronousKLVMetadata(asynchronous_klv_metadata) {
+        this._emitter.emit(TransmuxingEvents.ASYNCHRONOUS_KLV_METADATA_ARRIVED, asynchronous_klv_metadata);
     }
 
     _onSMPTE2038Metadata(smpte2038_metadata) {
