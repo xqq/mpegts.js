@@ -14,7 +14,7 @@ export declare enum StreamType {
     kLOASAAC = 17,
     kAC3 = 129,
     kEAC3 = 135,
-    kID3 = 21,
+    kMetadata = 21,
     kSCTE35 = 134,
     kH264 = 27,
     kH265 = 36
@@ -41,6 +41,12 @@ export declare class PMT {
         [pid: number]: boolean;
     };
     timed_id3_pids: {
+        [pid: number]: boolean;
+    };
+    synchronous_klv_pids: {
+        [pid: number]: boolean;
+    };
+    asynchronous_klv_pids: {
         [pid: number]: boolean;
     };
     scte_35_pids: {

@@ -57,6 +57,8 @@ let TransmuxingWorker = function (self) {
                 controller.on(TransmuxingEvents.METADATA_ARRIVED, onMetaDataArrived.bind(this));
                 controller.on(TransmuxingEvents.SCRIPTDATA_ARRIVED, onScriptDataArrived.bind(this));
                 controller.on(TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED, onTimedID3MetadataArrived.bind(this));
+                controller.on(TransmuxingEvents.SYNCHRONOUS_KLV_METADATA_ARRIVED, onSynchronousKLVMetadataArrived.bind(this));
+                controller.on(TransmuxingEvents.ASYNCHRONOUS_KLV_METADATA_ARRIVED, onAsynchronousKLVMetadataArrived.bind(this));
                 controller.on(TransmuxingEvents.SMPTE2038_METADATA_ARRIVED, onSMPTE2038MetadataArrived.bind(this));
                 controller.on(TransmuxingEvents.SCTE35_METADATA_ARRIVED, onSCTE35MetadataArrived.bind(this));
                 controller.on(TransmuxingEvents.PES_PRIVATE_DATA_DESCRIPTOR, onPESPrivateDataDescriptor.bind(this));
@@ -163,6 +165,22 @@ let TransmuxingWorker = function (self) {
     function onTimedID3MetadataArrived (data) {
         let obj = {
             msg: TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED,
+            data: data
+        };
+        self.postMessage(obj);
+    }
+
+    function onSynchronousKLVMetadataArrived (data) {
+        let obj = {
+            msg: TransmuxingEvents.SYNCHRONOUS_KLV_METADATA_ARRIVED,
+            data: data
+        };
+        self.postMessage(obj);
+    }
+
+    function onAsynchronousKLVMetadataArrived (data) {
+        let obj = {
+            msg: TransmuxingEvents.ASYNCHRONOUS_KLV_METADATA_ARRIVED,
             data: data
         };
         self.postMessage(obj);

@@ -33,6 +33,7 @@ import H265Parser from './h265-parser';
 import { SMPTE2038Data, smpte2038parse } from './smpte2038';
 import { MP3Data } from './mp3';
 import { AC3Config, AC3Frame, AC3Parser, EAC3Config, EAC3Frame, EAC3Parser } from './ac3';
+import { KLVData, klv_parse } from './klv';
 
 type AACAudioMetadata = {
     codec: 'aac',
@@ -328,7 +329,10 @@ class TSDemuxer extends BaseDemuxer {
                             || pid === this.pmt_.common_pids.opus
                             || pid === this.pmt_.common_pids.mp3
                             || this.pmt_.pes_private_data_pids[pid] === true
-                            || this.pmt_.timed_id3_pids[pid] === true) {
+                            || this.pmt_.timed_id3_pids[pid] === true
+                            || this.pmt_.synchronous_klv_pids[pid] === true
+                            || this.pmt_.asynchronous_klv_pids[pid] === true
+                            ) {
                         this.handlePESSlice(chunk,
                                             offset + ts_payload_start_index,
                                             ts_payload_length,
@@ -622,6 +626,8 @@ class TSDemuxer extends BaseDemuxer {
                         this.parseAC3Payload(payload, pts);
                     } else if (this.pmt_.common_pids.eac3 === pes_data.pid) {
                         this.parseEAC3Payload(payload, pts);
+                    } else if (this.pmt_.asynchronous_klv_pids[pes_data.pid]) {
+                        this.parseAsynchronousKLVMetadataPayload(payload, pes_data.pid, stream_id);
                     } else if (this.pmt_.smpte2038_pids[pes_data.pid]) {
                         this.parseSMPTE2038MetadataPayload(payload, pts, dts, pes_data.pid, stream_id);
                     } else {
@@ -640,8 +646,12 @@ class TSDemuxer extends BaseDemuxer {
                 case StreamType.kEAC3:
                     this.parseEAC3Payload(payload, pts);
                     break;
-                case StreamType.kID3:
-                    this.parseTimedID3MetadataPayload(payload, pts, dts, pes_data.pid, stream_id);
+                case StreamType.kMetadata:
+                    if (this.pmt_.timed_id3_pids[pes_data.pid]) {
+                        this.parseTimedID3MetadataPayload(payload, pts, dts, pes_data.pid, stream_id);
+                    } else if (this.pmt_.synchronous_klv_pids[pes_data.pid]) {
+                        this.parseSynchronousKLVMetadataPayload(payload, pts, dts, pes_data.pid, stream_id);
+                    }
                     break;
                 case StreamType.kH264:
                     this.parseH264Payload(payload, pts, dts, pes_data.file_position, pes_data.random_access_indicator);
@@ -816,6 +826,8 @@ class TSDemuxer extends BaseDemuxer {
                                 pmt.common_pids.eac3 = elementary_PID; // DVB EAC-3 (FIXME: NEED VERIFY)
                             } */ else if (registration === 'Opus') {
                                 pmt.common_pids.opus = elementary_PID;
+                            } else if (registration === 'KLVA') {
+                                pmt.asynchronous_klv_pids[elementary_PID] = true;
                             }
                         } else if (tag === 0x7F) {  // DVB extension descriptor
                             if (elementary_PID === pmt.common_pids.opus) {
@@ -859,8 +871,36 @@ class TSDemuxer extends BaseDemuxer {
                     let descriptors = data.subarray(i + 5, i + 5 + ES_info_length);
                     this.dispatchPESPrivateDataDescriptor(elementary_PID, stream_type, descriptors);
                 }
-            } else if (stream_type === StreamType.kID3) {
-                pmt.timed_id3_pids[elementary_PID] = true;
+            } else if (stream_type === StreamType.kMetadata) {
+                if (ES_info_length > 0) {
+                    // parse descriptor for PES private data
+                    for (let offset = i + 5; offset < i + 5 + ES_info_length; ) {
+                        let tag = data[offset + 0];
+                        let length = data[offset + 1];
+
+                        if (tag === 0x26) {
+                            let metadata_application_format = (data[offset + 2] << 8) | (data[offset + 3] << 0);
+                            let metadata_application_format_identifier = null;
+                            if (metadata_application_format === 0xFFFF) {
+                                metadata_application_format_identifier = String.fromCharCode(... Array.from(data.subarray(offset + 4, offset + 4 + 4)));
+                            }
+                            let metadata_format = data[offset + 4 + (metadata_application_format === 0xFFFF ? 4 : 0)];
+                            let metadata_format_identifier = null;
+                            if (metadata_format === 0xFF) {
+                                let pad = 4 + (metadata_application_format === 0xFFFF ? 4 : 0) + 1;
+                                metadata_format_identifier = String.fromCharCode(... Array.from(data.subarray(offset + pad, offset + pad + 4)));
+                            }
+
+                            if (metadata_application_format_identifier === 'ID3 ' && metadata_format_identifier === 'ID3 ') {
+                                pmt.timed_id3_pids[elementary_PID] = true;
+                            } else if (metadata_format_identifier === 'KLVA') {
+                                pmt.synchronous_klv_pids[elementary_PID] = true;
+                            }
+                        }
+
+                        offset += 2 + length;
+                    }
+                }
             } else if (stream_type === StreamType.kSCTE35) {
                 pmt.scte_35_pids[elementary_PID] = true;
             }
@@ -1904,6 +1944,44 @@ class TSDemuxer extends BaseDemuxer {
 
         if (this.onTimedID3Metadata) {
             this.onTimedID3Metadata(timed_id3_metadata);
+        }
+    }
+
+    private parseSynchronousKLVMetadataPayload(data: Uint8Array, pts: number, dts: number, pid: number, stream_id: number) {
+        let synchronous_klv_metadata = new KLVData();
+
+        synchronous_klv_metadata.pid = pid;
+        synchronous_klv_metadata.stream_id = stream_id;
+        synchronous_klv_metadata.len = data.byteLength;
+        synchronous_klv_metadata.data = data;
+
+        if (pts != undefined) {
+            let pts_ms = Math.floor(pts / this.timescale_);
+            synchronous_klv_metadata.pts = pts_ms;
+        }
+
+        if (dts != undefined) {
+            let dts_ms = Math.floor(dts / this.timescale_);
+            synchronous_klv_metadata.dts = dts_ms;
+        }
+
+        synchronous_klv_metadata.access_units = klv_parse(data);
+
+        if (this.onSynchronousKLVMetadata) {
+            this.onSynchronousKLVMetadata(synchronous_klv_metadata);
+        }
+    }
+
+    private parseAsynchronousKLVMetadataPayload(data: Uint8Array, pid: number, stream_id: number) {
+        let asynchronous_klv_metadata = new PESPrivateData();
+
+        asynchronous_klv_metadata.pid = pid;
+        asynchronous_klv_metadata.stream_id = stream_id;
+        asynchronous_klv_metadata.len = data.byteLength;
+        asynchronous_klv_metadata.data = data;
+
+        if (this.onAsynchronousKLVMetadata) {
+            this.onAsynchronousKLVMetadata(asynchronous_klv_metadata);
         }
     }
 
