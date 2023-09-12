@@ -17,6 +17,7 @@
  */
 
 import EventEmitter from 'events';
+import work from 'webworkify-webpack';
 import Log from '../utils/logger.js';
 import Browser from '../utils/browser.js';
 import PlayerEvents from './player-events.js';
@@ -24,6 +25,7 @@ import Transmuxer from '../core/transmuxer.js';
 import TransmuxingEvents from '../core/transmuxing-events.js';
 import MSEController from '../core/mse-controller.js';
 import MSEEvents from '../core/mse-events.js';
+import LoggingControl from '../utils/logging-control.js';
 import {ErrorTypes, ErrorDetails} from './player-errors.js';
 import {createDefaultConfig} from '../config.js';
 import {InvalidArgumentException, IllegalStateException} from '../utils/exception.js';
@@ -57,8 +59,11 @@ class MSEPlayer {
             onvSeeking: this._onvSeeking.bind(this),
             onvCanPlay: this._onvCanPlay.bind(this),
             onvStalled: this._onvStalled.bind(this),
-            onvProgress: this._onvProgress.bind(this)
+            onvProgress: this._onvProgress.bind(this),
+            onTimeupdate: this._onTimeupdateForWorker.bind(this),
+            onReadystatechange: this._onReadystateChangeForWorker.bind(this),
         };
+        this.onLoggingConfigChangedHandler = this._onLoggingConfigChanged.bind(this);
 
         if (self.performance && self.performance.now) {
             this._now = self.performance.now.bind(self.performance);
@@ -75,6 +80,8 @@ class MSEPlayer {
         this._mediaElement = null;
         this._msectl = null;
         this._transmuxer = null;
+        this._mseworker = null;
+        this._mseworkerDestroying = false;
 
         this._mseSourceOpened = false;
         this._hasPendingLoad = false;
@@ -98,6 +105,13 @@ class MSEPlayer {
         if (this._progressChecker != null) {
             window.clearInterval(this._progressChecker);
             this._progressChecker = null;
+        }
+        if (this._mseworker) {
+            if (!this._mseworkerDestroying) {
+                this._mseworkerDestroying = true;
+                this._mseworker.postMessage({cmd: 'destroy'});
+                LoggingControl.removeListener(this.onLoggingConfigChangedHandler);
+            }
         }
         if (this._transmuxer) {
             this.unload();
@@ -140,27 +154,37 @@ class MSEPlayer {
         mediaElement.addEventListener('canplay', this.e.onvCanPlay);
         mediaElement.addEventListener('stalled', this.e.onvStalled);
         mediaElement.addEventListener('progress', this.e.onvProgress);
+        mediaElement.addEventListener('timeupdate', this.e.onTimeupdate);
+        mediaElement.addEventListener('readystatechange', this.e.onReadystatechange);
 
-        this._msectl = new MSEController(this._config);
-
-        this._msectl.on(MSEEvents.UPDATE_END, this._onmseUpdateEnd.bind(this));
-        this._msectl.on(MSEEvents.BUFFER_FULL, this._onmseBufferFull.bind(this));
-        this._msectl.on(MSEEvents.SOURCE_OPEN, () => {
-            this._mseSourceOpened = true;
-            if (this._hasPendingLoad) {
-                this._hasPendingLoad = false;
-                this.load();
+        let useMSEWorker = this._config.enableMSEWorker && typeof (Worker) !== 'undefined';
+        if (useMSEWorker) {
+            this._constructMSEWorkerIfNeeded(false);
+            if (this._mseworker) {
+                this._mseworker.postMessage({ cmd: 'attachMediaElement' });
             }
-        });
-        this._msectl.on(MSEEvents.ERROR, (info) => {
-            this._emitter.emit(PlayerEvents.ERROR,
-                               ErrorTypes.MEDIA_ERROR,
-                               ErrorDetails.MEDIA_MSE_ERROR,
-                               info
-            );
-        });
+        } else {
+            this._msectl = new MSEController(this._config);
 
-        this._msectl.attachMediaElement(mediaElement);
+            this._msectl.on(MSEEvents.UPDATE_END, this._onmseUpdateEnd.bind(this));
+            this._msectl.on(MSEEvents.BUFFER_FULL, this._onmseBufferFull.bind(this));
+            this._msectl.on(MSEEvents.SOURCE_OPEN, () => {
+                this._mseSourceOpened = true;
+                if (this._hasPendingLoad) {
+                    this._hasPendingLoad = false;
+                    this.load();
+                }
+            });
+            this._msectl.on(MSEEvents.ERROR, (info) => {
+                this._emitter.emit(PlayerEvents.ERROR,
+                                ErrorTypes.MEDIA_ERROR,
+                                ErrorDetails.MEDIA_MSE_ERROR,
+                                info
+                );
+            });
+
+            this._msectl.attachMediaElement(mediaElement);
+        }
 
         if (this._pendingSeekTime != null) {
             try {
@@ -175,15 +199,22 @@ class MSEPlayer {
 
     detachMediaElement() {
         if (this._mediaElement) {
-            this._msectl.detachMediaElement();
             this._mediaElement.removeEventListener('loadedmetadata', this.e.onvLoadedMetadata);
             this._mediaElement.removeEventListener('seeking', this.e.onvSeeking);
             this._mediaElement.removeEventListener('canplay', this.e.onvCanPlay);
             this._mediaElement.removeEventListener('stalled', this.e.onvStalled);
             this._mediaElement.removeEventListener('progress', this.e.onvProgress);
-            this._mediaElement = null;
+            this._mediaElement.removeEventListener('timeupdate', this.e.onTimeupdate);
+            this._mediaElement.removeEventListener('readystatechange', this.e.onReadystatechange);
+            if (this._mseworker == null) {
+                this._mediaElement = null;
+            }
+        }
+        if (this._mseworker) {
+            this._mseworker.postMessage({ cmd: 'detachMediaElement' })
         }
         if (this._msectl) {
+            this._msectl.detachMediaElement();
             this._msectl.destroy();
             this._msectl = null;
         }
@@ -211,86 +242,94 @@ class MSEPlayer {
             this._mediaElement.currentTime = 0;
         }
 
-        this._transmuxer = new Transmuxer(this._mediaDataSource, this._config);
+        let useMSEWorker = this._config.enableMSEWorker && typeof (Worker) !== 'undefined';
+        if (useMSEWorker) {
+            this._constructMSEWorkerIfNeeded(false);
+        } else {
+            this._transmuxer = new Transmuxer(this._mediaDataSource, this._config);
 
-        this._transmuxer.on(TransmuxingEvents.INIT_SEGMENT, (type, is) => {
-            this._msectl.appendInitSegment(is);
-        });
-        this._transmuxer.on(TransmuxingEvents.MEDIA_SEGMENT, (type, ms) => {
-            this._msectl.appendMediaSegment(ms);
+            this._transmuxer.on(TransmuxingEvents.INIT_SEGMENT, (type, is) => {
+                this._msectl.appendInitSegment(is);
+            });
+            this._transmuxer.on(TransmuxingEvents.MEDIA_SEGMENT, (type, ms) => {
+                this._msectl.appendMediaSegment(ms);
 
-            // lazyLoad check
-            if (this._config.lazyLoad && !this._config.isLive) {
-                let currentTime = this._mediaElement.currentTime;
-                if (ms.info.endDts >= (currentTime + this._config.lazyLoadMaxDuration) * 1000) {
-                    if (this._progressChecker == null) {
-                        Log.v(this.TAG, 'Maximum buffering duration exceeded, suspend transmuxing task');
-                        this._suspendTransmuxer();
+                // lazyLoad check
+                if (this._config.lazyLoad && !this._config.isLive) {
+                    let currentTime = this._mediaElement.currentTime;
+                    if (ms.info.endDts >= (currentTime + this._config.lazyLoadMaxDuration) * 1000) {
+                        if (this._progressChecker == null) {
+                            Log.v(this.TAG, 'Maximum buffering duration exceeded, suspend transmuxing task');
+                            this._suspendTransmuxer();
+                        }
                     }
                 }
-            }
-        });
-        this._transmuxer.on(TransmuxingEvents.LOADING_COMPLETE, () => {
-            this._msectl.endOfStream();
-            this._emitter.emit(PlayerEvents.LOADING_COMPLETE);
-        });
-        this._transmuxer.on(TransmuxingEvents.RECOVERED_EARLY_EOF, () => {
-            this._emitter.emit(PlayerEvents.RECOVERED_EARLY_EOF);
-        });
-        this._transmuxer.on(TransmuxingEvents.IO_ERROR, (detail, info) => {
-            this._emitter.emit(PlayerEvents.ERROR, ErrorTypes.NETWORK_ERROR, detail, info);
-        });
-        this._transmuxer.on(TransmuxingEvents.DEMUX_ERROR, (detail, info) => {
-            this._emitter.emit(PlayerEvents.ERROR, ErrorTypes.MEDIA_ERROR, detail, {code: -1, msg: info});
-        });
-        this._transmuxer.on(TransmuxingEvents.MEDIA_INFO, (mediaInfo) => {
-            this._mediaInfo = mediaInfo;
-            this._emitter.emit(PlayerEvents.MEDIA_INFO, Object.assign({}, mediaInfo));
-        });
-        this._transmuxer.on(TransmuxingEvents.METADATA_ARRIVED, (metadata) => {
-            this._emitter.emit(PlayerEvents.METADATA_ARRIVED, metadata);
-        });
-        this._transmuxer.on(TransmuxingEvents.SCRIPTDATA_ARRIVED, (data) => {
-            this._emitter.emit(PlayerEvents.SCRIPTDATA_ARRIVED, data);
-        });
-        this._transmuxer.on(TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED, (timed_id3_metadata) => {
-            this._emitter.emit(PlayerEvents.TIMED_ID3_METADATA_ARRIVED, timed_id3_metadata);
-        });
-        this._transmuxer.on(TransmuxingEvents.SYNCHRONOUS_KLV_METADATA_ARRIVED, (synchronous_klv_metadata) => {
-            this._emitter.emit(PlayerEvents.SYNCHRONOUS_KLV_METADATA_ARRIVED, synchronous_klv_metadata);
-        });
-        this._transmuxer.on(TransmuxingEvents.ASYNCHRONOUS_KLV_METADATA_ARRIVED, (asynchronous_klv_metadata) => {
-            this._emitter.emit(PlayerEvents.ASYNCHRONOUS_KLV_METADATA_ARRIVED, asynchronous_klv_metadata);
-        });
-        this._transmuxer.on(TransmuxingEvents.SMPTE2038_METADATA_ARRIVED, (smpte2038_metadata) => {
-            this._emitter.emit(PlayerEvents.SMPTE2038_METADATA_ARRIVED, smpte2038_metadata);
-        });
-        this._transmuxer.on(TransmuxingEvents.SCTE35_METADATA_ARRIVED, (scte35_metadata) => {
-            this._emitter.emit(PlayerEvents.SCTE35_METADATA_ARRIVED, scte35_metadata);
-        });
-        this._transmuxer.on(TransmuxingEvents.PES_PRIVATE_DATA_DESCRIPTOR, (descriptor) => {
-            this._emitter.emit(PlayerEvents.PES_PRIVATE_DATA_DESCRIPTOR, descriptor);
-        });
-        this._transmuxer.on(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, (private_data) => {
-            this._emitter.emit(PlayerEvents.PES_PRIVATE_DATA_ARRIVED, private_data);
-        });
-        this._transmuxer.on(TransmuxingEvents.STATISTICS_INFO, (statInfo) => {
-            this._statisticsInfo = this._fillStatisticsInfo(statInfo);
-            this._emitter.emit(PlayerEvents.STATISTICS_INFO, Object.assign({}, this._statisticsInfo));
-        });
-        this._transmuxer.on(TransmuxingEvents.RECOMMEND_SEEKPOINT, (milliseconds) => {
-            if (this._mediaElement && !this._config.accurateSeek) {
-                this._requestSetTime = true;
-                this._mediaElement.currentTime = milliseconds / 1000;
-            }
-        });
+            });
+            this._transmuxer.on(TransmuxingEvents.LOADING_COMPLETE, () => {
+                this._msectl.endOfStream();
+                this._emitter.emit(PlayerEvents.LOADING_COMPLETE);
+            });
+            this._transmuxer.on(TransmuxingEvents.RECOVERED_EARLY_EOF, () => {
+                this._emitter.emit(PlayerEvents.RECOVERED_EARLY_EOF);
+            });
+            this._transmuxer.on(TransmuxingEvents.IO_ERROR, (detail, info) => {
+                this._emitter.emit(PlayerEvents.ERROR, ErrorTypes.NETWORK_ERROR, detail, info);
+            });
+            this._transmuxer.on(TransmuxingEvents.DEMUX_ERROR, (detail, info) => {
+                this._emitter.emit(PlayerEvents.ERROR, ErrorTypes.MEDIA_ERROR, detail, {code: -1, msg: info});
+            });
+            this._transmuxer.on(TransmuxingEvents.MEDIA_INFO, (mediaInfo) => {
+                this._mediaInfo = mediaInfo;
+                this._emitter.emit(PlayerEvents.MEDIA_INFO, Object.assign({}, mediaInfo));
+            });
+            this._transmuxer.on(TransmuxingEvents.METADATA_ARRIVED, (metadata) => {
+                this._emitter.emit(PlayerEvents.METADATA_ARRIVED, metadata);
+            });
+            this._transmuxer.on(TransmuxingEvents.SCRIPTDATA_ARRIVED, (data) => {
+                this._emitter.emit(PlayerEvents.SCRIPTDATA_ARRIVED, data);
+            });
+            this._transmuxer.on(TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED, (timed_id3_metadata) => {
+                this._emitter.emit(PlayerEvents.TIMED_ID3_METADATA_ARRIVED, timed_id3_metadata);
+            });
+            this._transmuxer.on(TransmuxingEvents.SYNCHRONOUS_KLV_METADATA_ARRIVED, (synchronous_klv_metadata) => {
+                this._emitter.emit(PlayerEvents.SYNCHRONOUS_KLV_METADATA_ARRIVED, synchronous_klv_metadata);
+            });
+            this._transmuxer.on(TransmuxingEvents.ASYNCHRONOUS_KLV_METADATA_ARRIVED, (asynchronous_klv_metadata) => {
+                this._emitter.emit(PlayerEvents.ASYNCHRONOUS_KLV_METADATA_ARRIVED, asynchronous_klv_metadata);
+            });
+            this._transmuxer.on(TransmuxingEvents.SMPTE2038_METADATA_ARRIVED, (smpte2038_metadata) => {
+                this._emitter.emit(PlayerEvents.SMPTE2038_METADATA_ARRIVED, smpte2038_metadata);
+            });
+            this._transmuxer.on(TransmuxingEvents.SCTE35_METADATA_ARRIVED, (scte35_metadata) => {
+                this._emitter.emit(PlayerEvents.SCTE35_METADATA_ARRIVED, scte35_metadata);
+            });
+            this._transmuxer.on(TransmuxingEvents.PES_PRIVATE_DATA_DESCRIPTOR, (descriptor) => {
+                this._emitter.emit(PlayerEvents.PES_PRIVATE_DATA_DESCRIPTOR, descriptor);
+            });
+            this._transmuxer.on(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, (private_data) => {
+                this._emitter.emit(PlayerEvents.PES_PRIVATE_DATA_ARRIVED, private_data);
+            });
+            this._transmuxer.on(TransmuxingEvents.STATISTICS_INFO, (statInfo) => {
+                this._statisticsInfo = this._fillStatisticsInfo(statInfo);
+                this._emitter.emit(PlayerEvents.STATISTICS_INFO, Object.assign({}, this._statisticsInfo));
+            });
+            this._transmuxer.on(TransmuxingEvents.RECOMMEND_SEEKPOINT, (milliseconds) => {
+                if (this._mediaElement && !this._config.accurateSeek) {
+                    this._requestSetTime = true;
+                    this._mediaElement.currentTime = milliseconds / 1000;
+                }
+            });
 
-        this._transmuxer.open();
+            this._transmuxer.open();
+        }
     }
 
     unload() {
         if (this._mediaElement) {
             this._mediaElement.pause();
+        }
+        if (this._mseworker) {
+            this._mseworker.postMessage({ cmd: 'unload' })
         }
         if (this._msectl) {
             this._msectl.seek(0);
@@ -445,12 +484,16 @@ class MSEPlayer {
     }
 
     _suspendTransmuxer() {
+        if (this._mseworker) {
+            this._mseworker.postMessage({ cmd: 'suspendTransmuxer' });
+        }
+
         if (this._transmuxer) {
             this._transmuxer.pause();
+        }
 
-            if (this._progressChecker == null) {
-                this._progressChecker = window.setInterval(this._checkProgressAndResume.bind(this), 1000);
-            }
+        if (this._progressChecker == null) {
+            this._progressChecker = window.setInterval(this._checkProgressAndResume.bind(this), 1000);
         }
     }
 
@@ -586,6 +629,33 @@ class MSEPlayer {
         }
     }
 
+    _constructMSEWorkerIfNeeded(replace) {
+        if (this._config.enableMSEWorker && typeof (Worker) !== 'undefined') {
+            if (this._mseworker && !replace) { return; }
+
+            if (this._mseworker) {
+                this._mseworker.terminate();
+                this._mseworker = null;
+            }
+
+            try {
+                this._mseworker = work(require.resolve('./mse-player-worker'));
+                this._mseworkerDestroying = false;
+                this._mseworker.addEventListener('message', this._onWorkerMessage.bind(this));
+                this._mseworker.postMessage({ cmd: 'init', param: [this._mediaDataSource, this._config] });
+
+                LoggingControl.registerListener(this.onLoggingConfigChangedHandler);
+                this._mseworker.postMessage({ cmd: 'logging_config', param: LoggingControl.getConfig() });
+            } catch (error) {
+                console.error(error)
+                Log.e(this.TAG, 'Error while initialize MSE worker, fallback to inline MSE');
+                this._mseworker = null;
+            }
+        } else {
+            this._mseworker = null;
+        }
+    }
+
     _onvLoadedMetadata(e) {
         if (this._pendingSeekTime != null) {
             this._mediaElement.currentTime = this._pendingSeekTime;
@@ -645,6 +715,88 @@ class MSEPlayer {
 
     _onvProgress(e) {
         this._checkAndResumeStuckPlayback();
+    }
+
+    _onWorkerMessage(e) {
+        if (e.data.cmd === 'destroyed' || this._workerDestroying) {
+            this._mseworkerDestroying = false;
+            this._mseworker.terminate();
+            this._mseworker = null;
+            if (this._mediaElement) {
+                this._mediaElement.removeAttribute('src');
+                this._mediaElement.load();
+                this._mediaElement = null;
+            }
+            return;
+        }
+
+        switch (e.data.cmd) {
+            case 'attachMediaElement':
+                this._mediaElement.srcObject = e.data.handle;
+                break;
+            case 'detachMediaElement':
+                if (this._mediaElement) {
+                    this._mediaElement.removeAttribute('src');
+                    this._mediaElement.load();
+                    this._mediaElement = null;
+                }
+            case 'unload':
+                break;
+            case 'needSuspendTransmuxing':
+                this._suspendTransmuxer();
+                break;
+            case 'logcat_callback':
+                Log.emitter.emit('log', e.data.data.type, e.data.data.logcat);
+                break;
+            case TransmuxingEvents.RECOMMEND_SEEKPOINT:
+                if (this._mediaElement && !this._config.accurateSeek) {
+                    this._requestSetTime = true;
+                    this._mediaElement.currentTime = e.data.milliseconds / 1000;
+                }
+                break;
+            case TransmuxingEvents.STATISTICS_INFO:
+                this._statisticsInfo = this._fillStatisticsInfo(e.data.statInfo);
+                this._emitter.emit(PlayerEvents.STATISTICS_INFO, Object.assign({}, this._statisticsInfo));
+                break;
+            case PlayerEvents.LOADING_COMPLETE:
+                this._emitter.emit(PlayerEvents.LOADING_COMPLETE);
+                break;
+            case PlayerEvents.RECOVERED_EARLY_EOF:
+                this._emitter.emit(PlayerEvents.RECOVERED_EARLY_EOF);
+                break;
+            case PlayerEvents.ERROR:
+                this._emitter.emit(PlayerEvents.ERROR, e.data.type, e.data.detail, e.data.info);
+                break;
+            case PlayerEvents.MEDIA_INFO:
+                this._emitter.emit(PlayerEvents.MEDIA_INFO, e.data.mediaInfo);
+                break;
+            case PlayerEvents.METADATA_ARRIVED:
+            case PlayerEvents.SCRIPTDATA_ARRIVED:
+            case PlayerEvents.TIMED_ID3_METADATA_ARRIVED:
+            case PlayerEvents.SYNCHRONOUS_KLV_METADATA_ARRIVED:
+            case PlayerEvents.SMPTE2038_METADATA_ARRIVED:
+            case PlayerEvents.SCTE35_METADATA_ARRIVED:
+            case PlayerEvents.PES_PRIVATE_DATA_DESCRIPTOR:
+            case PlayerEvents.PES_PRIVATE_DATA_ARRIVED:
+                this._emitter.emit(e.data.cmd, e.data.data);
+                break;
+        }
+    }
+
+    _onTimeupdateForWorker(e) {
+        if (!this._mseworker) { return; }
+        this._mseworker.postMessage({ cmd: 'timeupdate', currentTime: e.target.currentTime });
+    }
+
+    _onReadystateChangeForWorker(e) {
+        if (!this._mseworker) { return; }
+        this._mseworker.postMessage({ cmd: 'readystatechange', readyState: e.target.readyState });
+    }
+
+    _onLoggingConfigChanged(config) {
+        if (this._mseworker) {
+            this._mseworker.postMessage({ cmd: 'logging_config', param: config });
+        }
     }
 
 }
