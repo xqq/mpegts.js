@@ -122,8 +122,10 @@ class MSEPlayer {
         this.e = null;
         this._mediaDataSource = null;
 
-        this._emitter.removeAllListeners();
-        this._emitter = null;
+        if (!this._mseworker) {
+            this._emitter.removeAllListeners();
+            this._emitter = null;
+        }
     }
 
     on(event, listener) {
@@ -148,21 +150,40 @@ class MSEPlayer {
     }
 
     attachMediaElement(mediaElement) {
-        this._mediaElement = mediaElement;
-        mediaElement.addEventListener('loadedmetadata', this.e.onvLoadedMetadata);
-        mediaElement.addEventListener('seeking', this.e.onvSeeking);
-        mediaElement.addEventListener('canplay', this.e.onvCanPlay);
-        mediaElement.addEventListener('stalled', this.e.onvStalled);
-        mediaElement.addEventListener('progress', this.e.onvProgress);
-        mediaElement.addEventListener('timeupdate', this.e.onTimeupdate);
-        mediaElement.addEventListener('readystatechange', this.e.onReadystatechange);
-
         if (this._config.enableMSEWorker) {
             this._constructMSEWorkerIfNeeded(false);
             if (this._mseworker) {
                 this._mseworker.postMessage({ cmd: 'attachMediaElement' });
+                let cb = (e) => {
+                    if (e.data.cmd !== 'attachMediaElement') { return; }
+                    this._mediaElement = mediaElement;
+
+                    mediaElement.addEventListener('loadedmetadata', this.e.onvLoadedMetadata);
+                    mediaElement.addEventListener('seeking', this.e.onvSeeking);
+                    mediaElement.addEventListener('canplay', this.e.onvCanPlay);
+                    mediaElement.addEventListener('stalled', this.e.onvStalled);
+                    mediaElement.addEventListener('progress', this.e.onvProgress);
+                    mediaElement.addEventListener('timeupdate', this.e.onTimeupdate);
+                    mediaElement.addEventListener('readystatechange', this.e.onReadystatechange);
+
+                    this._mediaElement.srcObject = e.data.handle;
+
+                    if (this._mseworker == null) { return; }
+                    this._mseworker.removeEventListener('message', cb);
+                };
+                this._mseworker.addEventListener('message', cb);
             }
         } else {
+            this._mediaElement = mediaElement;
+
+            mediaElement.addEventListener('loadedmetadata', this.e.onvLoadedMetadata);
+            mediaElement.addEventListener('seeking', this.e.onvSeeking);
+            mediaElement.addEventListener('canplay', this.e.onvCanPlay);
+            mediaElement.addEventListener('stalled', this.e.onvStalled);
+            mediaElement.addEventListener('progress', this.e.onvProgress);
+            mediaElement.addEventListener('timeupdate', this.e.onTimeupdate);
+            mediaElement.addEventListener('readystatechange', this.e.onReadystatechange);
+
             this._msectl = new MSEController(this._config);
 
             this._msectl.on(MSEEvents.UPDATE_END, this._onmseUpdateEnd.bind(this));
@@ -220,7 +241,9 @@ class MSEPlayer {
 
     load() {
         if (!this._mediaElement) {
-            throw new IllegalStateException('HTMLMediaElement must be attached before load()!');
+            if (!this._mseworker) { // if MSE Worker exists, it is progressing in attaching MediaElement, otherwise is error.
+                throw new IllegalStateException('HTMLMediaElement must be attached before load()!');
+            }
         }
         if (this._transmuxer) {
             throw new IllegalStateException('MSEPlayer.load() has been called, please call unload() first!');
@@ -235,15 +258,16 @@ class MSEPlayer {
         }
 
         if (this._mediaElement.readyState > 0) {
-            this._requestSetTime = true;
-            // IE11 may throw InvalidStateError if readyState === 0
-            this._mediaElement.currentTime = 0;
+            // exclude MSE worker initilaized and progressing in attaching MediaElement for MSE Worker
+            if (!(this._mseworker && !this._mediaElement)) {
+                this._requestSetTime = true;
+                // IE11 may throw InvalidStateError if readyState === 0
+                this._mediaElement.currentTime = 0;
+            }
         }
 
         if (this._config.enableMSEWorker) {
             this._constructMSEWorkerIfNeeded(false);
-            // if already specify src attribute, remove it
-            this._mediaElement.removeAttribute('src');
         } else {
             this._transmuxer = new Transmuxer(this._mediaDataSource, this._config);
 
@@ -744,6 +768,8 @@ class MSEPlayer {
             this._mseworkerDestroying = false;
             this._mseworker.terminate();
             this._mseworker = null;
+            this._emitter.removeAllListeners();
+            this._emitter = null;
             if (this._mediaElement) {
                 this._mediaElement.removeAttribute('src');
                 this._mediaElement.load();
@@ -754,7 +780,6 @@ class MSEPlayer {
 
         switch (e.data.cmd) {
             case 'attachMediaElement':
-                this._mediaElement.srcObject = e.data.handle;
                 break;
             case 'detachMediaElement':
                 if (this._mediaElement) {
