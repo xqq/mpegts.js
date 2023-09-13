@@ -158,7 +158,7 @@ let MSEWorker = function (self) {
                     _msectl.appendMediaSegment(ms);
 
                     // lazyLoad check
-                    if (e.data.param[1].lazyLoad && !e.data.param[1].isLive) {
+                    if (config.lazyLoad && !config.isLive) {
                         if (ms.info.endDts >= (currentTime + config.lazyLoadMaxDuration) * 1000) {
                             self.postMessage('suspendTransmuxer');
                         }
@@ -253,7 +253,7 @@ let MSEWorker = function (self) {
                 break;
             case 'timeupdate':
                 if (_msectl == null) { throw new IllegalStateException('MSEController not Initialized!'); }
-                _msectl.currentTime = e.data.currnetTime;
+                _msectl.currentTime = e.data.currentTime;
                 break;
             case 'readystatechange':
                 if (_msectl == null) { throw new IllegalStateException('MSEController not Initialized!'); }
