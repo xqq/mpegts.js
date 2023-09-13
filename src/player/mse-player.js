@@ -214,7 +214,6 @@ class MSEPlayer {
             this._mseworker.postMessage({ cmd: 'detachMediaElement' })
         }
         if (this._msectl) {
-            this._msectl.detachMediaElement();
             this._msectl.destroy();
             this._msectl = null;
         }
@@ -723,8 +722,8 @@ class MSEPlayer {
             this._mseworker.terminate();
             this._mseworker = null;
             if (this._mediaElement) {
+                this._mediaElement.src = '';
                 this._mediaElement.removeAttribute('src');
-                this._mediaElement.load();
                 this._mediaElement = null;
             }
             return;
@@ -736,10 +735,11 @@ class MSEPlayer {
                 break;
             case 'detachMediaElement':
                 if (this._mediaElement) {
+                    this._mediaElement.src = '';
                     this._mediaElement.removeAttribute('src');
-                    this._mediaElement.load();
                     this._mediaElement = null;
                 }
+                break;
             case 'unload':
                 break;
             case 'needSuspendTransmuxing':
