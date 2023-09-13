@@ -159,7 +159,7 @@ let MSEWorker = function (self) {
 
                     // lazyLoad check
                     if (e.data.param[1].lazyLoad && !e.data.param[1].isLive) {
-                        if (ms.info.endDts >= (currentTime + this._config.lazyLoadMaxDuration) * 1000) {
+                        if (ms.info.endDts >= (currentTime + config.lazyLoadMaxDuration) * 1000) {
                             self.postMessage('suspendTransmuxer');
                         }
                     }
