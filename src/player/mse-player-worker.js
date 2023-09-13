@@ -277,7 +277,7 @@ let MSEWorker = function (self) {
             case 'destroy':
                 if (_msectl) {
                     _msectl.destroy();
-                    controller = null;
+                    _msectl = null;
                 }
                 if (_transmuxer) {
                     _transmuxer.destroy();
