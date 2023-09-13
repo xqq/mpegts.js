@@ -157,8 +157,7 @@ class MSEPlayer {
         mediaElement.addEventListener('timeupdate', this.e.onTimeupdate);
         mediaElement.addEventListener('readystatechange', this.e.onReadystatechange);
 
-        let useMSEWorker = this._config.enableMSEWorker && typeof (Worker) !== 'undefined';
-        if (useMSEWorker) {
+        if (this._config.enableMSEWorker) {
             this._constructMSEWorkerIfNeeded(false);
             if (this._mseworker) {
                 this._mseworker.postMessage({ cmd: 'attachMediaElement' });
@@ -241,9 +240,11 @@ class MSEPlayer {
             this._mediaElement.currentTime = 0;
         }
 
-        let useMSEWorker = this._config.enableMSEWorker && typeof (Worker) !== 'undefined';
-        if (useMSEWorker) {
+        if (this._config.enableMSEWorker) {
             this._constructMSEWorkerIfNeeded(false);
+            // wait for detach privious MediaSource by synchronously
+            this._mediaElement.removeAttribute('src');
+            this._mediaElement.load();
         } else {
             this._transmuxer = new Transmuxer(this._mediaDataSource, this._config);
 
@@ -722,8 +723,8 @@ class MSEPlayer {
             this._mseworker.terminate();
             this._mseworker = null;
             if (this._mediaElement) {
-                this._mediaElement.src = '';
                 this._mediaElement.removeAttribute('src');
+                this._mediaElement.load();
                 this._mediaElement = null;
             }
             return;
@@ -735,8 +736,8 @@ class MSEPlayer {
                 break;
             case 'detachMediaElement':
                 if (this._mediaElement) {
-                    this._mediaElement.src = '';
                     this._mediaElement.removeAttribute('src');
+                    this._mediaElement.load();
                     this._mediaElement = null;
                 }
                 break;
