@@ -242,9 +242,8 @@ class MSEPlayer {
 
         if (this._config.enableMSEWorker) {
             this._constructMSEWorkerIfNeeded(false);
-            // wait for detach privious MediaSource by synchronously
+            // if already specify src attribute, remove it
             this._mediaElement.removeAttribute('src');
-            this._mediaElement.load();
         } else {
             this._transmuxer = new Transmuxer(this._mediaDataSource, this._config);
 
