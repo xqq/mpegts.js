@@ -259,9 +259,28 @@ let MSEWorker = function (self) {
                 if (_msectl == null) { throw new IllegalStateException('MSEController not Initialized!'); }
                 _msectl.readyState = e.data.readyState;
                 break;
+            case 'seek':
+                if (_msectl == null) { { throw new IllegalStateException('MSEController not Initialized!'); } }
+                if (_transmuxer == null) { { throw new IllegalStateException('Transmuxser not Initialized!'); } }
+                _msectl.seek(e.data.seconds);
+                _transmuxer.seek(Math.floor(e.data.seconds * 1000));  // in milliseconds
+                break;
+            case 'directSeek': {
+                let idr = _msectl.getNearestKeyframe(Math.floor(e.data.seconds * 1000));
+                if (idr != null) {
+                    self.postMessage({ cmd: 'currentTime', seconds: idr.dts / 1000 })
+                } else if (!e.data.alwaysSeekKeyframe) {
+                    self.postMessage({ cmd: 'currentTime', seconds: e.data.seconds })
+                }
+                break;
+            }
             case 'suspendTransmuxer':
                 if (_transmuxer == null) { throw new IllegalStateException('Transmuxer not Initialized!'); }
                 _transmuxer.pause();
+                break;
+            case 'resumeTransmuxer':
+                if (_transmuxer == null) { throw new IllegalStateException('Transmuxer not Initialized!'); }
+                _transmuxer.resume();
                 break;
             case 'logging_config': {
                 let config = e.data.param;
