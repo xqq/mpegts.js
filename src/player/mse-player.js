@@ -758,6 +758,19 @@ class MSEPlayer {
                 this._statisticsInfo = this._fillStatisticsInfo(e.data.statInfo);
                 this._emitter.emit(PlayerEvents.STATISTICS_INFO, Object.assign({}, this._statisticsInfo));
                 break;
+            case MSEEvents.UPDATE_END:
+                this._onmseUpdateEnd();
+                break;
+            case MSEEvents.BUFFER_FULL:
+                this._onmseBufferFull();
+                break;
+            case MSEEvents.SOURCE_OPEN:
+                this._mseSourceOpened = true;
+                if (this._hasPendingLoad) {
+                    this._hasPendingLoad = false;
+                    this.load();
+                }
+                break;
             case PlayerEvents.LOADING_COMPLETE:
                 this._emitter.emit(PlayerEvents.LOADING_COMPLETE);
                 break;

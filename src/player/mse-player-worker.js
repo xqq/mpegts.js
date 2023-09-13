@@ -23,6 +23,7 @@ import Polyfill from '../utils/polyfill.js';
 import LoggingControl from '../utils/logging-control.js';
 import PlayerEvents from './player-events.js'
 import { ErrorTypes } from './player-errors.js';
+import MSEEvents from '../core/mse-events.js';
 import MSEController from '../core/mse-controller.js';
 import Transmuxer from '../core/transmuxer.js';
 import TransmuxingEvents from '../core/transmuxing-events.js';
@@ -134,6 +135,19 @@ let MSEWorker = function (self) {
                 let config = e.data.param[1];
                 _msectl = new MSEControllerForWorker(config);
                 _transmuxer = new Transmuxer(mediaDataSource, { ... config, enableWorker: false });
+
+                _msectl.on(MSEEvents.UPDATE_END, () => {
+                    self.postMessage({ cmd: MSEEvents.UPDATE_END });
+                });
+                _msectl.on(MSEEvents.BUFFER_FULL, () => {
+                    self.postMessage({ cmd: MSEEvents.BUFFER_FULL });
+                });
+                _msectl.on(MSEEvents.SOURCE_OPEN, () => {
+                    self.postMessage({ cmd: MSEEvents.SOURCE_OPEN })
+                });
+                _msectl.on(MSEEvents.ERROR, (info) => {
+                    self.postMessage({ cmd: PlayerEvents.ERROR, type: ErrorTypes.MEDIA_ERROR, detail: ErrorDetails.MEDIA_MSE_ERROR, info })
+                });
 
                 _transmuxer.on(TransmuxingEvents.INIT_SEGMENT, (type, is) => {
                     if (_msectl == null) { return; }
