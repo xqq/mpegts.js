@@ -82,6 +82,7 @@ class MSEPlayer {
         this._transmuxer = null;
         this._mseworker = null;
         this._mseworkerDestroying = false;
+        this._mseworkerAttaching = false;
 
         this._mseSourceOpened = false;
         this._hasPendingLoad = false;
@@ -150,17 +151,21 @@ class MSEPlayer {
     }
 
     attachMediaElement(mediaElement) {
+        this._mediaElement = mediaElement;
+
         if (this._config.enableMSEWorker) {
             this._constructMSEWorkerIfNeeded(false);
             if (this._mseworker) {
+                this._mseworkerAttaching = true;
+
                 this._mseworker.postMessage({ cmd: 'attachMediaElement' });
                 let cb = (e) => {
                     if (e.data.cmd !== 'attachMediaElement') { return; }
-                    this._mediaElement = mediaElement;
 
                     mediaElement.removeAttribute('src');
                     mediaElement.srcObject = null;
                     mediaElement.load();
+                    this._mseworkerAttaching = false;
 
                     mediaElement.addEventListener('loadedmetadata', this.e.onvLoadedMetadata);
                     mediaElement.addEventListener('seeking', this.e.onvSeeking);
@@ -178,8 +183,6 @@ class MSEPlayer {
                 this._mseworker.addEventListener('message', cb);
             }
         } else {
-            this._mediaElement = mediaElement;
-
             mediaElement.addEventListener('loadedmetadata', this.e.onvLoadedMetadata);
             mediaElement.addEventListener('seeking', this.e.onvSeeking);
             mediaElement.addEventListener('canplay', this.e.onvCanPlay);
@@ -245,9 +248,7 @@ class MSEPlayer {
 
     load() {
         if (!this._mediaElement) {
-            if (!this._mseworker) { // if MSE Worker exists, it is progressing in attaching MediaElement, otherwise is error.
-                throw new IllegalStateException('HTMLMediaElement must be attached before load()!');
-            }
+            throw new IllegalStateException('HTMLMediaElement must be attached before load()!');
         }
         if (this._transmuxer) {
             throw new IllegalStateException('MSEPlayer.load() has been called, please call unload() first!');
@@ -262,8 +263,7 @@ class MSEPlayer {
         }
 
         if (this._mediaElement.readyState > 0) {
-            // exclude MSE worker initilaized and progressing in attaching MediaElement for MSE Worker
-            if (!(this._mseworker && !this._mediaElement)) {
+            if (!this._mseworkerAttaching) {
                 this._requestSetTime = true;
                 // IE11 may throw InvalidStateError if readyState === 0
                 this._mediaElement.currentTime = 0;
