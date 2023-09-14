@@ -158,6 +158,10 @@ class MSEPlayer {
                     if (e.data.cmd !== 'attachMediaElement') { return; }
                     this._mediaElement = mediaElement;
 
+                    mediaElement.removeAttribute('src');
+                    mediaElement.srcObject = null;
+                    mediaElement.load();
+
                     mediaElement.addEventListener('loadedmetadata', this.e.onvLoadedMetadata);
                     mediaElement.addEventListener('seeking', this.e.onvSeeking);
                     mediaElement.addEventListener('canplay', this.e.onvCanPlay);
@@ -772,6 +776,7 @@ class MSEPlayer {
             this._emitter = null;
             if (this._mediaElement) {
                 this._mediaElement.removeAttribute('src');
+                this._mediaElement.srcObject = null;
                 this._mediaElement.load();
                 this._mediaElement = null;
             }
@@ -784,6 +789,7 @@ class MSEPlayer {
             case 'detachMediaElement':
                 if (this._mediaElement) {
                     this._mediaElement.removeAttribute('src');
+                    this._mediaElement.srcObject = null;
                     this._mediaElement.load();
                     this._mediaElement = null;
                 }
