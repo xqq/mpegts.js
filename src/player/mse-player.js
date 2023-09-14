@@ -369,7 +369,29 @@ class MSEPlayer {
     }
 
     play() {
-        return this._mediaElement.play();
+        if (this._mseworkerAttaching) {
+            return new Promise((resolve, reject) => {
+                let waitAnythingHandler = () => {
+                    if (!this._mediaElement) {
+                        resolve();
+                        return;
+                    }
+                    this._mediaElement.play().then(resolve).catch(reject);
+                    this._mediaElement.removeEventListener('loadedmetadata', waitAnythingHandler);
+                    this._mediaElement.removeEventListener('abort', waitAnythingHandler);
+                    this._mediaElement.removeEventListener('error', waitAnythingHandler);
+                    if (this._emitter) {
+                        this._emitter.off(PlayerEvents.ERROR, waitAnythingHandler);
+                    }
+                };
+                this._mediaElement.addEventListener('loadedmetadata', waitAnythingHandler);
+                this._mediaElement.addEventListener('abort', waitAnythingHandler);
+                this._mediaElement.addEventListener('error', waitAnythingHandler);
+                this._emitter.on(PlayerEvents.ERROR, waitAnythingHandler);
+            });
+        } else {
+            return this._mediaElement.play();
+        }
     }
 
     pause() {
