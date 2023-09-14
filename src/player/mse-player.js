@@ -82,7 +82,7 @@ class MSEPlayer {
         this._transmuxer = null;
         this._mseworker = null;
         this._mseworkerDestroying = false;
-        this._mseworkerAttaching = false;
+        this._mseworkerAttachingElement = null;
 
         this._mseSourceOpened = false;
         this._hasPendingLoad = false;
@@ -154,18 +154,21 @@ class MSEPlayer {
         this._mediaElement = mediaElement;
 
         if (this._config.enableMSEWorker) {
+            mediaElement.removeAttribute('src');
+            mediaElement.srcObject = null;
+            mediaElement.load();
+
             this._constructMSEWorkerIfNeeded(false);
             if (this._mseworker) {
-                this._mseworkerAttaching = true;
+                this._mseworkerAttachingElement = mediaElement;
 
+                this._mseworker.postMessage({ cmd: 'detachMediaElement' });
                 this._mseworker.postMessage({ cmd: 'attachMediaElement' });
                 let cb = (e) => {
                     if (e.data.cmd !== 'attachMediaElement') { return; }
 
-                    mediaElement.removeAttribute('src');
-                    mediaElement.srcObject = null;
-                    mediaElement.load();
-                    this._mseworkerAttaching = false;
+                    this._mediaElement = this._mseworkerAttachingElement;
+                    this._mseworkerAttachingElement = null;
 
                     mediaElement.addEventListener('loadedmetadata', this.e.onvLoadedMetadata);
                     mediaElement.addEventListener('seeking', this.e.onvSeeking);
@@ -233,9 +236,13 @@ class MSEPlayer {
             this._mediaElement.removeEventListener('progress', this.e.onvProgress);
             this._mediaElement.removeEventListener('timeupdate', this.e.onTimeupdate);
             this._mediaElement.removeEventListener('readystatechange', this.e.onReadystatechange);
-            if (this._mseworker == null) {
-                this._mediaElement = null;
+
+            if (this._mseworker != null) {
+                this._mediaElement.removeAttribute('src');
+                this._mediaElement.srcObject = null;
+                this._mediaElement.load();
             }
+            this._mediaElement = null;
         }
         if (this._mseworker) {
             this._mseworker.postMessage({ cmd: 'detachMediaElement' })
@@ -263,7 +270,7 @@ class MSEPlayer {
         }
 
         if (this._mediaElement.readyState > 0) {
-            if (!this._mseworkerAttaching) {
+            if (!this._mseworkerAttachingElement) {
                 this._requestSetTime = true;
                 // IE11 may throw InvalidStateError if readyState === 0
                 this._mediaElement.currentTime = 0;
@@ -272,6 +279,10 @@ class MSEPlayer {
 
         if (this._config.enableMSEWorker) {
             this._constructMSEWorkerIfNeeded(false);
+
+            if (this._mseworker) {
+                this._mseworker.postMessage({ cmd: 'load' });
+            }
         } else {
             this._transmuxer = new Transmuxer(this._mediaDataSource, this._config);
 
@@ -369,26 +380,8 @@ class MSEPlayer {
     }
 
     play() {
-        if (this._mseworkerAttaching) {
-            return new Promise((resolve, reject) => {
-                let waitAnythingHandler = () => {
-                    if (!this._mediaElement) {
-                        resolve();
-                        return;
-                    }
-                    this._mediaElement.play().then(resolve).catch(reject);
-                    this._mediaElement.removeEventListener('loadedmetadata', waitAnythingHandler);
-                    this._mediaElement.removeEventListener('abort', waitAnythingHandler);
-                    this._mediaElement.removeEventListener('error', waitAnythingHandler);
-                    if (this._emitter) {
-                        this._emitter.off(PlayerEvents.ERROR, waitAnythingHandler);
-                    }
-                };
-                this._mediaElement.addEventListener('loadedmetadata', waitAnythingHandler);
-                this._mediaElement.addEventListener('abort', waitAnythingHandler);
-                this._mediaElement.addEventListener('error', waitAnythingHandler);
-                this._emitter.on(PlayerEvents.ERROR, waitAnythingHandler);
-            });
+        if (this._mseworkerAttachingElement) {
+            return this._mseworkerAttachingElement.play();
         } else {
             return this._mediaElement.play();
         }
@@ -790,7 +783,7 @@ class MSEPlayer {
     }
 
     _onWorkerMessage(e) {
-        if (e.data.cmd === 'destroyed' || this._workerDestroying) {
+        if (e.data.cmd === 'destroyed' || this._mseworkerDestroying) {
             this._mseworkerDestroying = false;
             this._mseworker.terminate();
             this._mseworker = null;
@@ -809,12 +802,6 @@ class MSEPlayer {
             case 'attachMediaElement':
                 break;
             case 'detachMediaElement':
-                if (this._mediaElement) {
-                    this._mediaElement.removeAttribute('src');
-                    this._mediaElement.srcObject = null;
-                    this._mediaElement.load();
-                    this._mediaElement = null;
-                }
                 break;
             case 'unload':
                 break;
