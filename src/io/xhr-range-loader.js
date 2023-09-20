@@ -76,6 +76,7 @@ class RangeLoader extends BaseLoader {
             this._xhr.onprogress = null;
             this._xhr.onload = null;
             this._xhr.onerror = null;
+            this._xhr.ontimeout = null;
             this._xhr = null;
         }
         super.destroy();
@@ -144,6 +145,7 @@ class RangeLoader extends BaseLoader {
         xhr.onprogress = this._onProgress.bind(this);
         xhr.onload = this._onLoad.bind(this);
         xhr.onerror = this._onXhrError.bind(this);
+        xhr.ontimeout = this._onXhrTimeout.bind(this);
 
         if (dataSource.withCredentials) {
             xhr.withCredentials = true;
@@ -170,6 +172,10 @@ class RangeLoader extends BaseLoader {
             }
         }
 
+        if (this._config.xhrTimeout !== Infinity && this._config.xhrTimeout > 0) {
+            xhr.timeout = this._config.xhrTimeout;
+        }
+
         xhr.send();
     }
 
@@ -185,6 +191,7 @@ class RangeLoader extends BaseLoader {
             this._xhr.onprogress = null;
             this._xhr.onload = null;
             this._xhr.onerror = null;
+            this._xhr.ontimeout = null;
             this._xhr.abort();
             this._xhr = null;
         }
@@ -361,6 +368,13 @@ class RangeLoader extends BaseLoader {
         }
     }
 
+    _onXhrTimeout(e) {
+        if (this._onError) {
+            this._onError(LoaderErrors.CONNECTING_TIMEOUT, {code: -1, msg: 'RangeLoader connecting timeout'});
+        } else {
+            throw new RuntimeException('RangeLoader: connecting timeout');
+        }
+    }
 }
 
 export default RangeLoader;

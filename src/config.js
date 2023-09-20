@@ -50,7 +50,8 @@ export const defaultConfig = {
     // referrerPolicy: leave as unspecified
 
     headers: undefined,
-    customLoader: undefined
+    customLoader: undefined,
+    xhrTimeout: Infinity,
 };
 
 export function createDefaultConfig() {

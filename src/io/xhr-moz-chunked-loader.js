@@ -59,6 +59,7 @@ class MozChunkedLoader extends BaseLoader {
             this._xhr.onprogress = null;
             this._xhr.onloadend = null;
             this._xhr.onerror = null;
+            this._xhr.ontimeout = null;
             this._xhr = null;
         }
         super.destroy();
@@ -83,6 +84,7 @@ class MozChunkedLoader extends BaseLoader {
         xhr.onprogress = this._onProgress.bind(this);
         xhr.onloadend = this._onLoadEnd.bind(this);
         xhr.onerror = this._onXhrError.bind(this);
+        xhr.ontimeout = this._onXhrTimeout.bind(this);
 
         // cors is auto detected and enabled by xhr
 
@@ -110,6 +112,10 @@ class MozChunkedLoader extends BaseLoader {
                     xhr.setRequestHeader(key, headers[key]);
                 }
             }
+        }
+
+        if (this._config.xhrTimeout !== Infinity && this._config.xhrTimeout > 0) {
+            xhr.timeout = this._config.xhrTimeout;
         }
 
         this._status = LoaderStatus.kConnecting;
@@ -203,6 +209,14 @@ class MozChunkedLoader extends BaseLoader {
             this._onError(type, info);
         } else {
             throw new RuntimeException(info.msg);
+        }
+    }
+
+    _onXhrTimeout(e) {
+        if (this._onError) {
+            this._onError(LoaderErrors.CONNECTING_TIMEOUT, {code: -1, msg: 'RangeLoader connecting timeout'});
+        } else {
+            throw new RuntimeException('RangeLoader: connecting timeout');
         }
     }
 
