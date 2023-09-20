@@ -48,6 +48,7 @@ let TransmuxingWorker = function (self) {
             case 'init':
                 controller = new TransmuxingController(e.data.param[0], e.data.param[1]);
                 controller.on(TransmuxingEvents.IO_ERROR, onIOError.bind(this));
+                controller.on(TransmuxingEvents.INIT_DEMUXER, onInitDemuxer.bind(this));
                 controller.on(TransmuxingEvents.DEMUX_ERROR, onDemuxError.bind(this));
                 controller.on(TransmuxingEvents.INIT_SEGMENT, onInitSegment.bind(this));
                 controller.on(TransmuxingEvents.MEDIA_SEGMENT, onMediaSegment.bind(this));
@@ -233,6 +234,13 @@ let TransmuxingWorker = function (self) {
                 type: type,
                 info: info
             }
+        });
+    }
+
+    function onInitDemuxer(probeData) {
+        self.postMessage({
+            msg: TransmuxingEvents.INIT_DEMUXER,
+            data: probeData,
         });
     }
 

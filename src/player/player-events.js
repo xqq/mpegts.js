@@ -31,7 +31,8 @@ const PlayerEvents = {
     PES_PRIVATE_DATA_DESCRIPTOR: 'pes_private_data_descriptor',
     PES_PRIVATE_DATA_ARRIVED: 'pes_private_data_arrived',
     STATISTICS_INFO: 'statistics_info',
-    DESTROYING: 'destroying'
+    DESTROYING: 'destroying',
+    INIT_DEMUXER: 'init_demuxer',
 };
 
 export default PlayerEvents;

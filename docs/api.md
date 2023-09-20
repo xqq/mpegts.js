@@ -204,6 +204,7 @@ A series of constants that can be used with `Player.on()` / `Player.off()`. They
 | PES_PRIVATE_DATA_ARRIVED   | Provides ISO/IEC 13818-1 PES packets containing private data (stream_type=0x06) callback |
 | STATISTICS_INFO            | Provides playback statistics information like dropped frames, current speed, etc. |
 | DESTROYING                 | Fired when the player begins teardown |
+| INIT_DEMUXER               | Fired when demuxer first created |
 
 ### mpegts.ErrorTypes
 

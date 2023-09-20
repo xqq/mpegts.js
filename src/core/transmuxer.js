@@ -54,6 +54,7 @@ class Transmuxer {
         if (this._controller) {
             let ctl = this._controller;
             ctl.on(TransmuxingEvents.IO_ERROR, this._onIOError.bind(this));
+            ctl.on(TransmuxingEvents.INIT_DEMUXER, this._onInitDemuxer.bind(this));
             ctl.on(TransmuxingEvents.DEMUX_ERROR, this._onDemuxError.bind(this));
             ctl.on(TransmuxingEvents.INIT_SEGMENT, this._onInitSegment.bind(this));
             ctl.on(TransmuxingEvents.MEDIA_SEGMENT, this._onMediaSegment.bind(this));
@@ -239,6 +240,12 @@ class Transmuxer {
         });
     }
 
+    _onInitDemuxer(probeData) {
+        Promise.resolve().then(() => {
+            this._emitter.emit(TransmuxingEvents.INIT_DEMUXER, probeData);
+        });
+    }
+
     _onDemuxError(type, info) {
         Promise.resolve().then(() => {
             this._emitter.emit(TransmuxingEvents.DEMUX_ERROR, type, info);
@@ -281,6 +288,7 @@ class Transmuxer {
                 Object.setPrototypeOf(data, MediaInfo.prototype);
                 this._emitter.emit(message.msg, data);
                 break;
+            case TransmuxingEvents.INIT_DEMUXER:
             case TransmuxingEvents.METADATA_ARRIVED:
             case TransmuxingEvents.SCRIPTDATA_ARRIVED:
             case TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED:
