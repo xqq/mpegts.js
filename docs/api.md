@@ -68,6 +68,7 @@ In multipart mode, `duration` `filesize` `url` field in `MediaDataSource` struct
 | Field                            | Type      | Default                      | Description                              |
 | -------------------------------- | --------- | ---------------------------- | ---------------------------------------- |
 | `enableWorker?`                  | `boolean` | `false`                      | Enable separated thread (WebWorker) for transmuxing  |
+| `enableManagedMediaSource?`      | `boolean` | `false`                      | Enable ManagedMediaSource |
 | `enableStashBuffer?`             | `boolean` | `true`                       | Enable IO stash buffer. Set to false if you need realtime (minimal latency) for live stream playback, but may stalled if there's network jittering. |
 | `stashInitialSize?`              | `number`  | `384KB`                      | Indicates IO stash buffer initial size. Default is `384KB`. Indicate a suitable size can improve video load/seek time. |
 | `isLive?`                        | `boolean` | `false`                      | Same to `isLive` in **MediaDataSource**, ignored if has been set in MediaDataSource structure. |
