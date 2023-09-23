@@ -28,7 +28,8 @@ export const defaultConfig = {
     liveBufferLatencyMinRemain: 0.5,
 
     liveSync: false,
-    liveSyncMaxLatency: 1,
+    liveSyncMaxLatency: 1.2,
+    liveSyncTargetLatency: 0.8,
     liveSyncPlaybackRate: 1.2,
 
     lazyLoad: true,

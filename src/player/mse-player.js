@@ -670,9 +670,11 @@ class MSEPlayer {
     _onvTimeupdate(e) {
         const latency = this.latency;
 
-        if (latency > this._config.liveSyncMaxLatency + 0.05) {
+        if (latency > this._config.liveSyncMaxLatency) {
             const playbackRate = Math.min(2, Math.max(1, this._config.liveSyncPlaybackRate));
             this._mediaElement.playbackRate = playbackRate;
+        } else if (latency > this._config.liveSyncTargetLatency) {
+            // do nothing, keep playbackRate
         } else if (this._mediaElement.playbackRate !== 1 && this._mediaElement.playbackRate !== 0) {
             this._mediaElement.playbackRate = 1;
         }
