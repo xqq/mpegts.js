@@ -48,11 +48,6 @@ declare namespace Mpegts {
          */
         enableWorker?: boolean;
         /**
-         * @desc Enable Managed Media Source (unstable for now)
-         * @defaultvalue false
-         */
-        enableManagedMediaSource?: boolean;
-        /**
          * @desc Enable IO stash buffer. Set to false if you need realtime (minimal latency) for live stream
          *          playback, but may stalled if there's network jittering.
          * @defaultvalue true

@@ -103,7 +103,7 @@ class MSEController {
             throw new IllegalStateException('MediaSource has been attached to an HTMLMediaElement!');
         }
 
-        let useManagedMediaSource = this._config.enableManagedMediaSource && 'ManagedMediaSource' in self;
+        let useManagedMediaSource = !('MediaSource' in self) && ('ManagedMediaSource' in self);
 
         let ms = this._mediaSource = useManagedMediaSource ? new self.ManagedMediaSource() : new self.MediaSource()
         ms.addEventListener('sourceopen', this.e.onSourceOpen);

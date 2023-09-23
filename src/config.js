@@ -18,7 +18,6 @@
 
 export const defaultConfig = {
     enableWorker: false,
-    enableManagedMediaSource: false,
     enableStashBuffer: true,
     stashInitialSize: undefined,
 
