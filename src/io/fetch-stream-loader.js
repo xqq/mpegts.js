@@ -122,10 +122,10 @@ class FetchStreamLoader extends BaseLoader {
             this._abortController = new self.AbortController();
             params.signal = this._abortController.signal;
 
-            if (this._config.xhrTimeout !== Infinity && this._config.xhrTimeout > 0) {
+            if (this._config.requestTimeout !== Infinity && this._config.requestTimeout > 0) {
                 this._timeoutId = self.setTimeout(() => {
                     this.abort('timeout');
-                }, this._config.xhrTimeout);
+                }, this._config.requestTimeout);
             }
         }
 
@@ -137,7 +137,7 @@ class FetchStreamLoader extends BaseLoader {
                 return;
             }
 
-            this.clearXhrTimeout();
+            this.clearFetchTimeout();
 
             if (res.ok && (res.status >= 200 && res.status <= 299)) {
                 if (res.url !== seekConfig.url) {
@@ -179,7 +179,7 @@ class FetchStreamLoader extends BaseLoader {
                 return;
             }
 
-            this.clearXhrTimeout();
+            this.clearFetchTimeout();
 
             this._status = LoaderStatus.kError;
             if (this._onError) {
@@ -193,7 +193,7 @@ class FetchStreamLoader extends BaseLoader {
     abort(reason) {
         this._requestAbort = true;
 
-        this.clearXhrTimeout();
+        this.clearFetchTimeout();
 
         if (this._status !== LoaderStatus.kBuffering || !Browser.chrome) {
             // Chrome may throw Exception-like things here, avoid using if is buffering
@@ -282,7 +282,7 @@ class FetchStreamLoader extends BaseLoader {
         });
     }
 
-    clearXhrTimeout() {
+    clearFetchTimeout() {
         if (this._timeoutId) {
             self.clearTimeout(this._timeoutId);
             this._timeoutId = null;

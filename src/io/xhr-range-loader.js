@@ -172,8 +172,8 @@ class RangeLoader extends BaseLoader {
             }
         }
 
-        if (this._config.xhrTimeout !== Infinity && this._config.xhrTimeout > 0) {
-            xhr.timeout = this._config.xhrTimeout;
+        if (this._config.requestTimeout !== Infinity && this._config.requestTimeout > 0) {
+            xhr.timeout = this._config.requestTimeout;
         }
 
         xhr.send();

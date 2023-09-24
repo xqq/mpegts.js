@@ -51,7 +51,7 @@ export const defaultConfig = {
 
     headers: undefined,
     customLoader: undefined,
-    xhrTimeout: Infinity,
+    requestTimeout: Infinity,
 };
 
 export function createDefaultConfig() {
