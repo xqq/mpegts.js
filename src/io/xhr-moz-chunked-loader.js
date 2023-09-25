@@ -132,6 +132,7 @@ class MozChunkedLoader extends BaseLoader {
     abort() {
         this._requestAbort = true;
         if (this._xhr) {
+            this._clearRequestTimeout();
             this._xhr.abort();
         }
         this._status = LoaderStatus.kComplete;
@@ -141,6 +142,8 @@ class MozChunkedLoader extends BaseLoader {
         let xhr = e.target;
 
         if (xhr.readyState === 2) {  // HEADERS_RECEIVED
+            this._clearRequestTimeout();
+
             if (xhr.responseURL != undefined && xhr.responseURL !== this._requestURL) {
                 if (this._onURLRedirect) {
                     let redirectedURL = this._seekHandler.removeURLParameters(xhr.responseURL);
@@ -200,6 +203,8 @@ class MozChunkedLoader extends BaseLoader {
     }
 
     _onXhrError(e) {
+        this._clearRequestTimeout();
+
         this._status = LoaderStatus.kError;
         let type = 0;
         let info = null;
