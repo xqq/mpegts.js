@@ -59,7 +59,6 @@ class MozChunkedLoader extends BaseLoader {
             this._xhr.onprogress = null;
             this._xhr.onloadend = null;
             this._xhr.onerror = null;
-            this._xhr.ontimeout = null;
             this._xhr = null;
         }
         super.destroy();
@@ -84,7 +83,6 @@ class MozChunkedLoader extends BaseLoader {
         xhr.onprogress = this._onProgress.bind(this);
         xhr.onloadend = this._onLoadEnd.bind(this);
         xhr.onerror = this._onXhrError.bind(this);
-        xhr.ontimeout = this._onXhrTimeout.bind(this);
 
         // cors is auto detected and enabled by xhr
 
@@ -115,7 +113,16 @@ class MozChunkedLoader extends BaseLoader {
         }
 
         if (this._config.requestTimeout !== Infinity && this._config.requestTimeout > 0) {
-            xhr.timeout = this._config.requestTimeout;
+            xhr.requestTimeoutId = window.setTimeout(() => {
+                xhr.abort();
+
+                this._status = LoaderStatus.kError;
+                if (this._onError) {
+                    this._onError(LoaderErrors.CONNECTING_TIMEOUT, {code: -1, msg: 'MozChunkedLoader connecting timeout'});
+                } else {
+                    throw new RuntimeException('MozChunkedLoader: connecting timeout');
+                }
+            }, this._config.requestTimeout);
         }
 
         this._status = LoaderStatus.kConnecting;
@@ -212,15 +219,12 @@ class MozChunkedLoader extends BaseLoader {
         }
     }
 
-    _onXhrTimeout(e) {
-        this._status = LoaderStatus.kError;
-        if (this._onError) {
-            this._onError(LoaderErrors.CONNECTING_TIMEOUT, {code: -1, msg: 'MozChunkedLoader connecting timeout'});
-        } else {
-            throw new RuntimeException('MozChunkedLoader: connecting timeout');
+    _clearRequestTimeout() {
+        if (this._xhr && this._xhr.requestTimeoutId) {
+            clearTimeout(this._xhr.requestTimeoutId);
+            this._xhr.requestTimeoutId = undefined;
         }
     }
-
 }
 
 export default MozChunkedLoader;

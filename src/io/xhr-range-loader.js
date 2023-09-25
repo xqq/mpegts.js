@@ -76,7 +76,6 @@ class RangeLoader extends BaseLoader {
             this._xhr.onprogress = null;
             this._xhr.onload = null;
             this._xhr.onerror = null;
-            this._xhr.ontimeout = null;
             this._xhr = null;
         }
         super.destroy();
@@ -145,7 +144,6 @@ class RangeLoader extends BaseLoader {
         xhr.onprogress = this._onProgress.bind(this);
         xhr.onload = this._onLoad.bind(this);
         xhr.onerror = this._onXhrError.bind(this);
-        xhr.ontimeout = this._onXhrTimeout.bind(this);
 
         if (dataSource.withCredentials) {
             xhr.withCredentials = true;
@@ -173,7 +171,16 @@ class RangeLoader extends BaseLoader {
         }
 
         if (this._config.requestTimeout !== Infinity && this._config.requestTimeout > 0) {
-            xhr.timeout = this._config.requestTimeout;
+            xhr.requestTimeoutId = window.setTimeout(() => {
+                xhr.abort();
+
+                this._status = LoaderStatus.kError;
+                if (this._onError) {
+                    this._onError(LoaderErrors.CONNECTING_TIMEOUT, {code: -1, msg: 'RangeLoader connecting timeout'});
+                } else {
+                    throw new RuntimeException('RangeLoader: connecting timeout');
+                }
+            }, this._config.requestTimeout);
         }
 
         xhr.send();
@@ -187,11 +194,11 @@ class RangeLoader extends BaseLoader {
 
     _internalAbort() {
         if (this._xhr) {
+            this._clearRequestTimeout();
             this._xhr.onreadystatechange = null;
             this._xhr.onprogress = null;
             this._xhr.onload = null;
             this._xhr.onerror = null;
-            this._xhr.ontimeout = null;
             this._xhr.abort();
             this._xhr = null;
         }
@@ -201,6 +208,8 @@ class RangeLoader extends BaseLoader {
         let xhr = e.target;
 
         if (xhr.readyState === 2) {  // HEADERS_RECEIVED
+            this._clearRequestTimeout();
+
             if (xhr.responseURL != undefined) {  // if the browser support this property
                 let redirectedURL = this._seekHandler.removeURLParameters(xhr.responseURL);
                 if (xhr.responseURL !== this._currentRequestURL && redirectedURL !== this._currentRedirectedURL) {
@@ -348,6 +357,8 @@ class RangeLoader extends BaseLoader {
     }
 
     _onXhrError(e) {
+        this._clearRequestTimeout();
+
         this._status = LoaderStatus.kError;
         let type = 0;
         let info = null;
@@ -368,12 +379,10 @@ class RangeLoader extends BaseLoader {
         }
     }
 
-    _onXhrTimeout(e) {
-        this._status = LoaderStatus.kError;
-        if (this._onError) {
-            this._onError(LoaderErrors.CONNECTING_TIMEOUT, {code: -1, msg: 'RangeLoader connecting timeout'});
-        } else {
-            throw new RuntimeException('RangeLoader: connecting timeout');
+    _clearRequestTimeout() {
+        if (this._xhr && this._xhr.requestTimeoutId) {
+            clearTimeout(this._xhr.requestTimeoutId);
+            this._xhr.requestTimeoutId = undefined;
         }
     }
 }
