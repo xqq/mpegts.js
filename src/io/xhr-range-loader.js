@@ -369,6 +369,7 @@ class RangeLoader extends BaseLoader {
     }
 
     _onXhrTimeout(e) {
+        this._status = LoaderStatus.kError;
         if (this._onError) {
             this._onError(LoaderErrors.CONNECTING_TIMEOUT, {code: -1, msg: 'RangeLoader connecting timeout'});
         } else {

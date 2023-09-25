@@ -213,10 +213,11 @@ class MozChunkedLoader extends BaseLoader {
     }
 
     _onXhrTimeout(e) {
+        this._status = LoaderStatus.kError;
         if (this._onError) {
-            this._onError(LoaderErrors.CONNECTING_TIMEOUT, {code: -1, msg: 'RangeLoader connecting timeout'});
+            this._onError(LoaderErrors.CONNECTING_TIMEOUT, {code: -1, msg: 'MozChunkedLoader connecting timeout'});
         } else {
-            throw new RuntimeException('RangeLoader: connecting timeout');
+            throw new RuntimeException('MozChunkedLoader: connecting timeout');
         }
     }
 
