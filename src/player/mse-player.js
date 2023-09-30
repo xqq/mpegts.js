@@ -159,6 +159,8 @@ class MSEPlayer {
                                info
             );
         });
+        this._msectl.on(MSEEvents.START_STREAMING, this._onmseStartStreaming.bind(this));
+        this._msectl.on(MSEEvents.END_STREAMING, this._onmseEndStreaming.bind(this));
 
         this._msectl.attachMediaElement(mediaElement);
 
@@ -441,6 +443,36 @@ class MSEPlayer {
         Log.v(this.TAG, 'MSE SourceBuffer is full, suspend transmuxing task');
         if (this._progressChecker == null) {
             this._suspendTransmuxer();
+        }
+    }
+
+    _onmseStartStreaming() {
+        if (this._config.isLive) {
+            // Ignore ManagedMediaSource startstreaming / endstreaming event in live mode
+            return;
+        }
+        Log.v(this.TAG, 'Resume transmuxing task due to ManagedMediaSource onStartStreaming');
+        if (this._transmuxer) {
+            this._transmuxer.resume();
+        }
+        if (this._progressChecker != null) {
+            window.clearInterval(this._progressChecker);
+            this._progressChecker = null;
+        }
+    }
+
+    _onmseEndStreaming() {
+        if (this._config.isLive) {
+            // Ignore ManagedMediaSource startstreaming / endstreaming event in live mode
+            return;
+        }
+        Log.v(this.TAG, 'Suspend transmuxing task due to ManagedMediaSource onEndStreaming');
+        if (this._transmuxer) {
+            this._transmuxer.pause();
+        }
+        if (this._progressChecker != null) {
+            window.clearInterval(this._progressChecker);
+            this._progressChecker = null;
         }
     }
 
