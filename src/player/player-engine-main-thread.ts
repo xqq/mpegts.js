@@ -19,7 +19,6 @@
 import * as EventEmitter from 'events';
 import type PlayerEngine from './player-engine';
 import Log from '../utils/logger';
-import Browser from '../utils/browser';
 import { createDefaultConfig } from '../config';
 import MSEController from '../core/mse-controller';
 import PlayerEvents from './player-events';
@@ -30,6 +29,7 @@ import { ErrorTypes, ErrorDetails } from './player-errors';
 import { IllegalStateException } from '../utils/exception';
 import TransmuxingEvents from '../core/transmuxing-events';
 import SeekingHandler from './seeking-handler';
+import LiveLatencySynchronizer from './live-latency-synchronizer';
 
 class PlayerEngineMainThread implements PlayerEngine {
 
@@ -47,6 +47,7 @@ class PlayerEngineMainThread implements PlayerEngine {
     private _pending_seek_time?: number = null;
 
     private _seeking_handler?: SeekingHandler = null;
+    private _live_latency_synchronizer?: LiveLatencySynchronizer = null;
 
     private _resume_transmuxer_checker_id?: number = null;
 
@@ -76,7 +77,6 @@ class PlayerEngineMainThread implements PlayerEngine {
             onMediaCanPlay: this._onMediaCanPlay.bind(this),
             onMediaStalled: this._onMediaStalled.bind(this),
             onMediaProgress: this._onMediaProgress.bind(this),
-            onMediaTimeUpdate: this._onMediaTimeUpdate.bind(this),
         };
     }
 
@@ -126,7 +126,6 @@ class PlayerEngineMainThread implements PlayerEngine {
         mediaElement.addEventListener('canplay', this.e.onMediaCanPlay);
         mediaElement.addEventListener('stalled', this.e.onMediaStalled);
         mediaElement.addEventListener('progress', this.e.onMediaProgress);
-        mediaElement.addEventListener('timeupdate', this.e.onMediaTimeUpdate);
 
         this._mse_controller = new MSEController(this._config);
         this._mse_controller.on(MSEEvents.UPDATE_END, this._onMSEUpdateEnd.bind(this));
@@ -161,7 +160,6 @@ class PlayerEngineMainThread implements PlayerEngine {
             this._media_element.removeEventListener('canplay', this.e.onMediaCanPlay);
             this._media_element.removeEventListener('stalled', this.e.onMediaStalled);
             this._media_element.removeEventListener('progress', this.e.onMediaProgress);
-            this._media_element.removeEventListener('timeupdate', this.e.onMediaTimeUpdate);
 
             // Detach media source from media element
             this._media_element.src = '';
@@ -277,6 +275,13 @@ class PlayerEngineMainThread implements PlayerEngine {
             this._onRequestFlushMSE.bind(this)
         );
 
+        if (this._config.isLive && this._config.liveSync) {
+            this._live_latency_synchronizer = new LiveLatencySynchronizer(
+                this._config,
+                this._media_element
+            );
+        }
+
         // Reset currentTime to 0
         if (this._media_element.readyState > 0) {
             // IE11 may throw InvalidStateError if readyState === 0
@@ -288,6 +293,9 @@ class PlayerEngineMainThread implements PlayerEngine {
 
     public unload(): void {
         this._media_element?.pause();
+
+        this._live_latency_synchronizer?.destroy();
+        this._live_latency_synchronizer = null;
 
         this._seeking_handler?.destroy();
         this._seeking_handler = null;
@@ -410,28 +418,8 @@ class PlayerEngineMainThread implements PlayerEngine {
         this._detectAndFixStuckPlayback();
     }
 
-    private _onMediaTimeUpdate(e: any): void {
-        if (this._config.isLive && this._config.liveSync) {
-            this._syncLiveLatency();
-        }
-    }
-
     private _onRequestFlushMSE(): void {
         this._mse_controller.flush();
-    }
-
-    private _isPositionBuffered(seconds: number): boolean {
-        const buffered = this._media_element.buffered;
-
-        for (let i = 0; i < buffered.length; i++) {
-            const from = buffered.start(i);
-            const to = buffered.end(i);
-            if (seconds >= from && seconds < to) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private _detectAndFixStuckPlayback(is_stalled?: boolean): void {
@@ -447,23 +435,6 @@ class PlayerEngineMainThread implements PlayerEngine {
             }
         } else {
             this._media_element.removeEventListener('progress', this.e.onMediaProgress);
-        }
-    }
-
-    private _syncLiveLatency(): void {
-        if (!this._config.isLive || !this._config.liveSync) {
-            return;
-        }
-
-        const latency = this._getCurrentLatency();
-
-        if (latency > this._config.liveSyncMaxLatency) {
-            const playbackRate = Math.min(2, Math.max(1, this._config.liveSyncPlaybackRate));
-            this._media_element.playbackRate = playbackRate;
-        } else if (latency > this._config.liveSyncTargetLatency) {
-            // do nothing, keep playbackRate
-        } else if (this._media_element.playbackRate !== 1 && this._media_element.playbackRate !== 0) {
-            this._media_element.playbackRate = 1;
         }
     }
 
@@ -579,23 +550,6 @@ class PlayerEngineMainThread implements PlayerEngine {
 
         return stat_info;
     }
-
-    private _getCurrentLatency(): number {
-        if (!this._media_element) {
-            return 0;
-        }
-
-        const buffered = this._media_element.buffered;
-        const current_time = this._media_element.currentTime;
-
-        if (buffered.length == 0) {
-            return 0;
-        }
-
-        const buffered_end = buffered.end(buffered.length - 1);
-        return buffered_end - current_time;
-    }
-
 
 }
 
