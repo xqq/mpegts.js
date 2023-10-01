@@ -20,7 +20,6 @@ import EventEmitter from 'events';
 import Log from '../utils/logger.js';
 import Browser from '../utils/browser.js';
 import MSEEvents from './mse-events.js';
-import {SampleInfo, IDRSampleList} from './media-segment-info.js';
 import {IllegalStateException} from '../utils/exception.js';
 
 // Media Source Extensions controller
@@ -53,7 +52,8 @@ class MSEController {
 
         this._mediaSource = null;
         this._mediaSourceObjectURL = null;
-        this._mediaElement = null;
+
+        this._mediaElementProxy = null;
 
         this._isBufferFull = false;
         this._hasPendingEos = false;
@@ -82,12 +82,14 @@ class MSEController {
             video: [],
             audio: []
         };
-        this._idrList = new IDRSampleList();
     }
 
     destroy() {
-        if (this._mediaElement || this._mediaSource) {
-            this.detachMediaElement();
+        if (this._mediaSource) {
+            this.shutdown();
+        }
+        if (this._mediaSourceObjectURL) {
+            revokeObjectURL();
         }
         this.e = null;
         this._emitter.removeAllListeners();
@@ -102,7 +104,7 @@ class MSEController {
         this._emitter.removeListener(event, listener);
     }
 
-    attachMediaElement(mediaElement) {
+    initialize(mediaElementProxy) {
         if (this._mediaSource) {
             throw new IllegalStateException('MediaSource has been attached to an HTMLMediaElement!');
         }
@@ -122,17 +124,10 @@ class MSEController {
             ms.addEventListener('qualitychange', this.e.onQualityChange);
         }
 
-        this._mediaElement = mediaElement;
-        if (this._useManagedMediaSource) {
-            mediaElement.disableRemotePlayback = true;
-            mediaElement.srcObject = ms;
-        } else {
-            this._mediaSourceObjectURL = window.URL.createObjectURL(this._mediaSource);
-            mediaElement.src = this._mediaSourceObjectURL;
-        }
+        this._mediaElementProxy = mediaElementProxy;
     }
 
-    detachMediaElement() {
+    shutdown() {
         if (this._mediaSource) {
             let ms = this._mediaSource;
             for (let type in this._sourceBuffers) {
@@ -167,6 +162,7 @@ class MSEController {
                     Log.e(this.TAG, error.message);
                 }
             }
+            this._mediaElementProxy = null;
             ms.removeEventListener('sourceopen', this.e.onSourceOpen);
             ms.removeEventListener('sourceended', this.e.onSourceEnded);
             ms.removeEventListener('sourceclose', this.e.onSourceClose);
@@ -177,23 +173,47 @@ class MSEController {
             }
             this._pendingSourceBufferInit = [];
             this._isBufferFull = false;
-            this._idrList.clear();
             this._mediaSource = null;
         }
+    }
 
-        if (this._mediaElement) {
-            this._mediaElement.src = '';
-            this._mediaElement.removeAttribute('src');
-            this._mediaElement.srcObject = null;
-            this._mediaElement = null;
+    isManagedMediaSource() {
+        return this._useManagedMediaSource;
+    }
+
+    getObject() {
+        if (!this._mediaSource) {
+            throw new IllegalStateException('MediaSource has not been initialized yet!');
         }
+        return this._mediaSource;
+    }
+
+    getHandle() {
+        if (!this._mediaSource) {
+            throw new IllegalStateException('MediaSource has not been initialized yet!');
+        }
+        return this._mediaSource.handle;
+    }
+
+    getObjectURL() {
+        if (!this._mediaSource) {
+            throw new IllegalStateException('MediaSource has not been initialized yet!');
+        }
+
+        if (this._mediaSourceObjectURL == null) {
+            this._mediaSourceObjectURL = URL.createObjectURL(this._mediaSource);
+        }
+        return this._mediaSourceObjectURL;
+    }
+
+    revokeObjectURL() {
         if (this._mediaSourceObjectURL) {
-            window.URL.revokeObjectURL(this._mediaSourceObjectURL);
+            URL.revokeObjectURL(this._mediaSourceObjectURL);
             this._mediaSourceObjectURL = null;
         }
     }
 
-    appendInitSegment(initSegment, deferred) {
+    appendInitSegment(initSegment, deferred = undefined) {
         if (!this._mediaSource || this._mediaSource.readyState !== 'open' || this._mediaSource.streaming === false) {
             // sourcebuffer creation requires mediaSource.readyState === 'open'
             // so we defer the sourcebuffer creation, until sourceopen event triggered
@@ -264,7 +284,7 @@ class MSEController {
         }
     }
 
-    seek(seconds) {
+    flush() {
         // remove all appended buffers
         for (let type in this._sourceBuffers) {
             if (!this._sourceBuffers[type]) {
@@ -282,9 +302,6 @@ class MSEController {
                     Log.e(this.TAG, error.message);
                 }
             }
-
-            // IDRList should be clear
-            this._idrList.clear();
 
             // pending segments should be discard
             let ps = this._pendingSegments[type];
@@ -346,16 +363,12 @@ class MSEController {
         }
     }
 
-    getNearestKeyframe(dts) {
-        return this._idrList.getLastSyncPointBeforeDts(dts);
-    }
-
     _needCleanupSourceBuffer() {
         if (!this._config.autoCleanupSourceBuffer) {
             return false;
         }
 
-        let currentTime = this._mediaElement.currentTime;
+        let currentTime = this._mediaElementProxy.getCurrentTime();
 
         for (let type in this._sourceBuffers) {
             let sb = this._sourceBuffers[type];
@@ -373,7 +386,7 @@ class MSEController {
     }
 
     _doCleanupSourceBuffer() {
-        let currentTime = this._mediaElement.currentTime;
+        let currentTime = this._mediaElementProxy.getCurrentTime();
 
         for (let type in this._sourceBuffers) {
             let sb = this._sourceBuffers[type];
@@ -406,7 +419,7 @@ class MSEController {
 
     _updateMediaSourceDuration() {
         let sb = this._sourceBuffers;
-        if (this._mediaElement.readyState === 0 || this._mediaSource.readyState !== 'open') {
+        if (this._mediaElementProxy.getReadyState() === 0 || this._mediaSource.readyState !== 'open') {
             return;
         }
         if ((sb.video && sb.video.updating) || (sb.audio && sb.audio.updating)) {
@@ -472,9 +485,6 @@ class MSEController {
                 try {
                     this._sourceBuffers[type].appendBuffer(segment.data);
                     this._isBufferFull = false;
-                    if (type === 'video' && segment.hasOwnProperty('info')) {
-                        this._idrList.appendArray(segment.info.syncPoints);
-                    }
                 } catch (error) {
                     this._pendingSegments[type].unshift(segment);
                     if (error.code === 22) {  // QuotaExceededError
