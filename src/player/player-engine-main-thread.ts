@@ -29,7 +29,7 @@ import MSEEvents from '../core/mse-events';
 import { ErrorTypes, ErrorDetails } from './player-errors';
 import { IllegalStateException } from '../utils/exception';
 import TransmuxingEvents from '../core/transmuxing-events';
-import { IDRSampleList } from '../core/media-segment-info';
+import SeekingHandler from './seeking-handler';
 
 class PlayerEngineMainThread implements PlayerEngine {
 
@@ -45,12 +45,8 @@ class PlayerEngineMainThread implements PlayerEngine {
     private _transmuxer?: Transmuxer = null;
 
     private _pending_seek_time?: number = null;
-    private _request_set_current_time: boolean = false;
 
-    private _seekpoint_record?: {
-        seek_point: number,
-        record_time: number,
-    } = null;
+    private _seeking_handler?: SeekingHandler = null;
 
     private _resume_transmuxer_checker_id?: number = null;
 
@@ -60,9 +56,6 @@ class PlayerEngineMainThread implements PlayerEngine {
 
     private _media_info?: MediaInfo = null;
     private _statistics_info?: any = null;
-
-    private _always_seek_keyframe: boolean = false;
-    private _idr_sample_list: IDRSampleList = new IDRSampleList();
 
     private e?: any = null;
 
@@ -80,20 +73,11 @@ class PlayerEngineMainThread implements PlayerEngine {
 
         this.e = {
             onMediaLoadedMetadata: this._onMediaLoadedMetadata.bind(this),
-            onMediaSeeking: this._onMediaSeeking.bind(this),
             onMediaCanPlay: this._onMediaCanPlay.bind(this),
             onMediaStalled: this._onMediaStalled.bind(this),
             onMediaProgress: this._onMediaProgress.bind(this),
             onMediaTimeUpdate: this._onMediaTimeUpdate.bind(this),
         };
-
-        let chrome_need_idr_fix = (Browser.chrome &&
-                                  (Browser.version.major < 50 ||
-                                  (Browser.version.major === 50 && Browser.version.build < 2661)));
-        this._always_seek_keyframe = (chrome_need_idr_fix || Browser.msedge || Browser.msie) ? true : false;
-        if (this._always_seek_keyframe) {
-            this._config.accurateSeek = false;
-        }
     }
 
     public destroy(): void {
@@ -139,7 +123,6 @@ class PlayerEngineMainThread implements PlayerEngine {
         mediaElement.load();
 
         mediaElement.addEventListener('loadedmetadata', this.e.onMediaLoadedMetadata);
-        mediaElement.addEventListener('seeking', this.e.onMediaSeeking);
         mediaElement.addEventListener('canplay', this.e.onMediaCanPlay);
         mediaElement.addEventListener('stalled', this.e.onMediaStalled);
         mediaElement.addEventListener('progress', this.e.onMediaProgress);
@@ -167,28 +150,14 @@ class PlayerEngineMainThread implements PlayerEngine {
             // w3c MediaSource
             mediaElement.src = this._mse_controller.getObjectURL();
         }
-
-        if (this._pending_seek_time != null) {
-            try {
-                mediaElement.currentTime = this._pending_seek_time;
-                this._pending_seek_time = null;
-            } catch (e) {
-                // IE11 may throw InvalidStateError if readyState === 0
-                // Defer set currentTime operation after loadedmetadata
-            }
-        }
     }
 
     public detachMediaElement(): void {
-        if (this._idr_sample_list) {
-            this._idr_sample_list.clear();
-        }
         if (this._media_element) {
             this._mse_controller.shutdown();
 
             // Remove all appended event listeners
             this._media_element.removeEventListener('loadedmetadata', this.e.onMediaLoadedMetadata);
-            this._media_element.removeEventListener('seeking', this.e.onMediaSeeking);
             this._media_element.removeEventListener('canplay', this.e.onMediaCanPlay);
             this._media_element.removeEventListener('stalled', this.e.onMediaStalled);
             this._media_element.removeEventListener('progress', this.e.onMediaProgress);
@@ -226,12 +195,6 @@ class PlayerEngineMainThread implements PlayerEngine {
             return;
         }
 
-        if (this._media_element.readyState > 0) {
-            this._request_set_current_time = true;
-            // IE11 may throw InvalidStateError if readyState === 0
-            this._media_element.currentTime = 0;
-        }
-
         this._transmuxer = new Transmuxer(this._media_data_source, this._config);
 
         this._transmuxer.on(TransmuxingEvents.INIT_SEGMENT, (type: string, is: any) => {
@@ -240,7 +203,7 @@ class PlayerEngineMainThread implements PlayerEngine {
         this._transmuxer.on(TransmuxingEvents.MEDIA_SEGMENT, (type: string, ms: any) => {
             this._mse_controller.appendMediaSegment(ms);
             if (type === 'video' && ms.data && ms.data.byteLength > 0 && ('info' in ms)) {
-                this._idr_sample_list.appendArray(ms.info.syncPoints);
+                this._seeking_handler.appendSyncPoints(ms.info.syncPoints);
             }
             // Lazyload check
             if (this._config.lazyLoad && !this._config.isLive) {
@@ -276,8 +239,7 @@ class PlayerEngineMainThread implements PlayerEngine {
         });
         this._transmuxer.on(TransmuxingEvents.RECOMMEND_SEEKPOINT, (milliseconds: number) => {
             if (this._media_element && !this._config.accurateSeek) {
-                this._request_set_current_time = true;
-                this._media_element.currentTime = milliseconds / 1000;
+                this._seeking_handler.directSeek(milliseconds / 1000);
             }
         });
         this._transmuxer.on(TransmuxingEvents.METADATA_ARRIVED, (metadata: any) => {
@@ -308,11 +270,27 @@ class PlayerEngineMainThread implements PlayerEngine {
             this._emitter.emit(PlayerEvents.PES_PRIVATE_DATA_ARRIVED, private_data);
         });
 
+        this._seeking_handler = new SeekingHandler(
+            this._config,
+            this._media_element,
+            this._transmuxer,
+            this._onRequestFlushMSE.bind(this)
+        );
+
+        // Reset currentTime to 0
+        if (this._media_element.readyState > 0) {
+            // IE11 may throw InvalidStateError if readyState === 0
+            this._seeking_handler.directSeek(0);
+        }
+
         this._transmuxer.open();
     }
 
     public unload(): void {
         this._media_element?.pause();
+
+        this._seeking_handler?.destroy();
+        this._seeking_handler = null;
 
         this._mse_controller?.flush();
 
@@ -330,8 +308,8 @@ class PlayerEngineMainThread implements PlayerEngine {
     }
 
     public seek(seconds: number): void {
-        if (this._media_element) {
-            this._internalSeek(seconds);
+        if (this._media_element && this._seeking_handler) {
+            this._seeking_handler.seek(seconds);
         } else {
             this._pending_seek_time = seconds;
         }
@@ -414,56 +392,9 @@ class PlayerEngineMainThread implements PlayerEngine {
 
     private _onMediaLoadedMetadata(e: any): void {
         if (this._pending_seek_time != null) {
-            this._media_element.currentTime = this._pending_seek_time;
+            this._seeking_handler.seek(this._pending_seek_time);
             this._pending_seek_time = null;
         }
-    }
-
-    private _onMediaSeeking(e: any): void {
-        // Handle seeking request from browser's progress bar
-        if (this._request_set_current_time) {
-            this._request_set_current_time = false;
-            return;
-        }
-
-        const target: number = this._media_element.currentTime;
-        const buffered: TimeRanges = this._media_element.buffered;
-
-        // Handle seeking to video begin (near 0.0s)
-        if (target < 1.0 && buffered.length > 0) {
-            let video_begin_time = buffered.start(0);
-            if ((video_begin_time < 1.0 && target < video_begin_time) || Browser.safari) {
-                this._request_set_current_time = true;
-                // Safari may get stuck if currentTime set to 0, use 0.1 to avoid
-                this._media_element.currentTime = Browser.safari ? 0.1 : video_begin_time;
-                return;
-            }
-        }
-
-        // Handle in-buffer seeking (nothing to do)
-        if (this._isPositionBuffered(target)) {
-            if (this._always_seek_keyframe) {
-                const idr = this._getNearestKeyframe(Math.floor(target * 1000));
-                if (idr != null) {
-                    Log.v(this.TAG, `IDR: ${JSON.stringify(idr)}`);
-                    this._request_set_current_time = true;
-                    this._media_element.currentTime = idr.dts / 1000;
-                } else {
-                    Log.v(this.TAG, `IDR is null`);
-                }
-            }
-            if (this._resume_transmuxer_checker_id != null) {
-                this._resumeTransmuxerIfNeeded();
-            }
-            return;
-        }
-
-        // else: Prepare for unbuffered seeking
-        this._seekpoint_record = {
-            seek_point: target,
-            record_time: PlayerEngineMainThread._getClockTime(),
-        };
-        window.setTimeout(this._pollAndApplyUnbufferedSeek.bind(this), 50);
     }
 
     private _onMediaCanPlay(e: any): void {
@@ -485,84 +416,8 @@ class PlayerEngineMainThread implements PlayerEngine {
         }
     }
 
-    private _pollAndApplyUnbufferedSeek(): void {
-        if (!this._seekpoint_record) {
-            return;
-        }
-
-        const record = this._seekpoint_record;
-        if (record.record_time <= PlayerEngineMainThread._getClockTime() - 100) {
-            const target = this._media_element.currentTime;
-            this._seekpoint_record = null;
-            if (!this._isPositionBuffered(target)) {
-                if (this._resume_transmuxer_checker_id != null) {
-                    window.clearInterval(this._resume_transmuxer_checker_id);
-                    this._resume_transmuxer_checker_id = null;
-                }
-                this._mse_controller.flush();
-                this._idr_sample_list.clear();
-                this._transmuxer.seek(Math.floor(target * 1000));
-                // Update currentTime if using accurateSeek, or wait for recommend_seekpoint callback
-                if (this._config.accurateSeek) {
-                    this._request_set_current_time = true;
-                    this._media_element.currentTime = target;
-                }
-            }
-        } else {
-            window.setTimeout(this._pollAndApplyUnbufferedSeek.bind(this), 50);
-        }
-    }
-
-    private _internalSeek(seconds: number): void {
-        const direct_seek = this._isPositionBuffered(seconds);
-        let direct_seek_to_video_begin: boolean = false;
-
-        if (seconds < 1.0 && this._media_element.buffered.length > 0) {
-            const video_begin_time = this._media_element.buffered.start(0);
-            if ((video_begin_time < 1.0 && seconds < video_begin_time) || Browser.safari) {
-                direct_seek_to_video_begin = true;
-                // Workaround for Safari: Seek to 0 may cause video stuck, use 0.1 to avoid
-                seconds = Browser.safari ? 0.1 : video_begin_time;
-            }
-        }
-
-        if (direct_seek_to_video_begin) {
-            this._request_set_current_time = true;
-            this._media_element.currentTime = seconds;
-        } else if (direct_seek) {
-            if (!this._always_seek_keyframe) {
-                this._request_set_current_time = true;
-                this._media_element.currentTime = seconds;
-            } else {
-                // Always seek to nearest keyframe if possible
-                const idr = this._getNearestKeyframe(Math.floor(seconds * 1000));
-                this._request_set_current_time = true;
-                if (idr != null) {
-                    Log.v(this.TAG, `IDR: ${JSON.stringify(idr)}`);
-                    this._media_element.currentTime = idr.dts / 1000;
-                } else {
-                    Log.v(this.TAG, `IDR is null`);
-                    this._media_element.currentTime = seconds;
-                }
-            }
-            if (this._resume_transmuxer_checker_id != null) {
-                this._resumeTransmuxerIfNeeded();
-            }
-        } else {
-            if (this._resume_transmuxer_checker_id != null) {
-                window.clearInterval(this._resume_transmuxer_checker_id);
-                this._resume_transmuxer_checker_id = null;
-            }
-            this._mse_controller.flush();
-            this._idr_sample_list.clear();
-            this._transmuxer.seek(Math.floor(seconds * 1000));  // In milliseconds
-            // For non-accurate seeking, just wait for recommend_callback and nothing to do here
-            // For accurate seeking, set the currentTime to seek target
-            if (this._config.accurateSeek) {
-                this._request_set_current_time = true;
-                this._media_element.currentTime = seconds;
-            }
-        }
+    private _onRequestFlushMSE(): void {
+        this._mse_controller.flush();
     }
 
     private _isPositionBuffered(seconds: number): boolean {
@@ -587,8 +442,7 @@ class PlayerEngineMainThread implements PlayerEngine {
             if (buffered.length > 0 && media.currentTime < buffered.start(0)) {
                 Log.w(this.TAG,
                     `Playback seems stuck at ${media.currentTime}, seek to ${buffered.start(0)}`);
-                this._request_set_current_time = true;
-                this._media_element.currentTime = buffered.start(0);
+                this._seeking_handler.directSeek(buffered.start(0));
                 this._media_element.removeEventListener('progress', this.e.onMediaProgress);
             }
         } else {
@@ -628,7 +482,7 @@ class PlayerEngineMainThread implements PlayerEngine {
         if (buffered_end > this._config.liveBufferLatencyMaxLatency) {
             if (buffered_end - current_time > this._config.liveBufferLatencyMaxLatency) {
                 let target_time = buffered_end - this._config.liveBufferLatencyMinRemain;
-                this.seek(target_time);
+                this._seeking_handler.directSeek(target_time);
             }
         }
     }
@@ -726,10 +580,6 @@ class PlayerEngineMainThread implements PlayerEngine {
         return stat_info;
     }
 
-    private _getNearestKeyframe(dts: number): any {
-        return this._idr_sample_list.getLastSyncPointBeforeDts(dts);
-    }
-
     private _getCurrentLatency(): number {
         if (!this._media_element) {
             return 0;
@@ -746,13 +596,6 @@ class PlayerEngineMainThread implements PlayerEngine {
         return buffered_end - current_time;
     }
 
-    private static _getClockTime(): number {
-        if (self.performance && self.performance.now) {
-            return self.performance.now();
-        } else {
-            return Date.now();
-        }
-    }
 
 }
 
