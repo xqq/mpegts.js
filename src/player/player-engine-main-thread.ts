@@ -29,6 +29,7 @@ import { ErrorTypes, ErrorDetails } from './player-errors';
 import { IllegalStateException } from '../utils/exception';
 import TransmuxingEvents from '../core/transmuxing-events';
 import SeekingHandler from './seeking-handler';
+import StartupStallJumper from './startup-stall-jumper';
 import LiveLatencySynchronizer from './live-latency-synchronizer';
 
 class PlayerEngineMainThread implements PlayerEngine {
@@ -47,6 +48,7 @@ class PlayerEngineMainThread implements PlayerEngine {
     private _pending_seek_time?: number = null;
 
     private _seeking_handler?: SeekingHandler = null;
+    private _startup_stall_jumper?: StartupStallJumper = null;
     private _live_latency_synchronizer?: LiveLatencySynchronizer = null;
 
     private _resume_transmuxer_checker_id?: number = null;
@@ -75,8 +77,6 @@ class PlayerEngineMainThread implements PlayerEngine {
         this.e = {
             onMediaLoadedMetadata: this._onMediaLoadedMetadata.bind(this),
             onMediaCanPlay: this._onMediaCanPlay.bind(this),
-            onMediaStalled: this._onMediaStalled.bind(this),
-            onMediaProgress: this._onMediaProgress.bind(this),
         };
     }
 
@@ -124,8 +124,6 @@ class PlayerEngineMainThread implements PlayerEngine {
 
         mediaElement.addEventListener('loadedmetadata', this.e.onMediaLoadedMetadata);
         mediaElement.addEventListener('canplay', this.e.onMediaCanPlay);
-        mediaElement.addEventListener('stalled', this.e.onMediaStalled);
-        mediaElement.addEventListener('progress', this.e.onMediaProgress);
 
         this._mse_controller = new MSEController(this._config);
         this._mse_controller.on(MSEEvents.UPDATE_END, this._onMSEUpdateEnd.bind(this));
@@ -158,8 +156,6 @@ class PlayerEngineMainThread implements PlayerEngine {
             // Remove all appended event listeners
             this._media_element.removeEventListener('loadedmetadata', this.e.onMediaLoadedMetadata);
             this._media_element.removeEventListener('canplay', this.e.onMediaCanPlay);
-            this._media_element.removeEventListener('stalled', this.e.onMediaStalled);
-            this._media_element.removeEventListener('progress', this.e.onMediaProgress);
 
             // Detach media source from media element
             this._media_element.src = '';
@@ -275,6 +271,11 @@ class PlayerEngineMainThread implements PlayerEngine {
             this._onRequestFlushMSE.bind(this)
         );
 
+        this._startup_stall_jumper = new StartupStallJumper(
+            this._media_element,
+            this._onRequestDirectSeek.bind(this)
+        );
+
         if (this._config.isLive && this._config.liveSync) {
             this._live_latency_synchronizer = new LiveLatencySynchronizer(
                 this._config,
@@ -296,6 +297,9 @@ class PlayerEngineMainThread implements PlayerEngine {
 
         this._live_latency_synchronizer?.destroy();
         this._live_latency_synchronizer = null;
+
+        this._startup_stall_jumper?.destroy();
+        this._startup_stall_jumper = null;
 
         this._seeking_handler?.destroy();
         this._seeking_handler = null;
@@ -407,35 +411,16 @@ class PlayerEngineMainThread implements PlayerEngine {
 
     private _onMediaCanPlay(e: any): void {
         this._canplay_received = true;
-        // TODO: Remove canplay listener since it will be fired multiple times?
-    }
-
-    private _onMediaStalled(e: any): void {
-        this._detectAndFixStuckPlayback(true);
-    }
-
-    private _onMediaProgress(e: any): void {
-        this._detectAndFixStuckPlayback();
+        // Remove canplay listener since it will be fired multiple times
+        this._media_element.removeEventListener('canplay', this.e.onMediaCanPlay);
     }
 
     private _onRequestFlushMSE(): void {
         this._mse_controller.flush();
     }
 
-    private _detectAndFixStuckPlayback(is_stalled?: boolean): void {
-        const media = this._media_element;
-        const buffered = media.buffered;
-
-        if (is_stalled || !this._canplay_received || media.readyState < 2) {
-            if (buffered.length > 0 && media.currentTime < buffered.start(0)) {
-                Log.w(this.TAG,
-                    `Playback seems stuck at ${media.currentTime}, seek to ${buffered.start(0)}`);
-                this._seeking_handler.directSeek(buffered.start(0));
-                this._media_element.removeEventListener('progress', this.e.onMediaProgress);
-            }
-        } else {
-            this._media_element.removeEventListener('progress', this.e.onMediaProgress);
-        }
+    private _onRequestDirectSeek(target: number): void {
+        this._seeking_handler.directSeek(target);
     }
 
     private _chaseLiveLatency(): void {
