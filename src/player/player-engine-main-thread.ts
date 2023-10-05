@@ -30,6 +30,7 @@ import { IllegalStateException } from '../utils/exception';
 import TransmuxingEvents from '../core/transmuxing-events';
 import SeekingHandler from './seeking-handler';
 import StartupStallJumper from './startup-stall-jumper';
+import LiveLatencyChaser from './live-latency-chaser';
 import LiveLatencySynchronizer from './live-latency-synchronizer';
 
 class PlayerEngineMainThread implements PlayerEngine {
@@ -49,6 +50,7 @@ class PlayerEngineMainThread implements PlayerEngine {
 
     private _seeking_handler?: SeekingHandler = null;
     private _startup_stall_jumper?: StartupStallJumper = null;
+    private _live_latency_chaser?: LiveLatencyChaser = null;
     private _live_latency_synchronizer?: LiveLatencySynchronizer = null;
 
     private _resume_transmuxer_checker_id?: number = null;
@@ -276,6 +278,14 @@ class PlayerEngineMainThread implements PlayerEngine {
             this._onRequestDirectSeek.bind(this)
         );
 
+        if (this._config.isLive && this._config.liveBufferLatencyChasing) {
+            this._live_latency_chaser = new LiveLatencyChaser(
+                this._config,
+                this._media_element,
+                this._onRequestDirectSeek.bind(this)
+            );
+        }
+
         if (this._config.isLive && this._config.liveSync) {
             this._live_latency_synchronizer = new LiveLatencySynchronizer(
                 this._config,
@@ -297,6 +307,9 @@ class PlayerEngineMainThread implements PlayerEngine {
 
         this._live_latency_synchronizer?.destroy();
         this._live_latency_synchronizer = null;
+
+        this._live_latency_chaser?.destroy();
+        this._live_latency_chaser = null;
 
         this._startup_stall_jumper?.destroy();
         this._startup_stall_jumper = null;
@@ -344,8 +357,8 @@ class PlayerEngineMainThread implements PlayerEngine {
     }
 
     private _onMSEUpdateEnd(): void {
-        if (this._config.isLive && this._config.liveBufferLatencyChasing) {
-            this._chaseLiveLatency();
+        if (this._config.isLive && this._config.liveBufferLatencyChasing && this._live_latency_chaser) {
+            this._live_latency_chaser.notifyBufferedRangeUpdate();
         }
 
         if (!this._config.isLive && this._config.lazyLoad) {
@@ -421,26 +434,6 @@ class PlayerEngineMainThread implements PlayerEngine {
 
     private _onRequestDirectSeek(target: number): void {
         this._seeking_handler.directSeek(target);
-    }
-
-    private _chaseLiveLatency(): void {
-        const buffered: TimeRanges = this._media_element.buffered;
-        const current_time: number = this._media_element.currentTime;
-
-        if (!this._config.isLive ||
-            !this._config.liveBufferLatencyChasing ||
-            buffered.length == 0 ||
-            this._media_element.paused) {
-            return;
-        }
-
-        const buffered_end = buffered.end(buffered.length - 1);
-        if (buffered_end > this._config.liveBufferLatencyMaxLatency) {
-            if (buffered_end - current_time > this._config.liveBufferLatencyMaxLatency) {
-                let target_time = buffered_end - this._config.liveBufferLatencyMinRemain;
-                this._seeking_handler.directSeek(target_time);
-            }
-        }
     }
 
     private _suspendTransmuxerIfNeeded(): void {
