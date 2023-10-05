@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+// Live buffer latency synchronizer by increasing HTMLMediaElement.playbackRate
 class LiveLatencySynchronizer {
 
     private _config: any = null;
