@@ -57,7 +57,7 @@ class PlayerEngineMainThread implements PlayerEngine {
 
     private _mse_source_opened: boolean = false;
     private _has_pending_load: boolean = false;
-    private _canplay_received: boolean = false;
+    private _loaded_metadata_received: boolean = false;
 
     private _media_info?: MediaInfo = null;
     private _statistics_info?: any = null;
@@ -78,7 +78,6 @@ class PlayerEngineMainThread implements PlayerEngine {
 
         this.e = {
             onMediaLoadedMetadata: this._onMediaLoadedMetadata.bind(this),
-            onMediaCanPlay: this._onMediaCanPlay.bind(this),
         };
     }
 
@@ -121,7 +120,6 @@ class PlayerEngineMainThread implements PlayerEngine {
         mediaElement.load();
 
         mediaElement.addEventListener('loadedmetadata', this.e.onMediaLoadedMetadata);
-        mediaElement.addEventListener('canplay', this.e.onMediaCanPlay);
 
         this._mse_controller = new MSEController(this._config);
         this._mse_controller.on(MSEEvents.UPDATE_END, this._onMSEUpdateEnd.bind(this));
@@ -153,7 +151,6 @@ class PlayerEngineMainThread implements PlayerEngine {
 
             // Remove all appended event listeners
             this._media_element.removeEventListener('loadedmetadata', this.e.onMediaLoadedMetadata);
-            this._media_element.removeEventListener('canplay', this.e.onMediaCanPlay);
 
             // Detach media source from media element
             this._media_element.src = '';
@@ -370,7 +367,7 @@ class PlayerEngineMainThread implements PlayerEngine {
     }
 
     private _onMSEStartStreaming(): void {
-        if (!this._canplay_received) {
+        if (!this._loaded_metadata_received) {
             // Ignore initial startstreaming event since we have started loading data
             return;
         }
@@ -392,16 +389,11 @@ class PlayerEngineMainThread implements PlayerEngine {
     }
 
     private _onMediaLoadedMetadata(e: any): void {
+        this._loaded_metadata_received = true;
         if (this._pending_seek_time != null) {
             this._seeking_handler.seek(this._pending_seek_time);
             this._pending_seek_time = null;
         }
-    }
-
-    private _onMediaCanPlay(e: any): void {
-        this._canplay_received = true;
-        // Remove canplay listener since it will be fired multiple times
-        this._media_element.removeEventListener('canplay', this.e.onMediaCanPlay);
     }
 
     private _onRequestFlushMSE(): void {
