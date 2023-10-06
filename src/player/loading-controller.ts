@@ -25,16 +25,23 @@ class LoadingController {
 
     private _config: any = null;
     private _media_element: HTMLMediaElement = null;
-    private _transmuxer: Transmuxer = null;
+    private _on_pause_transmuxer: () => void = null;
+    private _on_resume_transmuxer: () => void = null;
 
     private _paused: boolean = false;
 
     private e?: any = null;
 
-    public constructor(config: any, media_element: HTMLMediaElement, transmuxer: Transmuxer) {
+    public constructor(
+        config: any,
+        media_element: HTMLMediaElement,
+        on_pause_transmuxer: () => void,
+        on_resume_transmuxer: () => void
+    ) {
         this._config = config;
         this._media_element = media_element;
-        this._transmuxer = transmuxer;
+        this._on_pause_transmuxer = on_pause_transmuxer;
+        this._on_resume_transmuxer = on_resume_transmuxer;
 
         this.e = {
             onMediaTimeUpdate: this._onMediaTimeUpdate.bind(this),
@@ -45,8 +52,9 @@ class LoadingController {
         this._media_element.removeEventListener('timeupdate', this.e.onMediaTimeUpdate);
         this.e = null;
         this._media_element = null;
-        this._transmuxer = null;
         this._config = null;
+        this._on_pause_transmuxer = null;
+        this._on_resume_transmuxer = null;
     }
 
     // buffered_position: in seconds
@@ -97,7 +105,7 @@ class LoadingController {
 
     public suspendTransmuxer(): void {
         this._paused = true;
-        this._transmuxer.pause();
+        this._on_pause_transmuxer();
     }
 
     private _resumeTransmuxerIfNeeded(): void {
@@ -127,7 +135,7 @@ class LoadingController {
 
     public resumeTransmuxer(): void {
         this._paused = false;
-        this._transmuxer.resume();
+        this._on_resume_transmuxer();
     }
 
 }

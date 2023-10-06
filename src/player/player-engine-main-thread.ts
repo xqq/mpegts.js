@@ -260,7 +260,8 @@ class PlayerEngineMainThread implements PlayerEngine {
         this._loading_controller = new LoadingController(
             this._config,
             this._media_element,
-            this._transmuxer
+            this._onRequestPauseTransmuxer.bind(this),
+            this._onRequestResumeTransmuxer.bind(this)
         );
 
         this._startup_stall_jumper = new StartupStallJumper(
@@ -406,6 +407,14 @@ class PlayerEngineMainThread implements PlayerEngine {
 
     private _onRequestSeekTransmuxer(milliseconds: number): void {
         this._transmuxer.seek(milliseconds);
+    }
+
+    private _onRequestPauseTransmuxer(): void {
+        this._transmuxer.pause();
+    }
+
+    private _onRequestResumeTransmuxer(): void {
+        this._transmuxer.resume();
     }
 
     private _fillStatisticsInfo(stat_info: any): any {
