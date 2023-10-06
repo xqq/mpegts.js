@@ -191,7 +191,7 @@ class PlayerEngineMainThread implements PlayerEngine {
         });
         this._transmuxer.on(TransmuxingEvents.MEDIA_SEGMENT, (type: string, ms: any) => {
             this._mse_controller.appendMediaSegment(ms);
-            if (type === 'video' && ms.data && ms.data.byteLength > 0 && ('info' in ms)) {
+            if (!this._config.isLive && type === 'video' && ms.data && ms.data.byteLength > 0 && ('info' in ms)) {
                 this._seeking_handler.appendSyncPoints(ms.info.syncPoints);
             }
             this._loading_controller.notifyBufferedRangeChanged(ms.info.endDts / 1000);
