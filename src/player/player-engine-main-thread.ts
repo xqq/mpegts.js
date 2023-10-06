@@ -253,8 +253,8 @@ class PlayerEngineMainThread implements PlayerEngine {
         this._seeking_handler = new SeekingHandler(
             this._config,
             this._media_element,
-            this._transmuxer,
-            this._onRequestFlushMSE.bind(this)
+            this._onRequestFlushMSE.bind(this),
+            this._onRequestSeekTransmuxer.bind(this)
         );
 
         this._loading_controller = new LoadingController(
@@ -402,6 +402,10 @@ class PlayerEngineMainThread implements PlayerEngine {
 
     private _onRequestDirectSeek(target: number): void {
         this._seeking_handler.directSeek(target);
+    }
+
+    private _onRequestSeekTransmuxer(milliseconds: number): void {
+        this._transmuxer.seek(milliseconds);
     }
 
     private _fillStatisticsInfo(stat_info: any): any {

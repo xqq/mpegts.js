@@ -17,7 +17,6 @@
  */
 
 import Browser from '../utils/browser';
-import Transmuxer from '../core/transmuxer';
 import { IDRSampleList } from '../core/media-segment-info';
 
 class SeekingHandler {
@@ -26,9 +25,9 @@ class SeekingHandler {
 
     private _config: any = null;
     private _media_element: HTMLMediaElement = null;
-    private _transmuxer: Transmuxer = null;
     private _always_seek_keyframe: boolean = false;
     private _on_flush_mse: () => void = null;
+    private _on_seek_transmuxer: (milliseconds: number) => void = null;
 
     private _request_set_current_time: boolean = false;
     private _seek_request_record_clocktime?: number = null;
@@ -36,11 +35,16 @@ class SeekingHandler {
 
     private e?: any = null;
 
-    public constructor(config: any, media_element: HTMLMediaElement, transmuxer: Transmuxer, on_flush_mse: () => void) {
+    public constructor(
+        config: any,
+        media_element: HTMLMediaElement,
+        on_flush_mse: () => void,
+        on_seek_transmuxer: (milliseconds: number) => void
+    ) {
         this._config = config;
         this._media_element = media_element;
-        this._transmuxer = transmuxer;
         this._on_flush_mse = on_flush_mse;
+        this._on_seek_transmuxer = on_seek_transmuxer;
 
         this.e = {
             onMediaSeeking: this._onMediaSeeking.bind(this),
@@ -62,8 +66,8 @@ class SeekingHandler {
         this._idr_sample_list = null;
         this._media_element.removeEventListener('seeking', this.e.onMediaSeeking);
         this._media_element = null;
-        this._transmuxer = null;
         this._on_flush_mse = null;
+        this._on_seek_transmuxer = null;
     }
 
     public seek(seconds: number): void {
@@ -94,9 +98,9 @@ class SeekingHandler {
                 this.directSeek(seconds);
             }
         } else {
-            this._on_flush_mse();
             this._idr_sample_list.clear();
-            this._transmuxer.seek(Math.floor(seconds * 1000));  // In milliseconds
+            this._on_flush_mse();
+            this._on_seek_transmuxer(Math.floor(seconds * 1000));  // In milliseconds
             if (this._config.accurateSeek) {
                 this.directSeek(seconds);
             }
@@ -163,9 +167,9 @@ class SeekingHandler {
             const target = this._media_element.currentTime;
             this._seek_request_record_clocktime = null;
             if (!this._isPositionBuffered(target)) {
-                this._on_flush_mse();
                 this._idr_sample_list.clear();
-                this._transmuxer.seek(Math.floor(target * 1000));
+                this._on_flush_mse();
+                this._on_seek_transmuxer(Math.floor(target * 1000));  // In milliseconds
                 // Update currentTime if using accurateSeek, or wait for recommend_seekpoint callback
                 if (this._config.accurateSeek) {
                     this.directSeek(target);
