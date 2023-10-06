@@ -29,6 +29,7 @@ import { ErrorTypes, ErrorDetails } from './player-errors';
 import { IllegalStateException } from '../utils/exception';
 import TransmuxingEvents from '../core/transmuxing-events';
 import SeekingHandler from './seeking-handler';
+import LoadingController from './loading-controller';
 import StartupStallJumper from './startup-stall-jumper';
 import LiveLatencyChaser from './live-latency-chaser';
 import LiveLatencySynchronizer from './live-latency-synchronizer';
@@ -49,11 +50,10 @@ class PlayerEngineMainThread implements PlayerEngine {
     private _pending_seek_time?: number = null;
 
     private _seeking_handler?: SeekingHandler = null;
+    private _loading_controller?: LoadingController = null;
     private _startup_stall_jumper?: StartupStallJumper = null;
     private _live_latency_chaser?: LiveLatencyChaser = null;
     private _live_latency_synchronizer?: LiveLatencySynchronizer = null;
-
-    private _resume_transmuxer_checker_id?: number = null;
 
     private _mse_source_opened: boolean = false;
     private _has_pending_load: boolean = false;
@@ -84,10 +84,6 @@ class PlayerEngineMainThread implements PlayerEngine {
 
     public destroy(): void {
         this._emitter.emit(PlayerEvents.DESTROYING);
-        if (this._resume_transmuxer_checker_id != null) {
-            window.clearInterval(this._resume_transmuxer_checker_id);
-            this._resume_transmuxer_checker_id = null;
-        }
         if (this._transmuxer) {
             this.unload();
         }
@@ -201,16 +197,7 @@ class PlayerEngineMainThread implements PlayerEngine {
             if (type === 'video' && ms.data && ms.data.byteLength > 0 && ('info' in ms)) {
                 this._seeking_handler.appendSyncPoints(ms.info.syncPoints);
             }
-            // Lazyload check
-            if (this._config.lazyLoad && !this._config.isLive) {
-                const current_time = this._media_element.currentTime;
-                if (ms.info.endDts >= (current_time + this._config.lazyLoadMaxDuration) * 1000) {
-                    if (this._resume_transmuxer_checker_id == null) {
-                        Log.v(this.TAG, 'Maximum buffering duration exceeded, suspend transmuxing task');
-                        this._suspendTransmuxer();
-                    }
-                }
-            }
+            this._loading_controller.notifyBufferedRangeChanged(ms.info.endDts / 1000);
         });
         this._transmuxer.on(TransmuxingEvents.LOADING_COMPLETE, () => {
             this._mse_controller.endOfStream();
@@ -273,6 +260,12 @@ class PlayerEngineMainThread implements PlayerEngine {
             this._onRequestFlushMSE.bind(this)
         );
 
+        this._loading_controller = new LoadingController(
+            this._config,
+            this._media_element,
+            this._transmuxer
+        );
+
         this._startup_stall_jumper = new StartupStallJumper(
             this._media_element,
             this._onRequestDirectSeek.bind(this)
@@ -313,6 +306,9 @@ class PlayerEngineMainThread implements PlayerEngine {
 
         this._startup_stall_jumper?.destroy();
         this._startup_stall_jumper = null;
+
+        this._loading_controller?.destroy();
+        this._loading_controller = null;
 
         this._seeking_handler?.destroy();
         this._seeking_handler = null;
@@ -361,16 +357,12 @@ class PlayerEngineMainThread implements PlayerEngine {
             this._live_latency_chaser.notifyBufferedRangeUpdate();
         }
 
-        if (!this._config.isLive && this._config.lazyLoad) {
-            this._suspendTransmuxerIfNeeded();
-        }
+        this._loading_controller.notifyBufferedRangeChanged();
     }
 
     private _onMSEBufferFull(): void {
         Log.v(this.TAG, 'MSE SourceBuffer is full, suspend transmuxing task');
-        if (this._resume_transmuxer_checker_id == null) {
-            this._suspendTransmuxer();
-        }
+        this._loading_controller.suspendTransmuxer();
     }
 
     private _onMSEError(info: any): void {
@@ -387,15 +379,7 @@ class PlayerEngineMainThread implements PlayerEngine {
             return;
         }
         Log.v(this.TAG, 'Resume transmuxing task due to ManagedMediaSource onStartStreaming');
-        if (this._transmuxer) {
-            // TODO: Add a function into transmuxer for checking whether it's paused
-            this._transmuxer.resume();
-        }
-        // TODO: Remove this dirty code
-        if (this._resume_transmuxer_checker_id != null) {
-            window.clearInterval(this._resume_transmuxer_checker_id);
-            this._resume_transmuxer_checker_id = null;
-        }
+        this._loading_controller.resumeTransmuxer();
     }
 
     private _onMSEEndStreaming(): void {
@@ -404,15 +388,7 @@ class PlayerEngineMainThread implements PlayerEngine {
             return;
         }
         Log.v(this.TAG, 'Suspend transmuxing task due to ManagedMediaSource onEndStreaming');
-        if (this._transmuxer) {
-            // TODO: Add a function into transmuxer for checking whether it's paused
-            this._transmuxer.pause();
-        }
-        // TODO: Remove this dirty code
-        if (this._resume_transmuxer_checker_id != null) {
-            window.clearInterval(this._resume_transmuxer_checker_id);
-            this._resume_transmuxer_checker_id = null;
-        }
+        this._loading_controller.suspendTransmuxer();
     }
 
     private _onMediaLoadedMetadata(e: any): void {
@@ -434,69 +410,6 @@ class PlayerEngineMainThread implements PlayerEngine {
 
     private _onRequestDirectSeek(target: number): void {
         this._seeking_handler.directSeek(target);
-    }
-
-    private _suspendTransmuxerIfNeeded(): void {
-        if (!this._config.lazyLoad || this._config.isLive) {
-            return;
-        }
-
-        const buffered: TimeRanges = this._media_element.buffered;
-        const current_time: number = this._media_element.currentTime;
-        let current_range_end = 0;
-
-        for (let i = 0; i < buffered.length; i++) {
-            const start = buffered.start(i);
-            const end = buffered.end(i);
-            if (start <= current_time && current_time < end) {
-                current_range_end = end;
-                break;
-            }
-        }
-
-        if (current_range_end >= current_time + this._config.lazyLoadMaxDuration &&
-            this._resume_transmuxer_checker_id == null) {
-            Log.v(this.TAG, 'Maximum buffering duration exceeded, suspend transmuxing task');
-            this._suspendTransmuxer();
-        }
-    }
-
-    private _suspendTransmuxer(): void {
-        if (this._transmuxer) {
-            this._transmuxer.pause();
-
-            if (this._resume_transmuxer_checker_id == null) {
-                this._resume_transmuxer_checker_id = window.setInterval(
-                    this._resumeTransmuxerIfNeeded.bind(this),
-                    1000
-                );
-            }
-        }
-    }
-
-    private _resumeTransmuxerIfNeeded(): void {
-        const buffered: TimeRanges = this._media_element.buffered;
-        const current_time: number = this._media_element.currentTime;
-
-        let should_resume = false;
-
-        for (let i = 0; i < buffered.length; i++) {
-            const from = buffered.start(i);
-            const to = buffered.end(i);
-            if (current_time >= from && current_time < to) {
-                if (current_time >= to - this._config.lazyLoadRecoverDuration) {
-                    should_resume = true;
-                }
-                break;
-            }
-        }
-
-        if (should_resume) {
-            window.clearInterval(this._resume_transmuxer_checker_id);
-            this._resume_transmuxer_checker_id = null;
-            Log.v(this.TAG,  'Continue loading from paused position');
-            this._transmuxer.resume();
-        }
     }
 
     private _fillStatisticsInfo(stat_info: any): any {
