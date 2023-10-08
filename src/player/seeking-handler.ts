@@ -26,8 +26,7 @@ class SeekingHandler {
     private _config: any = null;
     private _media_element: HTMLMediaElement = null;
     private _always_seek_keyframe: boolean = false;
-    private _on_flush_mse: () => void = null;
-    private _on_seek_transmuxer: (milliseconds: number) => void = null;
+    private _on_unbuffered_seek: (milliseconds: number) => void = null;
 
     private _request_set_current_time: boolean = false;
     private _seek_request_record_clocktime?: number = null;
@@ -38,13 +37,11 @@ class SeekingHandler {
     public constructor(
         config: any,
         media_element: HTMLMediaElement,
-        on_flush_mse: () => void,
-        on_seek_transmuxer: (milliseconds: number) => void
+        on_unbuffered_seek: (milliseconds: number) => void
     ) {
         this._config = config;
         this._media_element = media_element;
-        this._on_flush_mse = on_flush_mse;
-        this._on_seek_transmuxer = on_seek_transmuxer;
+        this._on_unbuffered_seek = on_unbuffered_seek;
 
         this.e = {
             onMediaSeeking: this._onMediaSeeking.bind(this),
@@ -66,8 +63,7 @@ class SeekingHandler {
         this._idr_sample_list = null;
         this._media_element.removeEventListener('seeking', this.e.onMediaSeeking);
         this._media_element = null;
-        this._on_flush_mse = null;
-        this._on_seek_transmuxer = null;
+        this._on_unbuffered_seek = null;
     }
 
     public seek(seconds: number): void {
@@ -99,8 +95,7 @@ class SeekingHandler {
             }
         } else {
             this._idr_sample_list.clear();
-            this._on_flush_mse();
-            this._on_seek_transmuxer(Math.floor(seconds * 1000));  // In milliseconds
+            this._on_unbuffered_seek(Math.floor(seconds * 1000));  // In milliseconds
             if (this._config.accurateSeek) {
                 this.directSeek(seconds);
             }
@@ -168,8 +163,7 @@ class SeekingHandler {
             this._seek_request_record_clocktime = null;
             if (!this._isPositionBuffered(target)) {
                 this._idr_sample_list.clear();
-                this._on_flush_mse();
-                this._on_seek_transmuxer(Math.floor(target * 1000));  // In milliseconds
+                this._on_unbuffered_seek(Math.floor(target * 1000));  // In milliseconds
                 // Update currentTime if using accurateSeek, or wait for recommend_seekpoint callback
                 if (this._config.accurateSeek) {
                     this.directSeek(target);
