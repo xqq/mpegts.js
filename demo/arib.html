@@ -22,8 +22,8 @@
                     <label for="isLive">isLive</label>
                     <input type="checkbox" id="withCredentials" onchange="saveSettings()" />
                     <label for="withCredentials">withCredentials</label>
-                    <input type="checkbox" id="liveBufferLatencyChasing" onchange="saveSettings()" checked />
-                    <label for="liveBufferLatencyChasing">liveBufferLatencyChasing</label>
+                    <input type="checkbox" id="liveSync" onchange="saveSettings()" checked />
+                    <label for="liveSync">liveSync</label>
                     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                     <label>aribb24.js source:</label>
                     <input type="radio" id="radio_private_stream_1" value="private_stream_1" name="aribCaptionTransmitMode" onchange="saveSettings()" checked>
@@ -62,7 +62,7 @@
     <script src="https://cdn.jsdelivr.net/npm/aribb24.js@1.10.1/dist/aribb24.js"></script>
 
     <script>
-        var checkBoxFields = ['isLive', 'withCredentials', 'liveBufferLatencyChasing'];
+        var checkBoxFields = ['isLive', 'withCredentials', 'liveSync'];
         var streamURL, mediaSourceURL;
         var arib_caption_transmit_mode;
 
@@ -128,7 +128,7 @@
             }
             player = mpegts.createPlayer(mediaDataSource, {
                 enableWorker: false,
-                liveBufferLatencyChasing: document.getElementById('liveBufferLatencyChasing').checked,
+                liveSync: document.getElementById('liveSync').checked,
             });
             player.attachMediaElement(element);
             player.load();
