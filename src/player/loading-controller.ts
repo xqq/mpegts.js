@@ -17,7 +17,6 @@
  */
 
 import Log from '../utils/logger';
-import Transmuxer from '../core/transmuxer';
 
 class LoadingController {
 
@@ -58,7 +57,7 @@ class LoadingController {
     }
 
     // buffered_position: in seconds
-    public notifyBufferedRangeChanged(buffered_position?: number): void {
+    public notifyBufferedPositionChanged(buffered_position?: number): void {
         if (this._config.isLive || !this._config.lazyLoad) {
             return;
         }
@@ -66,7 +65,7 @@ class LoadingController {
         if (buffered_position == undefined) {
             this._suspendTransmuxerIfNeeded();
         } else {
-            this._suspendTransmuxerIfBufferedRangeExceeded(buffered_position);
+            this._suspendTransmuxerIfBufferedPositionExceeded(buffered_position);
         }
     }
 
@@ -90,11 +89,11 @@ class LoadingController {
             }
         }
         if (current_range_end > 0) {
-            this._suspendTransmuxerIfBufferedRangeExceeded(current_range_end);
+            this._suspendTransmuxerIfBufferedPositionExceeded(current_range_end);
         }
     }
 
-    private _suspendTransmuxerIfBufferedRangeExceeded(buffered_end: number): void {
+    private _suspendTransmuxerIfBufferedPositionExceeded(buffered_end: number): void {
         const current_time = this._media_element.currentTime;
         if (buffered_end >= current_time + this._config.lazyLoadMaxDuration && !this._paused) {
             Log.v(this.TAG, 'Maximum buffering duration exceeded, suspend transmuxing task');

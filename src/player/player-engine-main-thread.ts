@@ -194,7 +194,7 @@ class PlayerEngineMainThread implements PlayerEngine {
             if (!this._config.isLive && type === 'video' && ms.data && ms.data.byteLength > 0 && ('info' in ms)) {
                 this._seeking_handler.appendSyncPoints(ms.info.syncPoints);
             }
-            this._loading_controller.notifyBufferedRangeChanged(ms.info.endDts / 1000);
+            this._loading_controller.notifyBufferedPositionChanged(ms.info.endDts / 1000);
         });
         this._transmuxer.on(TransmuxingEvents.LOADING_COMPLETE, () => {
             this._mse_controller.endOfStream();
@@ -355,7 +355,7 @@ class PlayerEngineMainThread implements PlayerEngine {
             this._live_latency_chaser.notifyBufferedRangeUpdate();
         }
 
-        this._loading_controller.notifyBufferedRangeChanged();
+        this._loading_controller.notifyBufferedPositionChanged();
     }
 
     private _onMSEBufferFull(): void {
