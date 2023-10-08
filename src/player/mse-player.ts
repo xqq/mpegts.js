@@ -16,10 +16,12 @@
  * limitations under the License.
  */
 
+import Log from '../utils/logger';
+import MediaInfo from '../core/media-info';
 import PlayerEngine from './player-engine';
 import PlayerEngineMainThread from './player-engine-main-thread';
+import PlayerEngineDedicatedThread from './player-engine-dedicated-thread';
 import {InvalidArgumentException} from '../utils/exception';
-import MediaInfo from '../core/media-info';
 
 class MSEPlayer {
 
@@ -39,8 +41,17 @@ class MSEPlayer {
             throw new InvalidArgumentException('MSEPlayer requires an mpegts/m2ts/flv MediaDataSource input!');
         }
 
-        this._media_element = null;
-        this._player_engine = new PlayerEngineMainThread(mediaDataSource, config);
+        if (config && config.enableWorkerForMSE && PlayerEngineDedicatedThread.isSupported()) {
+            try {
+                this._player_engine = new PlayerEngineDedicatedThread(mediaDataSource, config);
+            } catch (error) {
+                Log.e(this.TAG,
+                    'Error while initializing PlayerEngineDedicatedThread, fallback to PlayerEngineMainThread');
+                this._player_engine = new PlayerEngineMainThread(mediaDataSource, config);
+            }
+        } else {
+            this._player_engine = new PlayerEngineMainThread(mediaDataSource, config);
+        }
     }
 
     public destroy(): void {
