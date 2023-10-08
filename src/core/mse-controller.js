@@ -19,7 +19,7 @@
 import EventEmitter from 'events';
 import Log from '../utils/logger.js';
 import Browser from '../utils/browser.js';
-import MSEEvents from './mse-events.js';
+import MSEEvents from './mse-events';
 import {IllegalStateException} from '../utils/exception.js';
 
 // Media Source Extensions controller
