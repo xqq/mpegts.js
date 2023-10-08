@@ -127,7 +127,8 @@
                 }
             }
             player = mpegts.createPlayer(mediaDataSource, {
-                enableWorker: false,
+                enableWorker: true,
+                enableWorkerForMSE: true,
                 liveSync: document.getElementById('liveSync').checked,
             });
             player.attachMediaElement(element);
