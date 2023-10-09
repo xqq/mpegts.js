@@ -80,10 +80,10 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
     private e?: any = null;
 
     public static isSupported(): boolean {
-        return self.Worker &&
+        return (self.Worker &&
                self.MediaSource &&
                ('canConstructInDedicatedWorker' in self.MediaSource) &&
-               self.MediaSource['canConstructInDedicatedWorker'] === true;
+               self.MediaSource['canConstructInDedicatedWorker'] === true) ? true : false;
     }
 
     public constructor(mediaDataSource: any, config: any) {
