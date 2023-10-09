@@ -1,4 +1,4 @@
-export declare type SCTE35Data = {
+export type SCTE35Data = {
     splice_command_type: SCTE35CommandType.kSpliceInsert;
     pts?: number;
     nearest_pts?: number;
@@ -19,7 +19,7 @@ export declare type SCTE35Data = {
     detail: SCTE35Detail;
     data: Uint8Array;
 };
-declare type SCTE35Detail = {
+type SCTE35Detail = {
     table_id: number;
     section_syntax_indicator: boolean;
     private_indicator: boolean;
@@ -136,23 +136,23 @@ export declare enum SCTE35CommandType {
     kBandwidthReservation = 7,
     kPrivateCommand = 255
 }
-declare type SpliceTime = {
+type SpliceTime = {
     time_specified_flag: boolean;
     pts_time?: number;
 };
-declare type BreakDuration = {
+type BreakDuration = {
     auto_return: boolean;
     duration: number;
 };
-declare type SpliceInsertComponent = {
+type SpliceInsertComponent = {
     component_tag: number;
     splice_time?: SpliceTime;
 };
-declare type SpliceScheduleEventComponent = {
+type SpliceScheduleEventComponent = {
     component_tag: number;
     utc_splice_time: number;
 };
-declare type SpliceScheduleEvent = {
+type SpliceScheduleEvent = {
     splice_event_id: number;
     splice_event_cancel_indicator: boolean;
     out_of_network_indicator?: boolean;
@@ -166,12 +166,12 @@ declare type SpliceScheduleEvent = {
     avail_num?: number;
     avails_expected?: number;
 };
-declare type SpliceNull = {};
-declare type SpliceSchedule = {
+type SpliceNull = {};
+type SpliceSchedule = {
     splice_count: number;
     events: SpliceScheduleEvent[];
 };
-declare type SpliceInsert = {
+type SpliceInsert = {
     splice_event_id: number;
     splice_event_cancel_indicator: boolean;
     out_of_network_indicator?: boolean;
@@ -186,28 +186,28 @@ declare type SpliceInsert = {
     avail_num?: number;
     avails_expected?: number;
 };
-declare type TimeSignal = {
+type TimeSignal = {
     splice_time: SpliceTime;
 };
-declare type BandwidthReservation = {};
-declare type PrivateCommand = {
+type BandwidthReservation = {};
+type PrivateCommand = {
     identifier: string;
     private_data: ArrayBuffer;
 };
-declare type Descriptor = {
+type Descriptor = {
     descriptor_tag: number;
     descriptor_length: number;
     identifier: string;
 };
-declare type AvailDescriptor = Descriptor & {
+type AvailDescriptor = Descriptor & {
     provider_avail_id: number;
 };
-declare type DTMFDescriptor = Descriptor & {
+type DTMFDescriptor = Descriptor & {
     preroll: number;
     dtmf_count: number;
     DTMF_char: string;
 };
-declare type SegmentationDescriptor = Descriptor & {
+type SegmentationDescriptor = Descriptor & {
     segmentation_event_id: number;
     segmentation_event_cancel_indicator: boolean;
     program_segmentation_flag?: boolean;
@@ -229,22 +229,22 @@ declare type SegmentationDescriptor = Descriptor & {
     sub_segment_num?: number;
     sub_segments_expected?: number;
 };
-declare type TimeDescriptor = Descriptor & {
+type TimeDescriptor = Descriptor & {
     TAI_seconds: number;
     TAI_ns: number;
     UTC_offset: number;
 };
-declare type AudioDescriptorComponent = {
+type AudioDescriptorComponent = {
     component_tag: number;
     ISO_code: string;
     Bit_Stream_Mode: number;
     Num_Channels: number;
     Full_Srvc_Audio: boolean;
 };
-declare type AudioDescriptor = Descriptor & {
+type AudioDescriptor = Descriptor & {
     audio_count: number;
     components: AudioDescriptorComponent[];
 };
-declare type SpliceDescriptor = AvailDescriptor | DTMFDescriptor | SegmentationDescriptor | TimeDescriptor | AudioDescriptor;
+type SpliceDescriptor = AvailDescriptor | DTMFDescriptor | SegmentationDescriptor | TimeDescriptor | AudioDescriptor;
 export declare const readSCTE35: (data: Uint8Array) => SCTE35Data;
 export {};
