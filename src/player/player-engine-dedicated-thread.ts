@@ -123,6 +123,7 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
     }
 
     public destroy(): void {
+        this._emitter.emit(PlayerEvents.DESTROYING);
         this.unload();
         this.detachMediaElement();
 
