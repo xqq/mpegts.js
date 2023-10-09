@@ -7,7 +7,7 @@ export declare class KLVData {
     data: Uint8Array;
     len: number;
 }
-declare type AccessUnit = {
+type AccessUnit = {
     service_id: number;
     sequence_number: number;
     flags: number;

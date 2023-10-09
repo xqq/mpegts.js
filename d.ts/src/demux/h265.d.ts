@@ -25,14 +25,14 @@ export declare class H265AnnexBParser {
     private findNextStartCodeOffset;
     readNextNaluPayload(): H265NaluPayload | null;
 }
-export declare type HEVCDecoderConfigurationRecordType = {
+export type HEVCDecoderConfigurationRecordType = {
     configurationVersion: 1;
 } & VPSHEVCDecoderConfigurationRecordType & SPSHEVCDecoderConfigurationRecordType & PPSHEVCDecoderConfigurationRecordType;
-export declare type VPSHEVCDecoderConfigurationRecordType = {
+export type VPSHEVCDecoderConfigurationRecordType = {
     num_temporal_layers: number;
     temporal_id_nested: boolean;
 };
-export declare type SPSHEVCDecoderConfigurationRecordType = {
+export type SPSHEVCDecoderConfigurationRecordType = {
     general_profile_space: number;
     general_tier_flag: number;
     general_level_idc: number;
@@ -53,7 +53,7 @@ export declare type SPSHEVCDecoderConfigurationRecordType = {
     bit_depth_luma_minus8: number;
     bit_depth_chroma_minus8: number;
 };
-export declare type PPSHEVCDecoderConfigurationRecordType = {
+export type PPSHEVCDecoderConfigurationRecordType = {
     parallelismType: number;
 };
 export declare class HEVCDecoderConfigurationRecord {

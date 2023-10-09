@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Bilibili. All Rights Reserved.
+ * Copyright (C) 2023 zheng qian. All Rights Reserved.
  *
  * @author zheng qian <xqq@xqq.im>
  *
@@ -16,13 +16,19 @@
  * limitations under the License.
  */
 
-const MSEEvents = {
-    ERROR: 'error',
-    SOURCE_OPEN: 'source_open',
-    UPDATE_END: 'update_end',
-    BUFFER_FULL: 'buffer_full',
-    START_STREAMING: 'start_streaming',
-    END_STREAMING: 'end_streaming',
-};
+import type MediaInfo from "../core/media-info";
 
-export default MSEEvents;
+export default interface PlayerEngine {
+    destroy(): void;
+    on(event: string, listener: (...args: any[]) => void): void;
+    off(event: string, listener: (...args: any[]) => void): void;
+    attachMediaElement(mediaElement: HTMLMediaElement): void;
+    detachMediaElement(): void;
+    load(): void;
+    unload(): void;
+    play(): Promise<void>;
+    pause(): void;
+    seek(seconds: number): void;
+    readonly mediaInfo: MediaInfo | undefined;
+    readonly statisticsInfo: any | undefined;
+}

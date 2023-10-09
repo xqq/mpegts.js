@@ -25,7 +25,7 @@ import TSDemuxer from '../demux/ts-demuxer';
 import MP4Remuxer from '../remux/mp4-remuxer.js';
 import DemuxErrors from '../demux/demux-errors.js';
 import IOController from '../io/io-controller.js';
-import TransmuxingEvents from './transmuxing-events.js';
+import TransmuxingEvents from './transmuxing-events';
 import {LoaderStatus, LoaderErrors} from '../io/loader.js';
 
 // Transmuxing (IO, Demuxing, Remuxing) controller, with multipart support
