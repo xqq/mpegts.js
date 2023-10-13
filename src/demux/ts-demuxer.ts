@@ -137,7 +137,7 @@ class TSDemuxer extends BaseDemuxer {
 
     private last_pcr_: number | null = null;
 
-    private aac_last_sample_pts_: number = undefined;
+    private audio_last_sample_pts_: number = undefined;
     private aac_last_incomplete_data_: Uint8Array = null;
 
     private has_video_ = false;
@@ -921,7 +921,7 @@ class TSDemuxer extends BaseDemuxer {
             let pts_ms = Math.floor(scte35.pts / this.timescale_);
             scte35.pts = pts_ms;
         } else {
-            scte35.nearest_pts = this.aac_last_sample_pts_;
+            scte35.nearest_pts = this.audio_last_sample_pts_;
         }
 
         if (this.onSCTE35Metadata) {
@@ -1234,17 +1234,17 @@ class TSDemuxer extends BaseDemuxer {
             base_pts_ms = pts / this.timescale_;
         }
         if (this.audio_metadata_.codec === 'aac') {
-            if (pts == undefined && this.aac_last_sample_pts_ != undefined) {
+            if (pts == undefined && this.audio_last_sample_pts_ != undefined) {
                 ref_sample_duration = 1024 / this.audio_metadata_.sampling_frequency * 1000;
-                base_pts_ms = this.aac_last_sample_pts_ + ref_sample_duration;
+                base_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
             } else if (pts == undefined){
                 Log.w(this.TAG, `AAC: Unknown pts`);
                 return;
             }
 
-            if (this.aac_last_incomplete_data_ && this.aac_last_sample_pts_) {
+            if (this.aac_last_incomplete_data_ && this.audio_last_sample_pts_) {
                 ref_sample_duration = 1024 / this.audio_metadata_.sampling_frequency * 1000;
-                let new_pts_ms = this.aac_last_sample_pts_ + ref_sample_duration;
+                let new_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
 
                 if (Math.abs(new_pts_ms - base_pts_ms) > 1) {
                     Log.w(this.TAG, `AAC: Detected pts overlapped, ` +
@@ -1302,7 +1302,7 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         if (last_sample_pts_ms) {
-            this.aac_last_sample_pts_ = last_sample_pts_ms;
+            this.audio_last_sample_pts_ = last_sample_pts_ms;
         }
     }
 
@@ -1327,17 +1327,17 @@ class TSDemuxer extends BaseDemuxer {
             base_pts_ms = pts / this.timescale_;
         }
         if (this.audio_metadata_.codec === 'aac') {
-            if (pts == undefined && this.aac_last_sample_pts_ != undefined) {
+            if (pts == undefined && this.audio_last_sample_pts_ != undefined) {
                 ref_sample_duration = 1024 / this.audio_metadata_.sampling_frequency * 1000;
-                base_pts_ms = this.aac_last_sample_pts_ + ref_sample_duration;
+                base_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
             } else if (pts == undefined){
                 Log.w(this.TAG, `AAC: Unknown pts`);
                 return;
             }
 
-            if (this.aac_last_incomplete_data_ && this.aac_last_sample_pts_) {
+            if (this.aac_last_incomplete_data_ && this.audio_last_sample_pts_) {
                 ref_sample_duration = 1024 / this.audio_metadata_.sampling_frequency * 1000;
-                let new_pts_ms = this.aac_last_sample_pts_ + ref_sample_duration;
+                let new_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
 
                 if (Math.abs(new_pts_ms - base_pts_ms) > 1) {
                     Log.w(this.TAG, `AAC: Detected pts overlapped, ` +
@@ -1396,7 +1396,7 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         if (last_sample_pts_ms) {
-            this.aac_last_sample_pts_ = last_sample_pts_ms;
+            this.audio_last_sample_pts_ = last_sample_pts_ms;
         }
     }
 
@@ -1415,9 +1415,9 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         if (this.audio_metadata_.codec === 'ac-3') {
-            if (pts == undefined && this.aac_last_sample_pts_ != undefined) {
+            if (pts == undefined && this.audio_last_sample_pts_ != undefined) {
                 ref_sample_duration = 1536 / this.audio_metadata_.sampling_frequency * 1000;
-                base_pts_ms = this.aac_last_sample_pts_ + ref_sample_duration;
+                base_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
             } else if (pts == undefined){
                 Log.w(this.TAG, `AC3: Unknown pts`);
                 return;
@@ -1470,7 +1470,7 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         if (last_sample_pts_ms) {
-            this.aac_last_sample_pts_ = last_sample_pts_ms;
+            this.audio_last_sample_pts_ = last_sample_pts_ms;
         }
     }
 
@@ -1489,9 +1489,9 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         if (this.audio_metadata_.codec === 'ec-3') {
-            if (pts == undefined && this.aac_last_sample_pts_ != undefined) {
+            if (pts == undefined && this.audio_last_sample_pts_ != undefined) {
                 ref_sample_duration = (256 * this.audio_metadata_.num_blks) / this.audio_metadata_.sampling_frequency * 1000; // TODO: AEC3 BLK
-                base_pts_ms = this.aac_last_sample_pts_ + ref_sample_duration;
+                base_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
             } else if (pts == undefined){
                 Log.w(this.TAG, `EAC3: Unknown pts`);
                 return;
@@ -1544,7 +1544,7 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         if (last_sample_pts_ms) {
-            this.aac_last_sample_pts_ = last_sample_pts_ms;
+            this.audio_last_sample_pts_ = last_sample_pts_ms;
         }
     }
 
@@ -1562,9 +1562,9 @@ class TSDemuxer extends BaseDemuxer {
             base_pts_ms = pts / this.timescale_;
         }
         if (this.audio_metadata_.codec === 'opus') {
-            if (pts == undefined && this.aac_last_sample_pts_ != undefined) {
+            if (pts == undefined && this.audio_last_sample_pts_ != undefined) {
                 ref_sample_duration = 20;
-                base_pts_ms = this.aac_last_sample_pts_ + ref_sample_duration;
+                base_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
             } else if (pts == undefined){
                 Log.w(this.TAG, `Opus: Unknown pts`);
                 return;
@@ -1609,7 +1609,7 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         if (last_sample_pts_ms) {
-            this.aac_last_sample_pts_ = last_sample_pts_ms;
+            this.audio_last_sample_pts_ = last_sample_pts_ms;
         }
     }
 
@@ -1903,7 +1903,7 @@ class TSDemuxer extends BaseDemuxer {
             let pts_ms = Math.floor(pts / this.timescale_);
             private_data.pts = pts_ms;
         } else {
-            private_data.nearest_pts = this.aac_last_sample_pts_;
+            private_data.nearest_pts = this.audio_last_sample_pts_;
         }
 
         if (dts != undefined) {
@@ -1989,7 +1989,7 @@ class TSDemuxer extends BaseDemuxer {
             let pts_ms = Math.floor(pts / this.timescale_);
             smpte2038_data.pts = pts_ms;
         }
-        smpte2038_data.nearest_pts = this.aac_last_sample_pts_;
+        smpte2038_data.nearest_pts = this.audio_last_sample_pts_;
 
         if (dts != undefined) {
             let dts_ms = Math.floor(dts / this.timescale_);
