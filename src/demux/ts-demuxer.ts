@@ -35,6 +35,11 @@ import { MP3Data } from './mp3';
 import { AC3Config, AC3Frame, AC3Parser, EAC3Config, EAC3Frame, EAC3Parser } from './ac3';
 import { KLVData, klv_parse } from './klv';
 
+type AdaptationFieldInfo = {
+    discontinuity_indicator?: number;
+    random_access_indicator?: number;
+    elementary_stream_priority_indicator?: number;
+};
 type AACAudioMetadata = {
     codec: 'aac',
     audio_object_type: MPEG4AudioObjectTypes;
@@ -129,6 +134,8 @@ class TSDemuxer extends BaseDemuxer {
         sampling_frequency: undefined,
         channel_config: undefined
     };
+
+    private last_pcr_: number | null = null;
 
     private aac_last_sample_pts_: number = undefined;
     private aac_last_incomplete_data_: Uint8Array = null;
@@ -272,16 +279,32 @@ class TSDemuxer extends BaseDemuxer {
             let adaptation_field_control = (data[3] & 0x30) >>> 4;
             let continuity_conunter = (data[3] & 0x0F);
 
-            let adaptation_field_info: {
-                discontinuity_indicator?: number,
-                random_access_indicator?: number,
-                elementary_stream_priority_indicator?: number
-            } = {};
+            let is_pcr_pid: boolean = (this.pmt_ && this.pmt_.pcr_pid === pid) ? true : false;
+            let adaptation_field_info: AdaptationFieldInfo = {};
             let ts_payload_start_index = 4;
 
             if (adaptation_field_control == 0x02 || adaptation_field_control == 0x03) {
+                // Adaptation field exists along with / without payload
                 let adaptation_field_length = data[4];
-                if (5 + adaptation_field_length === 188) {
+                if (adaptation_field_length > 0 && (is_pcr_pid || adaptation_field_control == 0x03)) {
+                    // Parse adaptation field
+                    adaptation_field_info.discontinuity_indicator = (data[5] & 0x80) >>> 7;
+                    adaptation_field_info.random_access_indicator = (data[5] & 0x40) >>> 6;
+                    adaptation_field_info.elementary_stream_priority_indicator = (data[5] & 0x20) >>> 5;
+
+                    let PCR_flag = (data[5] & 0x10) >>> 4;
+                    if (PCR_flag) {
+                        let pcr_base = (data[6] << 25) |
+                                       (data[7] << 17) |
+                                       (data[8] <<  9) |
+                                       (data[9] <<  1) |
+                                       (data[10] >>> 7);
+                        let pcr_extension = ((data[10] & 0x01) << 8) | data[11];
+                        let pcr = pcr_base * 300 + pcr_extension;
+                        this.last_pcr_ = pcr;
+                    }
+                }
+                if (adaptation_field_control == 0x02 || 5 + adaptation_field_length === 188) {
                     // TS packet only has adaption field, jump to next
                     offset += 188;
                     if (this.ts_packet_size_ === 204) {
@@ -290,18 +313,15 @@ class TSDemuxer extends BaseDemuxer {
                     }
                     continue;
                 } else {
-                    // parse leading adaptation_field if has payload
-                    if (adaptation_field_length > 0) {
-                        adaptation_field_info = this.parseAdaptationField(chunk,
-                                                                          offset + 4,
-                                                                          1 + adaptation_field_length);
-                    }
+                    // Point ts_payload_start_index to the start of payload
                     ts_payload_start_index = 4 + 1 + adaptation_field_length;
                 }
             }
 
             if (adaptation_field_control == 0x01 || adaptation_field_control == 0x03) {
-                if (pid === 0 || pid === this.current_pmt_pid_ || (this.pmt_ != undefined && this.pmt_.pid_stream_type[pid] === StreamType.kSCTE35)) {  // PAT(pid === 0) or PMT or SCTE35
+                if (pid === 0 ||                      // PAT (pid === 0)
+                    pid === this.current_pmt_pid_ ||  // PMT
+                    (this.pmt_ != undefined && this.pmt_.pid_stream_type[pid] === StreamType.kSCTE35)) {  // SCTE35
                     let ts_payload_length = 188 - ts_payload_start_index;
 
                     this.handleSectionSlice(chunk,
@@ -360,34 +380,6 @@ class TSDemuxer extends BaseDemuxer {
         this.dispatchAudioVideoMediaSegment();
 
         return offset;  // consumed bytes
-    }
-
-    private parseAdaptationField(buffer: ArrayBuffer, offset: number, length: number): {
-        discontinuity_indicator?: number,
-        random_access_indicator?: number,
-        elementary_stream_priority_indicator?: number
-    } {
-        let data = new Uint8Array(buffer, offset, length);
-
-        let adaptation_field_length = data[0];
-        if (adaptation_field_length > 0) {
-            if (adaptation_field_length > 183) {
-                Log.w(this.TAG, `Illegal adaptation_field_length: ${adaptation_field_length}`);
-                return {};
-            }
-
-            let discontinuity_indicator: number = (data[1] & 0x80) >>> 7;
-            let random_access_indicator: number = (data[1] & 0x40) >>> 6;
-            let elementary_stream_priority_indicator: number = (data[1] & 0x20) >>> 5;
-
-            return {
-                discontinuity_indicator,
-                random_access_indicator,
-                elementary_stream_priority_indicator
-            };
-        }
-
-        return {};
     }
 
     private handleSectionSlice(buffer: ArrayBuffer, offset: number, length: number, misc: any): void {
@@ -778,7 +770,7 @@ class TSDemuxer extends BaseDemuxer {
             }
         }
 
-        let PCR_PID = ((data[8] & 0x1F) << 8) | data[9];
+        pmt.pcr_pid = ((data[8] & 0x1F) << 8) | data[9];
         let program_info_length = ((data[10] & 0x0F) << 8) | data[11];
 
         let info_start_index = 12 + program_info_length;
