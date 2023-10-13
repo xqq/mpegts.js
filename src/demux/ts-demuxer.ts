@@ -135,7 +135,7 @@ class TSDemuxer extends BaseDemuxer {
         channel_config: undefined
     };
 
-    private last_pcr_: number | null = null;
+    private last_pcr_: number | undefined;
 
     private audio_last_sample_pts_: number = undefined;
     private aac_last_incomplete_data_: Uint8Array = null;
@@ -921,7 +921,7 @@ class TSDemuxer extends BaseDemuxer {
             let pts_ms = Math.floor(scte35.pts / this.timescale_);
             scte35.pts = pts_ms;
         } else {
-            scte35.nearest_pts = this.audio_last_sample_pts_;
+            scte35.nearest_pts = this.getNearestTimestampMilliseconds();
         }
 
         if (this.onSCTE35Metadata) {
@@ -1903,7 +1903,7 @@ class TSDemuxer extends BaseDemuxer {
             let pts_ms = Math.floor(pts / this.timescale_);
             private_data.pts = pts_ms;
         } else {
-            private_data.nearest_pts = this.audio_last_sample_pts_;
+            private_data.nearest_pts = this.getNearestTimestampMilliseconds();
         }
 
         if (dts != undefined) {
@@ -1989,7 +1989,7 @@ class TSDemuxer extends BaseDemuxer {
             let pts_ms = Math.floor(pts / this.timescale_);
             smpte2038_data.pts = pts_ms;
         }
-        smpte2038_data.nearest_pts = this.audio_last_sample_pts_;
+        smpte2038_data.nearest_pts = this.getNearestTimestampMilliseconds();
 
         if (dts != undefined) {
             let dts_ms = Math.floor(dts / this.timescale_);
@@ -2000,6 +2000,18 @@ class TSDemuxer extends BaseDemuxer {
         if (this.onSMPTE2038Metadata) {
             this.onSMPTE2038Metadata(smpte2038_data);
         }
+    }
+
+    private getNearestTimestampMilliseconds(): number | undefined {
+        // Prefer using last audio sample pts if audio track exists
+        if (this.audio_last_sample_pts_ != undefined) {
+            return Math.floor(this.audio_last_sample_pts_);
+        } else if (this.last_pcr_ != undefined) {
+            // Fallback to PCR time if audio track doesn't exist
+            const pcr_time_ms = Math.floor(this.last_pcr_ / 300 / this.timescale_);
+            return pcr_time_ms;
+        }
+        return undefined;
     }
 }
 
