@@ -27,6 +27,7 @@ export const defaultConfig = {
     liveBufferLatencyChasing: false,
     liveBufferLatencyMaxLatency: 1.5,
     liveBufferLatencyMinRemain: 0.5,
+    liveBufferChasingOnPaused: false,
 
     liveSync: false,
     liveSyncMaxLatency: 1.2,

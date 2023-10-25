@@ -87,6 +87,13 @@ declare namespace Mpegts {
         liveBufferLatencyMinRemain?: number;
 
         /**
+         * @desc Chasing the live stream latency caused by the internal buffer in HTMLMediaElement even if HTMLMediaElement is paused
+         *       Effective only if `isLive: true` and `liveBufferLatencyChasing: true`
+         * @defaultvalue false
+         */
+        liveBufferChasingOnPaused?: boolean;
+
+        /**
          * @desc Abort the http connection if there's enough data for playback.
          * @defaultvalue true
          */
