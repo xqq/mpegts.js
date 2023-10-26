@@ -43,10 +43,15 @@ declare namespace Mpegts {
 
     interface Config {
         /**
-         * @desc Enable separated thread for transmuxing (unstable for now)
+         * @desc Enable separated thread (DedicatedWorker) for transmuxing
          * @defaultvalue false
          */
         enableWorker?: boolean;
+        /**
+         * @desc Enable separated thread (DedicatedWorker) for MediaSource
+         * @defaultvalue false
+         */
+        enableWorkerForMSE?: boolean;
         /**
          * @desc Enable IO stash buffer. Set to false if you need realtime (minimal latency) for live stream
          *          playback, but may stalled if there's network jittering.
