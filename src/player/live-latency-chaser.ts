@@ -59,10 +59,6 @@ class LiveLatencyChaser {
                 this._on_direct_seek(target_time);
             }
         }
-
-        if (paused && !this._media_element.paused) {
-            this._media_element.pause();
-        }
     }
 
 }
