@@ -48,7 +48,7 @@ class LiveLatencyChaser {
         if (!this._config.isLive ||
             !this._config.liveBufferLatencyChasing ||
             buffered.length == 0 ||
-            (!this._config.liveBufferChasingOnPaused && paused)) {
+            (!this._config.liveBufferLatencyChasingOnPaused && paused)) {
             return;
         }
 
