@@ -43,10 +43,12 @@ class LiveLatencyChaser {
         const buffered: TimeRanges = this._media_element.buffered;
         const current_time: number = this._media_element.currentTime;
 
+        const paused = this._media_element.paused;
+
         if (!this._config.isLive ||
             !this._config.liveBufferLatencyChasing ||
             buffered.length == 0 ||
-            this._media_element.paused) {
+            (!this._config.liveBufferLatencyChasingOnPaused && paused)) {
             return;
         }
 

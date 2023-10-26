@@ -73,6 +73,13 @@ declare namespace Mpegts {
         liveBufferLatencyChasing?: boolean;
 
         /**
+         * @desc Chasing the live stream latency caused by the internal buffer in HTMLMediaElement even if HTMLMediaElement is paused
+         *       Effective only if `isLive: true` and `liveBufferLatencyChasing: true`
+         * @defaultvalue false
+         */
+        liveBufferLatencyChasingOnPaused?: boolean;
+
+        /**
          * @desc Maximum acceptable buffer latency in HTMLMediaElement, in seconds
          *       Effective only if `isLive: true` and `liveBufferLatencyChasing: true`
          * @defaultvalue 1.5
