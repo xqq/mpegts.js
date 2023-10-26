@@ -89,7 +89,7 @@ class MSEController {
             this.shutdown();
         }
         if (this._mediaSourceObjectURL) {
-            revokeObjectURL();
+            this.revokeObjectURL();
         }
         this.e = null;
         this._emitter.removeAllListeners();
