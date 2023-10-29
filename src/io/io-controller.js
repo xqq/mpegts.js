@@ -35,7 +35,7 @@ import {RuntimeException, IllegalStateException, InvalidArgumentException} from 
  *     cors: boolean,
  *     withCredentials: boolean
  * }
- * 
+ *
  */
 
 // Manage IO Loaders
@@ -55,7 +55,7 @@ class IOController {
 
         this._stashUsed = 0;
         this._stashSize = this._stashInitialSize;
-        this._bufferSize = 1024 * 1024 * 3;  // initial size: 3MB
+        this._bufferSize = Math.max(this._stashSize, 1024 * 1024 * 3);  // initial size: 3MB at least
         this._stashBuffer = new ArrayBuffer(this._bufferSize);
         this._stashByteStart = 0;
         this._enableStash = true;
