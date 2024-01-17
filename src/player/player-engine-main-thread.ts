@@ -206,6 +206,9 @@ class PlayerEngineMainThread implements PlayerEngine {
         this._transmuxer.on(TransmuxingEvents.IO_ERROR, (detail: any, info: any) => {
             this._emitter.emit(PlayerEvents.ERROR, ErrorTypes.NETWORK_ERROR, detail, info);
         });
+        this._transmuxer.on(TransmuxingEvents.INIT_DEMUXER, (probeData: any) => {
+            this._emitter.emit(PlayerEvents.INIT_DEMUXER, probeData);
+        });
         this._transmuxer.on(TransmuxingEvents.DEMUX_ERROR, (detail: any, info: any) => {
             this._emitter.emit(PlayerEvents.ERROR, ErrorTypes.MEDIA_ERROR, detail, info);
         });
