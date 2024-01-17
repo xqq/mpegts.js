@@ -1461,9 +1461,9 @@ class FLVDemuxer {
                 return;
             }
 
-            let unitType = v.getUint8(offset + lengthSize) & 0x1F;
+            let unitType = (v.getUint8(offset + lengthSize) >> 1) & 0x3F;
 
-            if (unitType === 19 || unitType === 20) {  // IDR
+            if (unitType === 19 || unitType === 20 || unitType === 21) {  // IRAP
                 keyframe = true;
             }
 
