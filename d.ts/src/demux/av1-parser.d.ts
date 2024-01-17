@@ -32,6 +32,6 @@ declare class AV1OBUParser {
     };
     static getLevelString(level: number, tier: number): string;
     static getChromaFormat(mono_chrome: boolean, subsampling_x: number, subsampling_y: number): number;
-    static getChromaFormatString(mono_chrome: boolean, subsampling_x: number, subsampling_y: number): "4:0:0" | "4:4:4" | "4:2:2" | "4:2:0" | "Unknown";
+    static getChromaFormatString(mono_chrome: boolean, subsampling_x: number, subsampling_y: number): string;
 }
 export default AV1OBUParser;

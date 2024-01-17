@@ -326,11 +326,11 @@ class AV1OBUParser {
         };
     }
 
-    static getLevelString(level: number, tier: number) {
+    static getLevelString(level: number, tier: number): string {
         return `${level.toString(10).padStart(2, '0')}${tier === 0 ? 'M' : 'H'}`;
     }
 
-    static getChromaFormat(mono_chrome: boolean, subsampling_x: number, subsampling_y: number) {
+    static getChromaFormat(mono_chrome: boolean, subsampling_x: number, subsampling_y: number): number {
         if (mono_chrome) {
             return 0;
         } else if (subsampling_x === 0 && subsampling_y === 0) {
@@ -344,7 +344,7 @@ class AV1OBUParser {
         }
     }
 
-    static getChromaFormatString(mono_chrome: boolean, subsampling_x: number, subsampling_y: number) {
+    static getChromaFormatString(mono_chrome: boolean, subsampling_x: number, subsampling_y: number): string {
         if (mono_chrome) {
             return '4:0:0';
         } else if (subsampling_x === 0 && subsampling_y === 0) {

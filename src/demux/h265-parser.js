@@ -371,6 +371,7 @@ class H265NaluParser {
 
         return {
             codec_mimetype,
+            profile_string: H265NaluParser.getProfileString(general_profile_idc),
             level_string: H265NaluParser.getLevelString(general_level_idc),
             profile_idc: general_profile_idc,
             bit_depth: bit_depth_luma_minus8 + 8,

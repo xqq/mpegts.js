@@ -43,10 +43,15 @@ declare namespace Mpegts {
 
     interface Config {
         /**
-         * @desc Enable separated thread for transmuxing (unstable for now)
+         * @desc Enable separated thread (DedicatedWorker) for transmuxing
          * @defaultvalue false
          */
         enableWorker?: boolean;
+        /**
+         * @desc Enable separated thread (DedicatedWorker) for MediaSource
+         * @defaultvalue false
+         */
+        enableWorkerForMSE?: boolean;
         /**
          * @desc Enable IO stash buffer. Set to false if you need realtime (minimal latency) for live stream
          *          playback, but may stalled if there's network jittering.
@@ -73,6 +78,13 @@ declare namespace Mpegts {
         liveBufferLatencyChasing?: boolean;
 
         /**
+         * @desc Chasing the live stream latency caused by the internal buffer in HTMLMediaElement even if HTMLMediaElement is paused
+         *       Effective only if `isLive: true` and `liveBufferLatencyChasing: true`
+         * @defaultvalue false
+         */
+        liveBufferLatencyChasingOnPaused?: boolean;
+
+        /**
          * @desc Maximum acceptable buffer latency in HTMLMediaElement, in seconds
          *       Effective only if `isLive: true` and `liveBufferLatencyChasing: true`
          * @defaultvalue 1.5
@@ -85,6 +97,34 @@ declare namespace Mpegts {
          * @defaultvalue 0.5
          */
         liveBufferLatencyMinRemain?: number;
+
+        /**
+         * @desc Chasing the live stream latency caused by the internal buffer in HTMLMediaElement
+         *       by changing the playbackRate. `isLive` should also be set to `true`
+         * @defaultvalue false
+         */
+        liveSync?: boolean;
+
+        /**
+         * @desc Maximum acceptable buffer latency in HTMLMediaElement, in seconds.
+         *       Effective only if `isLive: true` and `liveSync: true`
+         * @defaultvalue 1.2
+         */
+        liveSyncMaxLatency?: number;
+
+        /**
+         * @desc Target latency in HTMLMediaElement to chase when latency exceeds liveSyncMaxLatency, in seconds.
+         *       Effective only if `isLive: true` and `liveSync: true`
+         * @defaultvalue 0.8
+         */
+        liveSyncTargetLatency?: number;
+
+        /**
+         * @desc PlaybackRate limited between [1, 2] will be used for latency chasing.
+         *       Effective only if `isLive: true` and `liveSync: true`
+         * @defaultvalue 1.2
+         */
+        liveSyncPlaybackRate?: number;
 
         /**
          * @desc Abort the http connection if there's enough data for playback.
@@ -267,8 +307,8 @@ declare namespace Mpegts {
         nativeWebmVP9Playback: boolean;
     }
 
-    interface PlayerConstructor {
-        new (mediaDataSource: MediaDataSource, config?: Config): Player;
+    interface PlayerConstructor<T extends Player> {
+        new (mediaDataSource: MediaDataSource, config?: Config): T;
     }
 
     interface Player {
@@ -439,8 +479,8 @@ declare var Mpegts: {
     readonly ErrorTypes: Readonly<Mpegts.ErrorTypes>;
     readonly ErrorDetails: Readonly<Mpegts.ErrorDetails>;
 
-    readonly MSEPlayer: Mpegts.PlayerConstructor;
-    readonly NativePlayer: Mpegts.PlayerConstructor;
+    readonly MSEPlayer: Mpegts.PlayerConstructor<Mpegts.MSEPlayer>;
+    readonly NativePlayer: Mpegts.PlayerConstructor<Mpegts.NativePlayer>;
     readonly LoggingControl: Mpegts.LoggingControl;
 };
 

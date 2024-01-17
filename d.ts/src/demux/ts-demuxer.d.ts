@@ -17,7 +17,8 @@ declare class TSDemuxer extends BaseDemuxer {
     private section_slice_queues_;
     private video_metadata_;
     private audio_metadata_;
-    private aac_last_sample_pts_;
+    private last_pcr_;
+    private audio_last_sample_pts_;
     private aac_last_incomplete_data_;
     private has_video_;
     private has_audio_;
@@ -52,7 +53,6 @@ declare class TSDemuxer extends BaseDemuxer {
     bindDataSource(loader: any): this;
     resetMediaInfo(): void;
     parseChunks(chunk: ArrayBuffer, byte_start: number): number;
-    private parseAdaptationField;
     private handleSectionSlice;
     private handlePESSlice;
     private emitSectionSlices;
@@ -85,5 +85,6 @@ declare class TSDemuxer extends BaseDemuxer {
     private parseSynchronousKLVMetadataPayload;
     private parseAsynchronousKLVMetadataPayload;
     private parseSMPTE2038MetadataPayload;
+    private getNearestTimestampMilliseconds;
 }
 export default TSDemuxer;

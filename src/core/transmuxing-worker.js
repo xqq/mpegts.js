@@ -20,7 +20,7 @@ import Log from '../utils/logger.js';
 import LoggingControl from '../utils/logging-control.js';
 import Polyfill from '../utils/polyfill.js';
 import TransmuxingController from './transmuxing-controller.js';
-import TransmuxingEvents from './transmuxing-events.js';
+import TransmuxingEvents from './transmuxing-events';
 
 /* post message to worker:
    data: {

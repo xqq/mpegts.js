@@ -8,7 +8,7 @@ export declare class SMPTE2038Data {
     data: Uint8Array;
     len: number;
 }
-declare type AncillaryData = {
+type AncillaryData = {
     yc_indicator: boolean;
     line_number: number;
     horizontal_offset: number;
