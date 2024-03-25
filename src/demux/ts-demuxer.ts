@@ -136,6 +136,8 @@ class TSDemuxer extends BaseDemuxer {
     };
 
     private last_pcr_: number | undefined;
+    private last_pcr_base_: number = NaN;
+    private timestamp_offset_: number = 0;
 
     private audio_last_sample_pts_: number = undefined;
     private aac_last_incomplete_data_: Uint8Array = null;
@@ -294,11 +296,7 @@ class TSDemuxer extends BaseDemuxer {
 
                     let PCR_flag = (data[5] & 0x10) >>> 4;
                     if (PCR_flag) {
-                        let pcr_base = (data[6] << 25) |
-                                       (data[7] << 17) |
-                                       (data[8] <<  9) |
-                                       (data[9] <<  1) |
-                                       (data[10] >>> 7);
+                        let pcr_base = this.getPcrBase(data);
                         let pcr_extension = ((data[10] & 0x01) << 8) | data[11];
                         let pcr = pcr_base * 300 + pcr_extension;
                         this.last_pcr_ = pcr;
@@ -574,21 +572,8 @@ class TSDemuxer extends BaseDemuxer {
             let dts: number | undefined;
 
             if (PTS_DTS_flags === 0x02 || PTS_DTS_flags === 0x03) {
-                pts = (data[9] & 0x0E) * 536870912 + // 1 << 29
-                      (data[10] & 0xFF) * 4194304 + // 1 << 22
-                      (data[11] & 0xFE) * 16384 + // 1 << 14
-                      (data[12] & 0xFF) * 128 + // 1 << 7
-                      (data[13] & 0xFE) / 2;
-
-                if (PTS_DTS_flags === 0x03) {
-                    dts = (data[14] & 0x0E) * 536870912 + // 1 << 29
-                          (data[15] & 0xFF) * 4194304 + // 1 << 22
-                          (data[16] & 0xFE) * 16384 + // 1 << 14
-                          (data[17] & 0xFF) * 128 + // 1 << 7
-                          (data[18] & 0xFE) / 2;
-                } else {
-                    dts = pts;
-                }
+                pts = this.getTimestamp(data, 9);
+                dts = PTS_DTS_flags === 0x03 ? this.getTimestamp(data, 14) : pts;
             }
 
             let payload_start_index = 6 + 3 + PES_header_data_length;
@@ -2013,6 +1998,35 @@ class TSDemuxer extends BaseDemuxer {
         }
         return undefined;
     }
+
+    private getPcrBase(data: Uint8Array): number {
+        let pcr_base = data[6] * 33554432 // 1 << 25
+            + data[7] * 131072 // 1 << 17
+            + data[8] * 512 // 1 << 9
+            + data[9] * 2 // 1 << 1
+            + (data[10] & 0x80) / 128 // 1 >> 7
+            + this.timestamp_offset_;
+        if (pcr_base + 0x100000000 < this.last_pcr_base_) {
+            pcr_base += 0x200000000; // pcr_base wraparound
+            this.timestamp_offset_ += 0x200000000;
+        }
+        this.last_pcr_base_ = pcr_base;
+        return pcr_base;
+    }
+
+    private getTimestamp(data: Uint8Array, pos: number): number {
+        let timestamp = (data[pos] & 0x0E) * 536870912 // 1 << 29
+            + (data[pos + 1] & 0xFF) * 4194304 // 1 << 22
+            + (data[pos + 2] & 0xFE) * 16384 // 1 << 14
+            + (data[pos + 3] & 0xFF) * 128 // 1 << 7
+            + (data[pos + 4] & 0xFE) / 2
+            + this.timestamp_offset_;
+        if (timestamp + 0x100000000 < this.last_pcr_base_) {
+            timestamp += 0x200000000; // pts/dts wraparound
+        }
+        return timestamp;
+    }
+
 }
 
 export default TSDemuxer;
