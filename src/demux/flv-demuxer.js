@@ -1175,7 +1175,7 @@ class FLVDemuxer {
         let version = v.getUint8(0);  // configurationVersion
         let hevcProfile = v.getUint8(1) & 0x1F;  // hevcProfileIndication
 
-        if (version !== 0 && version !== 1 || hevcProfile === 0) {
+        if ((version !== 0 && version !== 1) || hevcProfile === 0) {
             this._onError(DemuxErrors.FORMAT_ERROR, 'Flv: Invalid HEVCDecoderConfigurationRecord');
             return;
         }
