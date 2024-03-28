@@ -1407,6 +1407,16 @@ class FLVDemuxer {
 
             if (unitType === 5) {  // IDR
                 keyframe = true;
+            } else if (unitType === 1 && units.length > 0) { // P frame
+                const lastUnit = units[units.length - 1];
+                if (lastUnit.type === unitType) {
+                    if (/macintosh/ig.test(window.navigator.userAgent) || /Mac OS/ig.test(window.navigator.userAgent)) {
+                        Log.w(this.TAG, `Skip multiple P frame Nalus in one video packet (dts: ${dts})`);
+                        break;
+                    } else {
+                        Log.w(this.TAG, `Found multiple P frame Nalus in one video packet (dts: ${dts})`);
+                    }
+                }
             }
 
             let data = new Uint8Array(arrayBuffer, dataOffset + offset, lengthSize + naluSize);
