@@ -18,6 +18,8 @@ declare class TSDemuxer extends BaseDemuxer {
     private video_metadata_;
     private audio_metadata_;
     private last_pcr_;
+    private last_pcr_base_;
+    private timestamp_offset_;
     private audio_last_sample_pts_;
     private aac_last_incomplete_data_;
     private has_video_;
@@ -86,5 +88,7 @@ declare class TSDemuxer extends BaseDemuxer {
     private parseAsynchronousKLVMetadataPayload;
     private parseSMPTE2038MetadataPayload;
     private getNearestTimestampMilliseconds;
+    private getPcrBase;
+    private getTimestamp;
 }
 export default TSDemuxer;
