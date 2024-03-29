@@ -91,7 +91,7 @@ export class AC3Parser {
             let frame_size_code = data[offset + 4] & 0x3F;
             let frame_size = frame_size_code_table[sampling_rate_code][frame_size_code] * 2;
 
-            if (offset + frame_size > this.data_.byteLength) {
+            if (isNaN(frame_size) || offset + frame_size > this.data_.byteLength) {
                 // data not enough for extracting last sample
                 this.eof_flag_ = true;
                 this.has_last_incomplete_data = true;
