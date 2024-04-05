@@ -463,7 +463,7 @@ class MSEController {
             if (pendingSegments[type].length > 0) {
                 let segment = pendingSegments[type].shift();
 
-                if (segment.timestampOffset) {
+                if (typeof segment.timestampOffset === 'number' && isFinite(segment.timestampOffset)) {
                     // For MPEG audio stream in MSE, if unbuffered-seeking occurred
                     // We need explicitly set timestampOffset to the desired point in timeline for mpeg SourceBuffer.
                     let currentOffset = this._sourceBuffers[type].timestampOffset;
