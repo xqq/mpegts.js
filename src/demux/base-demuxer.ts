@@ -8,7 +8,7 @@ type OnErrorCallback = (type: string, info: string) => void;
 type OnMediaInfoCallback = (mediaInfo: MediaInfo) => void;
 type OnMetaDataArrivedCallback = (metadata: any) => void;
 type OnTrackMetadataCallback = (type: string, metadata: any) => void;
-type OnDataAvailableCallback = (videoTrack: any, audioTrack: any) => void;
+type OnDataAvailableCallback = (audioTrack: any, videoTrack: any) => void;
 type OnTimedID3MetadataCallback = (timed_id3_data: PESPrivateData) => void;
 type OnSynchronousKLVMetadataCallback = (synchronous_klv_data: KLVData) => void;
 type OnAsynchronousKLVMetadataCallback = (asynchronous_klv_data: PESPrivateData) => void;
