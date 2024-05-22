@@ -226,6 +226,9 @@ class MSEController {
         let is = initSegment;
         let mimeType = `${is.container}`;
         if (is.codec && is.codec.length > 0) {
+            if (is.codec === 'opus' && Browser.safari) {
+                is.codec = 'Opus';
+            }
             mimeType += `;codecs=${is.codec}`;
         }
 
