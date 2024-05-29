@@ -887,10 +887,12 @@ class FLVDemuxer {
 
         // Identification Header
         let v = new DataView(arrayBuffer, dataOffset, dataSize);
+        v.setUint8(8 + 0, 0); // set version to 0
         let channelCount = v.getUint8(8 + 1); // Opus Header + 1
+        v.setUint16(8 + 2, v.getUint16(8 + 2, true), false); // Big Endian to Little Endian for Pre-skip
         let samplingFrequence = v.getUint32(8 + 4, true); // Opus Header + 4
+        v.setUint32(8 + 4, v.getUint32(8 + 4, true), false); // Big Endian to Little Endian for Input Sample Rate
         let config = new Uint8Array(arrayBuffer, dataOffset + 8, dataSize - 8);
-        config[0] = 0;
 
         let misc = {
             config,
