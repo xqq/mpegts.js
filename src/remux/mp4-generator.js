@@ -476,7 +476,7 @@ class MP4 {
         let sampleRate = meta.audioSampleRate;
 
         if (meta.config) {
-            return MP4.box(MP4.types.dOps, data);
+            return MP4.box(MP4.types.dOps, meta.config);
         }
 
         let mapping = [];
