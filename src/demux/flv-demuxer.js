@@ -492,6 +492,24 @@ class FLVDemuxer {
         let soundSpec = v.getUint8(0);
 
         let soundFormat = soundSpec >>> 4;
+        if (soundFormat === 9) { // Enhanced FLV
+            if (dataSize <= 5) {
+                Log.w(this.TAG, 'Flv: Invalid audio packet, missing AudioFourCC in Ehnanced FLV payload!');
+                return;
+            }
+            let packetType = soundSpec & 0x0F;
+            let fourcc = String.fromCharCode(... (new Uint8Array(arrayBuffer, dataOffset, dataSize)).slice(1, 5));
+
+            if (fourcc === 'Opus') {
+                this._parseOpusAudioPacket(arrayBuffer, dataOffset + 5, dataSize - 5, tagTimestamp, packetType);
+            } else {
+                this._onError(DemuxErrors.CODEC_UNSUPPORTED, 'Flv: Unsupported audio codec: ' + fourcc);
+            }
+
+            return;
+        }
+        // Legacy FLV
+
         if (soundFormat !== 2 && soundFormat !== 10) {  // MP3 or AAC
             this._onError(DemuxErrors.CODEC_UNSUPPORTED, 'Flv: Unsupported audio codec idx: ' + soundFormat);
             return;
@@ -830,6 +848,111 @@ class FLVDemuxer {
         }
 
         return result;
+    }
+
+    _parseOpusAudioPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, packetType) {
+       if (packetType === 0) {  // OpusSequenceHeader
+            this._parseOpusSequenceHeader(arrayBuffer, dataOffset, dataSize);
+        } else if (packetType === 1) {  // OpusCodedData
+            this._parseOpusAudioData(arrayBuffer, dataOffset, dataSize, tagTimestamp);
+        } else if (packetType === 2) {
+            // empty, Opus end of sequence
+        } else {
+            this._onError(DemuxErrors.FORMAT_ERROR, `Flv: Invalid video packet type ${packetType}`);
+            return;
+        }
+    }
+
+    _parseOpusSequenceHeader(arrayBuffer, dataOffset, dataSize) {
+        if (dataSize <= 16) {
+            Log.w(this.TAG, 'Flv: Invalid OpusSequenceHeader, lack of data!');
+            return;
+        }
+        let meta = this._audioMetadata;
+        let track = this._audioTrack;
+
+        if (!meta) {
+            if (this._hasAudio === false && this._hasAudioFlagOverrided === false) {
+                this._hasAudio = true;
+                this._mediaInfo.hasAudio = true;
+            }
+
+            // initial metadata
+            meta = this._audioMetadata = {};
+            meta.type = 'audio';
+            meta.id = track.id;
+            meta.timescale = this._timescale;
+            meta.duration = this._duration;
+        }
+
+        // Identification Header
+        let v = new DataView(arrayBuffer, dataOffset, dataSize);
+        let channelCount = v.getUint8(8 + 1); // Opus Header + 1
+        let samplingFrequence = v.getUint32(8 + 4, true); // Opus Header + 4
+        let config = new Uint8Array(arrayBuffer, dataOffset + 8, dataSize - 8);
+        config[0] = 0;
+
+        let misc = {
+            config,
+            channelCount,
+            samplingFrequence,
+            codec: 'opus',
+            originalCodec: 'opus',
+        };
+        if (meta.config) {
+            if (buffersAreEqual(misc.config, meta.config)) {
+                // If OpusSequenceHeader is not changed, ignore it to avoid generating initialization segment repeatedly
+                return;
+            } else {
+                Log.w(this.TAG, 'OpusSequenceHeader has been changed, re-generate initialization segment');
+            }
+        }
+        meta.audioSampleRate = misc.samplingFrequence;
+        meta.channelCount = misc.channelCount;
+        meta.codec = misc.codec;
+        meta.originalCodec = misc.originalCodec;
+        meta.config = misc.config;
+        // The decode result of an opus sample is 20ms
+        meta.refSampleDuration = 20;
+        Log.v(this.TAG, 'Parsed OpusSequenceHeader');
+
+        if (this._isInitialMetadataDispatched()) {
+            // Non-initial metadata, force dispatch (or flush) parsed frames to remuxer
+            if (this._dispatch && (this._audioTrack.length || this._videoTrack.length)) {
+                this._onDataAvailable(this._audioTrack, this._videoTrack);
+            }
+        } else {
+            this._audioInitialMetadataDispatched = true;
+        }
+        // then notify new metadata
+        this._dispatch = false;
+        this._onTrackMetadata('audio', meta);
+
+        let mi = this._mediaInfo;
+        mi.audioCodec = meta.originalCodec;
+        mi.audioSampleRate = meta.audioSampleRate;
+        mi.audioChannelCount = meta.channelCount;
+        if (mi.hasVideo) {
+            if (mi.videoCodec != null) {
+                mi.mimeType = 'video/x-flv; codecs="' + mi.videoCodec + ',' + mi.audioCodec + '"';
+            }
+        } else {
+            mi.mimeType = 'video/x-flv; codecs="' + mi.audioCodec + '"';
+        }
+        if (mi.isComplete()) {
+            this._onMediaInfo(mi);
+        }
+    }
+
+    _parseOpusAudioData(arrayBuffer, dataOffset, dataSize, tagTimestamp) {
+        let track = this._audioTrack;
+
+        let data = new Uint8Array(arrayBuffer, dataOffset, dataSize);
+        let dts = this._timestampBase + tagTimestamp;
+        let opusSample = {unit: data, length: data.byteLength, dts: dts, pts: dts};
+
+        track.samples.push(opusSample);
+        track.length += data.length;
     }
 
     _parseVideoData(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition) {
