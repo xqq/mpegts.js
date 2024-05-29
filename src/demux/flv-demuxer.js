@@ -993,7 +993,7 @@ class FLVDemuxer {
         }
 
         // METADATA_BLOCK_HEADER
-        let header = new Uint8Array(arrayBuffer, dataOffset, dataSize)
+        let header = new Uint8Array(arrayBuffer, dataOffset + 4, dataSize - 4);
         let gb = new ExpGolomb(header);
         let minimum_block_size = gb.readBits(16); // minimum_block_size
         let maximum_block_size = gb.readBits(16); // maximum_block_size
@@ -1005,12 +1005,12 @@ class FLVDemuxer {
         let sampleSize = gb.readBits(5) + 1;
         gb.destroy();
 
-        let config = new Uint8Array(dataSize + 4);
+        let config = new Uint8Array(header.byteLength + 4);
         config.set(header, 4);
         config[0] = 1 << 7;
-        config[1] = (dataSize >>> 16) & 0xFF;
-        config[2] = (dataSize >>>  8) & 0xFF;
-        config[3] = (dataSize >>>  0) & 0xFF;
+        config[1] = (header.byteLength >>> 16) & 0xFF;
+        config[2] = (header.byteLength >>>  8) & 0xFF;
+        config[3] = (header.byteLength >>>  0) & 0xFF;
 
         let misc = {
             config,
