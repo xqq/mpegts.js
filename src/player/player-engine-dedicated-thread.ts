@@ -37,7 +37,7 @@ import {
     WorkerCommandPacketLoggingConfig,
     WorkerCommandPacketTimeUpdate,
     WorkerCommandPacketReadyStateChange,
-    WorkerCommandPacketUnbufferedSeek
+    WorkerCommandPacketUnbufferedSeek,
 } from './player-engine-worker-cmd-def.js';
 import {
     WorkerMessagePacket,
@@ -62,6 +62,8 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
     private _config: any;
 
     private _media_element?: HTMLMediaElement = null;
+
+    private _audio_track_index = 0;
 
     private _worker: Worker;
     private _worker_destroying: boolean = false;
@@ -113,6 +115,7 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
         this._worker.postMessage({
             cmd: 'init',
             media_data_source: this._media_data_source,
+            audio_track_index: this._audio_track_index,
             config: this._config
         } as WorkerCommandPacketInit);
 
@@ -276,6 +279,12 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
         } else {
             this._pending_seek_time = seconds;
         }
+    }
+
+    public selectAudioTrack(index: number): void {
+        this._audio_track_index = index;
+        this.unload();
+        this.load();
     }
 
     public get mediaInfo(): MediaInfo {

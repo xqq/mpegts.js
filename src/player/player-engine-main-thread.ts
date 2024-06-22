@@ -44,6 +44,8 @@ class PlayerEngineMainThread implements PlayerEngine {
 
     private _media_element?: HTMLMediaElement = null;
 
+    private _audio_track_index = 0;
+
     private _mse_controller?: MSEController = null;
     private _transmuxer?: Transmuxer = null;
 
@@ -184,7 +186,7 @@ class PlayerEngineMainThread implements PlayerEngine {
             return;
         }
 
-        this._transmuxer = new Transmuxer(this._media_data_source, this._config);
+        this._transmuxer = new Transmuxer(this._media_data_source, this._audio_track_index, this._config);
 
         this._transmuxer.on(TransmuxingEvents.INIT_SEGMENT, (type: string, is: any) => {
             this._mse_controller.appendInitSegment(is);
@@ -331,6 +333,14 @@ class PlayerEngineMainThread implements PlayerEngine {
         } else {
             this._pending_seek_time = seconds;
         }
+    }
+
+    public selectAudioTrack(index: number): void {
+        let currentTime = this._media_element?.currentTime || 0;
+        this._audio_track_index = index;
+        this.unload();
+        this.load();
+        this._seeking_handler.directSeek(currentTime);
     }
 
     public get mediaInfo(): MediaInfo {

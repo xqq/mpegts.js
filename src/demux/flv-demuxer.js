@@ -48,7 +48,7 @@ function ReadBig32(array, index) {
 
 class FLVDemuxer {
 
-    constructor(probeData, config) {
+    constructor(probeData, audioTrackIndex, config) {
         this.TAG = 'FLVDemuxer';
 
         this._config = config;
@@ -93,6 +93,9 @@ class FLVDemuxer {
         };
 
         this._enhanedFlvAudioMultitrackMode = null;
+        this._enhanedFlvAudioTrackIds = [];
+        this._currentAudioTrackIndex = audioTrackIndex;
+        this._currentAudioTrackId = null;
 
         this._flvSoundRateTable = [5500, 11025, 22050, 44100, 48000];
 
@@ -254,6 +257,15 @@ class FLVDemuxer {
         this._hasVideoFlagOverrided = true;
         this._hasVideo = hasVideo;
         this._mediaInfo.hasVideo = hasVideo;
+    }
+
+    _updateAudioTrackIds(trackIndex, newTrackIds) {
+        let newTrackId = null;
+        if (trackIndex >= 1) {
+            newTrackId = newTrackIds[trackIndex - 1] || null;
+        }
+        this._enhanedFlvAudioTrackIds = newTrackIds;
+        this._currentAudioTrackId = newTrackId;
     }
 
     resetMediaInfo() {
@@ -546,7 +558,11 @@ class FLVDemuxer {
 
             return;
         }
+
         // Legacy FLV
+        if (this._currentAudioTrackId != null) {
+            return;
+        }
 
         if (soundFormat !== 2 && soundFormat !== 10) {  // MP3 or AAC
             this._onError(DemuxErrors.CODEC_UNSUPPORTED, 'Flv: Unsupported audio codec idx: ' + soundFormat);
@@ -912,6 +928,13 @@ class FLVDemuxer {
                 }
                 track_id = v.getUint8(enhanced_offset);
                 enhanced_offset += 1;
+
+                console.log(track_id);
+                if (!this._enhanedFlvAudioTrackIds.includes(track_id)) {
+                    let newTrackIds = [... this._enhanedFlvAudioTrackIds, track_id];
+                    console.log(newTrackIds, this._currentAudioTrackIndex);
+                    this._updateAudioTrackIds(this._currentAudioTrackIndex, newTrackIds);
+                }
             }
 
             if (this._enhanedFlvAudioMultitrackMode !== 0) { // has ManyTrack
@@ -925,11 +948,17 @@ class FLVDemuxer {
                 enhanced_datasize = dataSize - enhanced_offset;
             }
 
-            /*if (fourcc === 'mp4a') {
+            // ignore not current track
+            if (this._currentAudioTrackId !== track_id) {
+                enhanced_offset += enhanced_datasize;
+                continue;
+            }
+
+            if (fourcc === 'mp4a') {
                 this._parseAACAudioPacket(arrayBuffer, dataOffset + enhanced_offset, enhanced_datasize, tagTimestamp, packetType);
             } else if (fourcc === '.mp3') {
                 this._parseMP3AudioPacket(arrayBuffer, dataOffset + enhanced_offset, enhanced_datasize, tagTimestamp, packetType);
-            } else */if (fourcc === 'Opus') {
+            } else if (fourcc === 'Opus') {
                 this._parseOpusAudioPacket(arrayBuffer, dataOffset + enhanced_offset, enhanced_datasize, tagTimestamp, packetType);
             } else {
                 this._onError(DemuxErrors.CODEC_UNSUPPORTED, 'Flv: Unsupported audio codec: ' + fourcc);

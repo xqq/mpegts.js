@@ -37,6 +37,7 @@ export type WorkerCommandPacket = {
 export type WorkerCommandPacketInit = WorkerCommandPacket & {
     cmd: 'init',
     media_data_source: any,
+    audio_track_index: number,
     config: any,
 };
 

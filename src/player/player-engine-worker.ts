@@ -53,6 +53,7 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
     const logcat_callback: (type: string, str: string) => void = onLogcatCallback.bind(this);
 
     let media_data_source: any = null;
+    let audio_track_index: number = 0;
     let config: any = null;
 
     let mse_controller: MSEController = null;
@@ -89,6 +90,7 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
             case 'init': {
                 const packet = command_packet as WorkerCommandPacketInit;
                 media_data_source = packet.media_data_source;
+                audio_track_index = packet.audio_track_index;
                 config = packet.config;
                 break;
             }
@@ -188,7 +190,7 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
             return;
         }
 
-        transmuxer = new Transmuxer(media_data_source, config);
+        transmuxer = new Transmuxer(media_data_source, audio_track_index, config);
 
         transmuxer.on(TransmuxingEvents.INIT_SEGMENT, (type: string, is: any) => {
             mse_controller.appendInitSegment(is);
