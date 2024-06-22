@@ -54,7 +54,6 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
     const logcat_callback: (type: string, str: string) => void = onLogcatCallback.bind(this);
 
     let media_data_source: any = null;
-    let audio_track_index: number = 0;
     let config: any = null;
 
     let mse_controller: MSEController = null;
@@ -91,7 +90,6 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
             case 'init': {
                 const packet = command_packet as WorkerCommandPacketInit;
                 media_data_source = packet.media_data_source;
-                audio_track_index = packet.audio_track_index;
                 config = packet.config;
                 break;
             }
@@ -100,7 +98,7 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
                 break;
             case 'select_audio_track':
                 const packet = command_packet as WorkerCommandPacketSelectAudioTrack;
-                audio_track_index = packet.audio_track;
+                transmuxer.selectAudioTrack(packet.track);
                 break;
             case 'initialize_mse':
                 initializeMSE();
@@ -113,6 +111,9 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
                 break;
             case 'unload':
                 unload();
+                break;
+            case 'flush':
+                mse_controller.flush();
                 break;
             case 'unbuffered_seek': {
                 const packet = command_packet as WorkerCommandPacketUnbufferedSeek;
@@ -195,7 +196,7 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
             return;
         }
 
-        transmuxer = new Transmuxer(media_data_source, audio_track_index, config);
+        transmuxer = new Transmuxer(media_data_source, config);
 
         transmuxer.on(TransmuxingEvents.INIT_SEGMENT, (type: string, is: any) => {
             mse_controller.appendInitSegment(is);

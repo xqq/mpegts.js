@@ -27,7 +27,7 @@ import MediaInfo from './media-info.js';
 
 class Transmuxer {
 
-    constructor(mediaDataSource, audioTrackIndex, config) {
+    constructor(mediaDataSource, config) {
         this.TAG = 'Transmuxer';
         this._emitter = new EventEmitter();
 
@@ -36,7 +36,7 @@ class Transmuxer {
                 this._worker = work(require.resolve('./transmuxing-worker'));
                 this._workerDestroying = false;
                 this._worker.addEventListener('message', this._onWorkerMessage.bind(this));
-                this._worker.postMessage({cmd: 'init', param: [mediaDataSource, audioTrackIndex, config]});
+                this._worker.postMessage({cmd: 'init', param: [mediaDataSource, config]});
                 this.e = {
                     onLoggingConfigChanged: this._onLoggingConfigChanged.bind(this)
                 };
@@ -45,10 +45,10 @@ class Transmuxer {
             } catch (error) {
                 Log.e(this.TAG, 'Error while initialize transmuxing worker, fallback to inline transmuxing');
                 this._worker = null;
-                this._controller = new TransmuxingController(mediaDataSource, audioTrackIndex, config);
+                this._controller = new TransmuxingController(mediaDataSource, config);
             }
         } else {
-            this._controller = new TransmuxingController(mediaDataSource, audioTrackIndex, config);
+            this._controller = new TransmuxingController(mediaDataSource, config);
         }
 
         if (this._controller) {
@@ -139,6 +139,14 @@ class Transmuxer {
             this._worker.postMessage({cmd: 'resume'});
         } else {
             this._controller.resume();
+        }
+    }
+
+    selectAudioTrack(track) {
+        if (this._worker) {
+            this._worker.postMessage({cmd: 'select_audio_track', param: track});
+        } else {
+            this._controller.selectAudioTrack(track);
         }
     }
 

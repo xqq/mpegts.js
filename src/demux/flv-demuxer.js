@@ -49,7 +49,7 @@ function ReadBig32(array, index) {
 
 class FLVDemuxer {
 
-    constructor(probeData, audioTrackIndex, config) {
+    constructor(probeData, config) {
         this.TAG = 'FLVDemuxer';
 
         this._config = config;
@@ -93,10 +93,11 @@ class FLVDemuxer {
             fps_den: 1000
         };
 
-        this._enhanedFlvAudioMultitrackMode = null;
+        this._enhancedFlvAudioMultitrackMode = null;
         this._enhanedFlvAudioTrackIds = [];
-        this._currentAudioTrackIndex = audioTrackIndex;
+        this._currentAudioTrackIndex = 0;
         this._currentAudioTrackId = null;
+        this._audioTrackInitSegments = new Map();
 
         this._flvSoundRateTable = [5500, 11025, 22050, 44100, 48000];
 
@@ -260,13 +261,50 @@ class FLVDemuxer {
         this._mediaInfo.hasVideo = hasVideo;
     }
 
+    selectAudioTrack(track) {
+        let newTrackId = null;
+        if (track >= 1) {
+            newTrackId = this._enhanedFlvAudioTrackIds[track - 1] || null;
+        }
+        if (this._currentAudioTrackId === newTrackId) { return; }
+
+        this._currentAudioTrackId = newTrackId;
+        let meta = this._audioTrackInitSegments.get(this._currentAudioTrackId);
+
+        // flush segment
+        this._onDataAvailable(this._audioTrack, this._videoTrack);
+        this._videoTrack = {type: 'video', id: 1, sequenceNumber: 0, samples: [], length: 0};
+        this._audioTrack = {type: 'audio', id: 2, sequenceNumber: 0, samples: [], length: 0};
+
+        // then notify new metadata
+        this._dispatch = false;
+        this._onTrackMetadata('audio', meta);
+
+        let mi = this._mediaInfo;
+        mi.audioCodec = meta.originalCodec;
+        mi.audioSampleRate = meta.audioSampleRate;
+        mi.audioChannelCount = meta.channelCount;
+        if (mi.hasVideo) {
+            if (mi.videoCodec != null) {
+                mi.mimeType = 'video/x-flv; codecs="' + mi.videoCodec + ',' + mi.audioCodec + '"';
+            }
+        } else {
+            mi.mimeType = 'video/x-flv; codecs="' + mi.audioCodec + '"';
+        }
+        if (mi.isComplete()) {
+            this._onMediaInfo(mi);
+        }
+    }
+
     _updateAudioTrackIds(trackIndex, newTrackIds) {
+        this._enhanedFlvAudioTrackIds = newTrackIds;
         let newTrackId = null;
         if (trackIndex >= 1) {
-            newTrackId = newTrackIds[trackIndex - 1] || null;
+            newTrackId = this._enhanedFlvAudioTrackIds[trackIndex - 1] || null;
         }
-        this._enhanedFlvAudioTrackIds = newTrackIds;
-        this._currentAudioTrackId = newTrackId;
+        if (this._currentAudioTrackId !== newTrackId) {
+            this.selectAudioTrack(trackIndex);
+        }
     }
 
     resetMediaInfo() {
@@ -532,11 +570,11 @@ class FLVDemuxer {
                     Log.w(this.TAG, 'Flv: Invalid audio packet, missing audioMultitrackType in Ehnanced FLV payload!');
                     return;
                 }
-                this._enhanedFlvAudioMultitrackMode = (v.getUint8(1) & 0xF0) >> 4;
+                this._enhancedFlvAudioMultitrackMode = (v.getUint8(1) & 0xF0) >> 4;
                 let packetType = v.getUint8(1) & 0x0F;
 
                 let fourcc = null;
-                if (this._enhanedFlvAudioMultitrackMode !== 2) { // not AvMultitrackType.ManyTracksManyCodecs
+                if (this._enhancedFlvAudioMultitrackMode !== 2) { // not AvMultitrackType.ManyTracksManyCodecs
                     if (dataSize <= 6) {
                         Log.w(this.TAG, 'Flv: Invalid audio packet, missing Audio fourcc of OneTrack/ManyTracks in Ehnanced FLV payload!');
                         return;
@@ -605,27 +643,27 @@ class FLVDemuxer {
 
         let packetType = v.getUint8(1);
         if (soundFormat === 10) {  // AAC
-            this._parseAACAudioPacket(arrayBuffer, dataOffset + 2, dataSize - 2, tagTimestamp, packetType);
+            this._parseAACAudioPacket(arrayBuffer, dataOffset + 2, dataSize - 2, tagTimestamp, packetType, null);
         } else if (soundFormat === 2) {  // MP3
-            this._parseMP3AudioPacket(arrayBuffer, dataOffset + 1, dataSize - 1, tagTimestamp, packetType);
+            this._parseMP3AudioPacket(arrayBuffer, dataOffset + 1, dataSize - 1, tagTimestamp, packetType, null);
         }
     }
 
-    _parseAACAudioPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, packetType) {
+    _parseAACAudioPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, packetType, trackId) {
         let aacData = this._parseAACAudioData(arrayBuffer, dataOffset, dataSize, packetType);
         if (aacData == undefined) {
             return;
         }
 
-        let meta = this._audioMetadata;
+        let meta = { ... this._audioMetadata };
         let track = this._audioTrack;
 
         if (packetType === 0) {  // AAC sequence header (AudioSpecificConfig)
             if (meta.config) {
-                if (buffersAreEqual(aacData.data.config, meta.config)) {
+                if (this._currentAudioTrackId === trackId && buffersAreEqual(aacData.data.config, meta.config)) {
                     // If AudioSpecificConfig is not changed, ignore it to avoid generating initialization segment repeatedly
                     return;
-                } else {
+                } else if (this._currentAudioTrackId === trackId && !buffersAreEqual(aacData.data.config, meta.config)) {
                     Log.w(this.TAG, 'AudioSpecificConfig has been changed, re-generate initialization segment');
                 }
             }
@@ -639,6 +677,12 @@ class FLVDemuxer {
             meta.refSampleDuration = 1024 / meta.audioSampleRate * meta.timescale;
             Log.v(this.TAG, 'Parsed AudioSpecificConfig');
 
+            this._audioTrackInitSegments.set(trackId, { ... meta });
+            // ignore not current track
+            if (this._currentAudioTrackId !== trackId) {
+                return;
+            }
+
             if (this._isInitialMetadataDispatched()) {
                 // Non-initial metadata, force dispatch (or flush) parsed frames to remuxer
                 if (this._dispatch && (this._audioTrack.length || this._videoTrack.length)) {
@@ -649,6 +693,7 @@ class FLVDemuxer {
             }
             // then notify new metadata
             this._dispatch = false;
+            this._audioMetadata = meta;
             this._onTrackMetadata('audio', meta);
 
             let mi = this._mediaInfo;
@@ -666,6 +711,9 @@ class FLVDemuxer {
                 this._onMediaInfo(mi);
             }
         } else if (packetType === 1) {  // AAC raw frame data
+            // ignore not current track
+            if (this._currentAudioTrackId !== trackId) { return; }
+
             let dts = this._timestampBase + tagTimestamp;
             let aacSample = {unit: aacData.data, length: aacData.data.byteLength, dts: dts, pts: dts};
             track.samples.push(aacSample);
@@ -784,8 +832,8 @@ class FLVDemuxer {
         };
     }
 
-    _parseMP3AudioPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, packetType) {
-        let meta = this._audioMetadata;
+    _parseMP3AudioPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, packetType, trackId) {
+        let meta = { ... this._audioMetadata };
         let track = this._audioTrack;
 
         if (!meta.codec) {
@@ -802,7 +850,14 @@ class FLVDemuxer {
             meta.refSampleDuration = 1152 / meta.audioSampleRate * meta.timescale;
             Log.v(this.TAG, 'Parsed MPEG Audio Frame Header');
 
+            this._audioTrackInitSegments.set(trackId, { ... meta });
+            // ignore not current track
+            if (this._currentAudioTrackId !== trackId) {
+                return;
+            }
+
             this._audioInitialMetadataDispatched = true;
+            this._audioMetadata = meta;
             this._onTrackMetadata('audio', meta);
 
             let mi = this._mediaInfo;
@@ -913,7 +968,7 @@ class FLVDemuxer {
         let v = new DataView(arrayBuffer, dataOffset, dataSize);
         let enhanced_offset = 0, enhanced_datasize = dataSize;
         while (enhanced_offset < dataSize) {
-            if (this._enhanedFlvAudioMultitrackMode === 2) { // is not MultiTrackMultiCodec
+            if (this._enhancedFlvAudioMultitrackMode === 2) { // is not MultiTrackMultiCodec
                 if (enhanced_offset + 4 >= dataSize) {
                     Log.w(this.TAG, 'Flv: Invalid Enhanced Audio packet, fourcc in ManyTrackManyCodec Missing!');
                     return;
@@ -922,22 +977,22 @@ class FLVDemuxer {
                 enhanced_offset += 4;
             }
 
-            let track_id = null;
-            if (this._enhanedFlvAudioMultitrackMode != null) {
+            let trackId = null;
+            if (this._enhancedFlvAudioMultitrackMode != null) {
                 if (enhanced_offset + 1 >= dataSize) {
                     Log.w(this.TAG, 'Flv: Invalid Enhanced Audio packet, TrackId for MultiTrack Audio Missing!');
                     return;
                 }
-                track_id = v.getUint8(enhanced_offset);
+                trackId = v.getUint8(enhanced_offset);
                 enhanced_offset += 1;
 
-                if (!this._enhanedFlvAudioTrackIds.includes(track_id)) {
-                    let newTrackIds = [... this._enhanedFlvAudioTrackIds, track_id];
+                if (!this._enhanedFlvAudioTrackIds.includes(trackId)) {
+                    let newTrackIds = [... this._enhanedFlvAudioTrackIds, trackId];
                     this._updateAudioTrackIds(this._currentAudioTrackIndex, newTrackIds);
                 }
             }
 
-            if (this._enhanedFlvAudioMultitrackMode != null && this._enhanedFlvAudioMultitrackMode !== 0) { // has ManyTrack
+            if (this._enhancedFlvAudioMultitrackMode != null && this._enhancedFlvAudioMultitrackMode !== 0) { // has ManyTrack
                 if (enhanced_offset + 3 >= dataSize) {
                     Log.w(this.TAG, 'Flv: Invalid Enhanced Audio packet, DataSize for MultiTrack Audio Missing!');
                     return;
@@ -948,20 +1003,14 @@ class FLVDemuxer {
                 enhanced_datasize = dataSize - enhanced_offset;
             }
 
-            // ignore not current track
-            if (this._currentAudioTrackId !== track_id) {
-                enhanced_offset += enhanced_datasize;
-                continue;
-            }
-
             if (fourcc === 'mp4a') {
-                this._parseAACAudioPacket(arrayBuffer, dataOffset + enhanced_offset, enhanced_datasize, tagTimestamp, packetType);
+                this._parseAACAudioPacket(arrayBuffer, dataOffset + enhanced_offset, enhanced_datasize, tagTimestamp, packetType, trackId);
             } else if (fourcc === '.mp3') {
-                this._parseMP3AudioPacket(arrayBuffer, dataOffset + enhanced_offset, enhanced_datasize, tagTimestamp, packetType);
+                this._parseMP3AudioPacket(arrayBuffer, dataOffset + enhanced_offset, enhanced_datasize, tagTimestamp, packetType, trackId);
             } else if (fourcc === 'Opus') {
-                this._parseOpusAudioPacket(arrayBuffer, dataOffset + enhanced_offset, enhanced_datasize, tagTimestamp, packetType);
+                this._parseOpusAudioPacket(arrayBuffer, dataOffset + enhanced_offset, enhanced_datasize, tagTimestamp, packetType, trackId);
             } else if (fourcc === 'fLaC') {
-                this._parseFlacAudioPacket(arrayBuffer, dataOffset + enhanced_offset, enhanced_datasize, tagTimestamp, packetType);
+                this._parseFlacAudioPacket(arrayBuffer, dataOffset + enhanced_offset, enhanced_datasize, tagTimestamp, packetType, trackId);
             } else {
                 this._onError(DemuxErrors.CODEC_UNSUPPORTED, 'Flv: Unsupported audio codec: ' + fourcc);
             }
@@ -970,10 +1019,11 @@ class FLVDemuxer {
         }
     }
 
-    _parseOpusAudioPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, packetType) {
+    _parseOpusAudioPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, packetType, trackId) {
        if (packetType === 0) {  // OpusSequenceHeader
-            this._parseOpusSequenceHeader(arrayBuffer, dataOffset, dataSize);
+            this._parseOpusSequenceHeader(arrayBuffer, dataOffset, dataSize, trackId);
         } else if (packetType === 1) {  // OpusCodedData
+            if (this._currentAudioTrackId !== trackId) { return; }
             this._parseOpusAudioData(arrayBuffer, dataOffset, dataSize, tagTimestamp);
         } else if (packetType === 2) {
             // empty, Opus end of sequence
@@ -983,12 +1033,12 @@ class FLVDemuxer {
         }
     }
 
-    _parseOpusSequenceHeader(arrayBuffer, dataOffset, dataSize) {
+    _parseOpusSequenceHeader(arrayBuffer, dataOffset, dataSize, trackId) {
         if (dataSize <= 16) {
             Log.w(this.TAG, 'Flv: Invalid OpusSequenceHeader, lack of data!');
             return;
         }
-        let meta = this._audioMetadata;
+        let meta = { ... this._audioMetadata };
 
         // Identification Header
         let v = new DataView(arrayBuffer, dataOffset, dataSize);
@@ -1007,10 +1057,10 @@ class FLVDemuxer {
             originalCodec: 'opus',
         };
         if (meta.config) {
-            if (buffersAreEqual(misc.config, meta.config)) {
+            if (this._currentAudioTrackId === trackId && buffersAreEqual(misc.config, meta.config)) {
                 // If OpusSequenceHeader is not changed, ignore it to avoid generating initialization segment repeatedly
                 return;
-            } else {
+            } else if (this._currentAudioTrackId === trackId && !buffersAreEqual(misc.config, meta.config)) {
                 Log.w(this.TAG, 'OpusSequenceHeader has been changed, re-generate initialization segment');
             }
         }
@@ -1023,6 +1073,12 @@ class FLVDemuxer {
         meta.refSampleDuration = 20;
         Log.v(this.TAG, 'Parsed OpusSequenceHeader');
 
+        this._audioTrackInitSegments.set(trackId, { ... meta });
+        // ignore not current track
+        if (this._currentAudioTrackId !== trackId) {
+            return;
+        }
+
         if (this._isInitialMetadataDispatched()) {
             // Non-initial metadata, force dispatch (or flush) parsed frames to remuxer
             if (this._dispatch && (this._audioTrack.length || this._videoTrack.length)) {
@@ -1033,6 +1089,7 @@ class FLVDemuxer {
         }
         // then notify new metadata
         this._dispatch = false;
+        this._audioMetadata = meta;
         this._onTrackMetadata('audio', meta);
 
         let mi = this._mediaInfo;
@@ -1062,10 +1119,11 @@ class FLVDemuxer {
         track.length += data.length;
     }
 
-    _parseFlacAudioPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, packetType) {
+    _parseFlacAudioPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, packetType, trackId) {
         if (packetType === 0) {  // FlacSequenceHeader
-            this._parseFlacSequenceHeader(arrayBuffer, dataOffset, dataSize);
+            this._parseFlacSequenceHeader(arrayBuffer, dataOffset, dataSize, trackId);
         } else if (packetType === 1) {  // FlacCodedData
+            if (this._currentAudioTrackId !== trackId) { return; }
             this._parseFlacAudioData(arrayBuffer, dataOffset, dataSize, tagTimestamp);
         } else if (packetType === 2) {
             // empty, Flac end of sequence
@@ -1075,8 +1133,8 @@ class FLVDemuxer {
         }
     }
 
-    _parseFlacSequenceHeader(arrayBuffer, dataOffset, dataSize) {
-        let meta = this._audioMetadata;
+    _parseFlacSequenceHeader(arrayBuffer, dataOffset, dataSize, trackId) {
+        let meta = { ... this._audioMetadata };
         let track = this._audioTrack;
 
         if (!meta) {
@@ -1094,7 +1152,7 @@ class FLVDemuxer {
         }
 
         // METADATA_BLOCK_HEADER
-        let header = new Uint8Array(arrayBuffer, dataOffset + 4, dataSize - 4);
+        let header = new Uint8Array(arrayBuffer, dataOffset, dataSize);
         let gb = new ExpGolomb(header);
         let minimum_block_size = gb.readBits(16); // minimum_block_size
         let maximum_block_size = gb.readBits(16); // maximum_block_size
@@ -1122,10 +1180,10 @@ class FLVDemuxer {
             originalCodec: 'flac',
         };
         if (meta.config) {
-            if (buffersAreEqual(misc.config, meta.config)) {
+            if (this._currentAudioTrackId === trackId && buffersAreEqual(misc.config, meta.config)) {
                 // If FlacSequenceHeader is not changed, ignore it to avoid generating initialization segment repeatedly
                 return;
-            } else {
+            } else if (this._currentAudioTrackId === trackId && !buffersAreEqual(misc.config, meta.config)) {
                 Log.w(this.TAG, 'FlacSequenceHeader has been changed, re-generate initialization segment');
             }
         }
@@ -1139,6 +1197,12 @@ class FLVDemuxer {
 
         Log.v(this.TAG, 'Parsed FlacSequenceHeader');
 
+        this._audioTrackInitSegments.set(trackId, { ... meta });
+        // ignore not current track
+        if (this._currentAudioTrackId !== trackId) {
+            return;
+        }
+
         if (this._isInitialMetadataDispatched()) {
             // Non-initial metadata, force dispatch (or flush) parsed frames to remuxer
             if (this._dispatch && (this._audioTrack.length || this._videoTrack.length)) {
@@ -1149,6 +1213,7 @@ class FLVDemuxer {
         }
         // then notify new metadata
         this._dispatch = false;
+        this._audioMetadata = meta;
         this._onTrackMetadata('audio', meta);
 
         let mi = this._mediaInfo;

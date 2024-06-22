@@ -31,12 +31,11 @@ import {LoaderStatus, LoaderErrors} from '../io/loader.js';
 // Transmuxing (IO, Demuxing, Remuxing) controller, with multipart support
 class TransmuxingController {
 
-    constructor(mediaDataSource, audioTrackIndex, config) {
+    constructor(mediaDataSource, config) {
         this.TAG = 'TransmuxingController';
         this._emitter = new EventEmitter();
 
         this._config = config;
-        this._audioTrackIndex = audioTrackIndex;
 
         // treat single part media as multipart media, which has only one segment
         if (!mediaDataSource.segments) {
@@ -119,8 +118,8 @@ class TransmuxingController {
         this._emitter.removeListener(event, listener);
     }
 
-    start() {
-        this._loadSegment(0);
+    start(optionalFrom) {
+        this._loadSegment(0, optionalFrom);
         this._enableStatisticsReporter();
     }
 
@@ -135,10 +134,10 @@ class TransmuxingController {
         ioctl.onRedirect = this._onIORedirect.bind(this);
         ioctl.onRecoveredEarlyEof = this._onIORecoveredEarlyEof.bind(this);
 
-        if (optionalFrom) {
-            this._demuxer.bindDataSource(this._ioctl);
-        } else {
+        if (typeof optionalFrom === 'undefined') {
             ioctl.onDataArrival = this._onInitChunkArrival.bind(this);
+        } else {
+            ioctl.onDataArrival = this._onExistsChunkArrival.bind(this);
         }
 
         ioctl.open(optionalFrom);
@@ -221,6 +220,19 @@ class TransmuxingController {
         this._enableStatisticsReporter();
     }
 
+    selectAudioTrack(track) {
+        if (this._config.isLive) {
+            this._demuxer.selectAudioTrack(track);
+        } else { // FIXME: Seek needed?
+            this.stop();
+            this._remuxer.insertDiscontinuity();
+            this._demuxer.resetMediaInfo();
+            this._demuxer._firstParse = true;
+            this._demuxer.selectAudioTrack(track);
+            this.start(0);
+        }
+    }
+
     _searchSegmentIndexContains(milliseconds) {
         let segments = this._mediaDataSource.segments;
         let idx = segments.length - 1;
@@ -232,6 +244,14 @@ class TransmuxingController {
             }
         }
         return idx;
+    }
+
+    _onExistsChunkArrival(data, byteStart) {
+        // IOController seeked immediately after opened, byteStart > 0 callback may received
+        this._demuxer.bindDataSource(this._ioctl);
+        this._demuxer.timestampBase = this._mediaDataSource.segments[this._currentSegmentIndex].timestampBase;
+
+        return this._demuxer.parseChunks(data, byteStart);
     }
 
     _onInitChunkArrival(data, byteStart) {
@@ -281,7 +301,7 @@ class TransmuxingController {
     }
 
     _setupFLVDemuxerRemuxer(probeData) {
-        this._demuxer = new FLVDemuxer(probeData, this._audioTrackIndex, this._config);
+        this._demuxer = new FLVDemuxer(probeData, this._config);
 
         if (!this._remuxer) {
             this._remuxer = new MP4Remuxer(this._config);

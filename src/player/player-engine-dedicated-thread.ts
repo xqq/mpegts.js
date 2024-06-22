@@ -64,8 +64,6 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
 
     private _media_element?: HTMLMediaElement = null;
 
-    private _audio_track_index = 0;
-
     private _worker: Worker;
     private _worker_destroying: boolean = false;
 
@@ -116,7 +114,6 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
         this._worker.postMessage({
             cmd: 'init',
             media_data_source: this._media_data_source,
-            audio_track_index: this._audio_track_index,
             config: this._config
         } as WorkerCommandPacketInit);
 
@@ -282,22 +279,16 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
         }
     }
 
-    public selectAudioTrack(index: number): void {
-        let currentTime = this._media_element?.currentTime || 0;
-        let paused = this._media_element?.paused || false;
-        this._audio_track_index = index;
-        this.unload();
-        this._worker?.postMessage({
-            cmd: 'select_audio_track',
-            audio_track: index
-        } as WorkerCommandPacketSelectAudioTrack);
-        this.load();
+    public selectAudioTrack(track: number): void {
         if (!this._config.isLive) {
-            this._seeking_handler.directSeek(currentTime);
+            this._worker.postMessage({
+                cmd: 'flush',
+            });
         }
-        if (!paused) {
-            this.play();
-        }
+        this._worker.postMessage({
+            cmd: 'select_audio_track',
+            track,
+        } as WorkerCommandPacketSelectAudioTrack)
     }
 
     public get mediaInfo(): MediaInfo {

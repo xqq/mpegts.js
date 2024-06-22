@@ -24,12 +24,13 @@ export type WorkerCommandOp =
     | 'shutdown_mse'
     | 'load'
     | 'unload'
+    | 'flush'
     | 'unbuffered_seek'
     | 'timeupdate'
     | 'readystatechange'
+    | 'select_audio_track'
     | 'pause_transmuxer'
-    | 'resume_transmuxer'
-    | 'select_audio_track';
+    | 'resume_transmuxer';
 
 export type WorkerCommandPacket = {
     cmd: WorkerCommandOp,
@@ -38,7 +39,6 @@ export type WorkerCommandPacket = {
 export type WorkerCommandPacketInit = WorkerCommandPacket & {
     cmd: 'init',
     media_data_source: any,
-    audio_track_index: number,
     config: any,
 };
 
@@ -64,5 +64,5 @@ export type WorkerCommandPacketReadyStateChange = WorkerCommandPacket & {
 
 export type WorkerCommandPacketSelectAudioTrack = WorkerCommandPacket & {
     cmd: 'select_audio_track',
-    audio_track: number,
+    track: number,
 };

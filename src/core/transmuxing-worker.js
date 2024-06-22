@@ -88,6 +88,9 @@ let TransmuxingWorker = function (self) {
             case 'resume':
                 controller.resume();
                 break;
+            case 'select_audio_track':
+                controller.selectAudioTrack(e.data.param);
+                break;
             case 'logging_config': {
                 let config = e.data.param;
                 LoggingControl.applyConfig(config);
