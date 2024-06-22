@@ -507,6 +507,24 @@ class FLVDemuxer {
 
         let soundFormat = soundSpec >>> 4;
         if (soundFormat === 9) { // Enhanced FLV
+            let meta = this._audioMetadata;
+            let track = this._audioTrack;
+
+            if (!meta) {
+                if (this._hasAudio === false && this._hasAudioFlagOverrided === false) {
+                    this._hasAudio = true;
+                    this._mediaInfo.hasAudio = true;
+                }
+
+                // initial metadata
+                meta = this._audioMetadata = {};
+                meta.type = 'audio';
+                meta.id = track.id;
+                meta.timescale = this._timescale;
+                meta.duration = this._duration;
+            }
+
+
             let packetType = soundSpec & 0x0F;
             if (packetType === 5) { // AudioPacketType.Multitrack
                 if (dataSize <= 1) {
@@ -515,23 +533,6 @@ class FLVDemuxer {
                 }
                 this._enhanedFlvAudioMultitrackMode = (v.getUint8(1) & 0xF0) >> 4;
                 let packetType = v.getUint8(1) & 0x0F;
-
-                let meta = this._audioMetadata;
-                let track = this._audioTrack;
-
-                if (!meta) {
-                    if (this._hasAudio === false && this._hasAudioFlagOverrided === false) {
-                        this._hasAudio = true;
-                        this._mediaInfo.hasAudio = true;
-                    }
-
-                    // initial metadata
-                    meta = this._audioMetadata = {};
-                    meta.type = 'audio';
-                    meta.id = track.id;
-                    meta.timescale = this._timescale;
-                    meta.duration = this._duration;
-                }
 
                 let fourcc = null;
                 if (this._enhanedFlvAudioMultitrackMode !== 2) { // not AvMultitrackType.ManyTracksManyCodecs
@@ -937,7 +938,7 @@ class FLVDemuxer {
                 }
             }
 
-            if (this._enhanedFlvAudioMultitrackMode !== 0) { // has ManyTrack
+            if (this._enhanedFlvAudioMultitrackMode != null && this._enhanedFlvAudioMultitrackMode !== 0) { // has ManyTrack
                 if (enhanced_offset + 3 >= dataSize) {
                     Log.w(this.TAG, 'Flv: Invalid Enhanced Audio packet, DataSize for MultiTrack Audio Missing!');
                     return;
