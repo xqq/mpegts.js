@@ -33,6 +33,7 @@ class MP4 {
             trak: [], trun: [], trex: [], tkhd: [],
             vmhd: [], smhd: [], '.mp3': [],
             Opus: [], dOps: [], 'ac-3': [], dac3: [], 'ec-3': [], dec3: [],
+            fLaC: [], dfLa: [],
         };
 
         for (let name in MP4.types) {
@@ -328,6 +329,8 @@ class MP4 {
                 return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.ec3(meta));
             } else if(meta.codec === 'opus') {
                 return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.Opus(meta));
+            } else if (meta.codec == 'flac') {
+                return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.fLaC(meta));
             }
             // else: aac -> mp4a
             return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.mp4a(meta));
@@ -544,6 +547,35 @@ class MP4 {
             ... mapping
         ]);
         return MP4.box(MP4.types.dOps, data);
+    }
+
+    static fLaC(meta) {
+        let channelCount = meta.channelCount;
+        let sampleRate = Math.min(meta.audioSampleRate, 65535);
+        let sampleSize = meta.sampleSize;
+
+        let data = new Uint8Array([
+            0x00, 0x00, 0x00, 0x00,  // reserved(4)
+            0x00, 0x00, 0x00, 0x01,  // reserved(2) + data_reference_index(2)
+            0x00, 0x00, 0x00, 0x00,  // reserved: 2 * 4 bytes
+            0x00, 0x00, 0x00, 0x00,
+            0x00, channelCount, // channelCount(2)
+            0x00, (sampleSize), // sampleSize(2)
+            0x00, 0x00, 0x00, 0x00,  // reserved(4)
+            (sampleRate >>> 8) & 0xFF,  // Audio sample rate
+            (sampleRate) & 0xFF,
+            0x00, 0x00
+        ]);
+
+        return MP4.box(MP4.types.fLaC, data, MP4.dfLa(meta));
+    }
+
+    static dfLa(meta) {
+        let data = new Uint8Array([
+            0x00, 0x00, 0x00, 0x00, // version, flag
+            ... meta.config
+        ]);
+        return MP4.box(MP4.types.dfLa, data);
     }
 
     static avc1(meta) {
