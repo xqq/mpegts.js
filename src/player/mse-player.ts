@@ -94,7 +94,7 @@ class MSEPlayer {
         this._player_engine.pause();
     }
 
-    public set audioTrack(index: number) {
+    public selectAudioTrack(index: number) {
         this._player_engine.selectAudioTrack(index);
     }
 

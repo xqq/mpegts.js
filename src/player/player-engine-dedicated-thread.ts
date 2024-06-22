@@ -38,6 +38,7 @@ import {
     WorkerCommandPacketTimeUpdate,
     WorkerCommandPacketReadyStateChange,
     WorkerCommandPacketUnbufferedSeek,
+    WorkerCommandPacketSelectAudioTrack,
 } from './player-engine-worker-cmd-def.js';
 import {
     WorkerMessagePacket,
@@ -282,9 +283,21 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
     }
 
     public selectAudioTrack(index: number): void {
+        let currentTime = this._media_element?.currentTime || 0;
+        let paused = this._media_element?.paused || false;
         this._audio_track_index = index;
         this.unload();
+        this._worker?.postMessage({
+            cmd: 'select_audio_track',
+            audio_track: index
+        } as WorkerCommandPacketSelectAudioTrack);
         this.load();
+        if (!this._config.isLive) {
+            this._seeking_handler.directSeek(currentTime);
+        }
+        if (!paused) {
+            this.play();
+        }
     }
 
     public get mediaInfo(): MediaInfo {

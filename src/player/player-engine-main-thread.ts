@@ -337,10 +337,16 @@ class PlayerEngineMainThread implements PlayerEngine {
 
     public selectAudioTrack(index: number): void {
         let currentTime = this._media_element?.currentTime || 0;
+        let paused = this._media_element?.paused || false;
         this._audio_track_index = index;
         this.unload();
         this.load();
-        this._seeking_handler.directSeek(currentTime);
+        if (!this._config.isLive) {
+            this._seeking_handler.directSeek(currentTime);
+        }
+        if (!paused) {
+            this.play();
+        }
     }
 
     public get mediaInfo(): MediaInfo {
