@@ -264,6 +264,10 @@ class TransmuxingController {
                 }
             }
 
+            if (this._demuxer) {
+                this._emitter.emit(TransmuxingEvents.INIT_DEMUXER, probeData);
+            }
+
             if (!probeData.match && !probeData.needMoreData) {
                 // Both probing as FLV / MPEG-TS failed, report error
                 probeData = null;

@@ -222,6 +222,9 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
                 info: info,
             } as WorkerMessagePacketPlayerEventError);
         });
+        transmuxer.on(TransmuxingEvents.INIT_DEMUXER, (probeData: any) => {
+            emitPlayerEventsExtraData(PlayerEvents.INIT_DEMUXER, probeData);
+        });
         transmuxer.on(TransmuxingEvents.DEMUX_ERROR, (detail: any, info: any) => {
             self.postMessage({
                 msg: 'player_event',
