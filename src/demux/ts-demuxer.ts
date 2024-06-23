@@ -75,6 +75,7 @@ type MP3AudioMetadata = {
     sample_rate: number,
     channel_count: number;
 };
+type AudioMetadata = AACAudioMetadata | AC3AudioMetadata | EAC3AudioMetadata | OpusAudioMetadata | MP3AudioMetadata;
 type AudioData = {
     codec: 'aac';
     data: AACFrame;
@@ -112,6 +113,12 @@ class TSDemuxer extends BaseDemuxer {
     private pmt_: PMT;
     private program_pmt_map_: ProgramToPMTMap = {};
 
+    private audioTrackPids: number[] = [];
+    private currentAudioTrackIndex = 0;
+    private currentAudioTrackPid = null;
+    private audioTrackInitSegments = new Map<number, any>();
+    private audioTrackMetadata = new Map<number, AudioMetadata>();
+
     private pes_slice_queues_: PIDToSliceQueues = {};
     private section_slice_queues_: PIDToSliceQueues = {};
 
@@ -127,7 +134,7 @@ class TSDemuxer extends BaseDemuxer {
         details: undefined
     };
 
-    private audio_metadata_: AACAudioMetadata | AC3AudioMetadata | EAC3AudioMetadata | OpusAudioMetadata | MP3AudioMetadata = {
+    private audio_metadata_: AudioMetadata = {
         codec: undefined,
         audio_object_type: undefined,
         sampling_freq_index: undefined,
@@ -244,6 +251,37 @@ class TSDemuxer extends BaseDemuxer {
         this.media_info_ = new MediaInfo();
     }
 
+    selectAudioTrack(track: number) {
+        this.currentAudioTrackIndex = track;
+        let previous_meta = this.audioTrackMetadata.get(this.currentAudioTrackPid);
+        let newTrackPid = this.audioTrackPids[track];
+        if (this.currentAudioTrackPid === newTrackPid) { return; }
+
+        this.currentAudioTrackPid = newTrackPid;
+        let sample = this.audioTrackInitSegments.get(this.currentAudioTrackPid);
+        if (!sample) { return; }
+        let meta = this.audioTrackMetadata.get(this.currentAudioTrackPid);
+        if (!meta) { return; }
+
+        // flush segment
+        this.dispatchAudioMediaSegment();
+        this.video_track_ = {type: 'video', id: 1, sequenceNumber: 0, samples: [], length: 0};
+        this.audio_track_ = {type: 'audio', id: 2, sequenceNumber: 0, samples: [], length: 0};
+
+        // then notify new metadata
+        if (previous_meta == null || this.detectAudioMetadataChange(sample, previous_meta, this.currentAudioTrackPid)) {
+            this.dispatchAudioInitSegment(sample, meta, this.currentAudioTrackPid);
+        }
+    }
+
+    _updateAudioTrackIds(trackIndex: number, newTrackIds: number[]) {
+        this.audioTrackPids = newTrackIds;
+        let newTrackPid = this.audioTrackPids[trackIndex];
+        if (this.currentAudioTrackPid !== newTrackPid) {
+            this.selectAudioTrack(trackIndex);
+        }
+    }
+
     public parseChunks(chunk: ArrayBuffer, byte_start: number): number {
         if (!this.onError
                 || !this.onMediaInfo
@@ -340,12 +378,8 @@ class TSDemuxer extends BaseDemuxer {
                     // process PES only for known common_pids
                     if (pid === this.pmt_.common_pids.h264
                             || pid === this.pmt_.common_pids.h265
-                            || pid === this.pmt_.common_pids.adts_aac
-                            || pid === this.pmt_.common_pids.loas_aac
-                            || pid === this.pmt_.common_pids.ac3
-                            || pid === this.pmt_.common_pids.eac3
-                            || pid === this.pmt_.common_pids.opus
-                            || pid === this.pmt_.common_pids.mp3
+                            || this.pmt_.audio_pids[pid] === true
+                            || this.pmt_.opus_pids[pid] === true
                             || this.pmt_.pes_private_data_pids[pid] === true
                             || this.pmt_.timed_id3_pids[pid] === true
                             || this.pmt_.synchronous_klv_pids[pid] === true
@@ -594,16 +628,16 @@ class TSDemuxer extends BaseDemuxer {
             switch (pes_data.stream_type) {
                 case StreamType.kMPEG1Audio:
                 case StreamType.kMPEG2Audio:
-                    this.parseMP3Payload(payload, pts);
+                    this.parseMP3Payload(payload, pts, pes_data.pid);
                     break;
                 case StreamType.kPESPrivateData:
-                    if (this.pmt_.common_pids.opus === pes_data.pid) {
-                        this.parseOpusPayload(payload, pts);
-                    } else if (this.pmt_.common_pids.ac3 === pes_data.pid) {
-                        this.parseAC3Payload(payload, pts);
+                    if (this.pmt_.opus_pids[pes_data.pid]) {
+                        this.parseOpusPayload(payload, pts, pes_data.pid);
+                    } /*else if (this.pmt_.common_pids.ac3 === pes_data.pid) {
+                        this.parseAC3Payload(payload, pts, pes_data.pid);
                     } else if (this.pmt_.common_pids.eac3 === pes_data.pid) {
-                        this.parseEAC3Payload(payload, pts);
-                    } else if (this.pmt_.asynchronous_klv_pids[pes_data.pid]) {
+                        this.parseEAC3Payload(payload, pts, pes_data.pid);
+                    } */else if (this.pmt_.asynchronous_klv_pids[pes_data.pid]) {
                         this.parseAsynchronousKLVMetadataPayload(payload, pes_data.pid, stream_id);
                     } else if (this.pmt_.smpte2038_pids[pes_data.pid]) {
                         this.parseSMPTE2038MetadataPayload(payload, pts, dts, pes_data.pid, stream_id);
@@ -612,16 +646,16 @@ class TSDemuxer extends BaseDemuxer {
                     }
                     break;
                 case StreamType.kADTSAAC:
-                    this.parseADTSAACPayload(payload, pts);
+                    this.parseADTSAACPayload(payload, pts, pes_data.pid);
                     break;
                 case StreamType.kLOASAAC:
-                    this.parseLOASAACPayload(payload, pts);
+                    this.parseLOASAACPayload(payload, pts, pes_data.pid);
                     break;
                 case StreamType.kAC3:
-                    this.parseAC3Payload(payload, pts);
+                    this.parseAC3Payload(payload, pts, pes_data.pid);
                     break;
                 case StreamType.kEAC3:
-                    this.parseEAC3Payload(payload, pts);
+                    this.parseEAC3Payload(payload, pts, pes_data.pid);
                     break;
                 case StreamType.kMetadata:
                     if (this.pmt_.timed_id3_pids[pes_data.pid]) {
@@ -760,6 +794,8 @@ class TSDemuxer extends BaseDemuxer {
 
         let info_start_index = 12 + program_info_length;
         let info_bytes = section_length - 9 - program_info_length - 4;
+        let audioPids = [];
+        let hasVideo = false, hasAudio = false;
 
         for (let i = info_start_index; i < info_start_index + info_bytes; ) {
             let stream_type = data[i] as StreamType;
@@ -768,23 +804,34 @@ class TSDemuxer extends BaseDemuxer {
 
             pmt.pid_stream_type[elementary_PID] = stream_type;
 
-            let already_has_video =  pmt.common_pids.h264 || pmt.common_pids.h265;
-            let already_has_audio = pmt.common_pids.adts_aac || pmt.common_pids.loas_aac || pmt.common_pids.ac3 || pmt.common_pids.eac3 || pmt.common_pids.opus || pmt.common_pids.mp3;
+            let already_has_video = pmt.common_pids.h264 || pmt.common_pids.h265;
 
             if (stream_type === StreamType.kH264 && !already_has_video) {
                 pmt.common_pids.h264 = elementary_PID;
+                hasVideo = true;
             } else if (stream_type === StreamType.kH265 && !already_has_video) {
                 pmt.common_pids.h265 = elementary_PID;
-            } else if (stream_type === StreamType.kADTSAAC && !already_has_audio) {
-                pmt.common_pids.adts_aac = elementary_PID;
-            } else if (stream_type === StreamType.kLOASAAC && !already_has_audio) {
-                pmt.common_pids.loas_aac = elementary_PID;
-            } else if (stream_type === StreamType.kAC3 && !already_has_audio) {
-                pmt.common_pids.ac3 = elementary_PID; // ATSC AC-3
-            } else if (stream_type === StreamType.kEAC3 && !already_has_audio) {
-                pmt.common_pids.eac3 = elementary_PID; // ATSC EAC-3
-            } else if ((stream_type === StreamType.kMPEG1Audio || stream_type === StreamType.kMPEG2Audio) && !already_has_audio) {
-                pmt.common_pids.mp3 = elementary_PID;
+                hasVideo = true;
+            } else if (stream_type === StreamType.kADTSAAC) {
+                pmt.audio_pids[elementary_PID] = true; // ADTS AAC
+                audioPids.push(elementary_PID);
+                hasAudio = true;
+            } else if (stream_type === StreamType.kLOASAAC) {
+                pmt.audio_pids[elementary_PID] = true; // LOAS AAC
+                audioPids.push(elementary_PID);
+                hasAudio = true;
+            } else if (stream_type === StreamType.kAC3) {
+                pmt.audio_pids[elementary_PID] = true; // ATSC AC-3
+                audioPids.push(elementary_PID);
+                hasAudio = true;
+            } else if (stream_type === StreamType.kEAC3) {
+                pmt.audio_pids[elementary_PID] = true; // ATSC EAC-3
+                audioPids.push(elementary_PID);
+                hasAudio = true;
+            } else if (stream_type === StreamType.kMPEG1Audio || stream_type === StreamType.kMPEG2Audio) {
+                pmt.audio_pids[elementary_PID] = true; // MP3
+                audioPids.push(elementary_PID);
+                hasAudio = true;
             } else if (stream_type === StreamType.kPESPrivateData) {
                 pmt.pes_private_data_pids[elementary_PID] = true;
                 if (ES_info_length > 0) {
@@ -802,12 +849,16 @@ class TSDemuxer extends BaseDemuxer {
                             } */ /* else if (registration === 'EC-3' && !alrady_has_audio) {
                                 pmt.common_pids.eac3 = elementary_PID; // DVB EAC-3 (FIXME: NEED VERIFY)
                             } */ else if (registration === 'Opus') {
-                                pmt.common_pids.opus = elementary_PID;
+                                pmt.opus_pids[elementary_PID] = true;
+                                audioPids.push(elementary_PID);
+                                hasAudio = true;
                             } else if (registration === 'KLVA') {
                                 pmt.asynchronous_klv_pids[elementary_PID] = true;
                             }
                         } else if (tag === 0x7F) {  // DVB extension descriptor
-                            if (elementary_PID === pmt.common_pids.opus) {
+                            if (pmt.opus_pids[elementary_PID]) {
+                                let audio_metadata_ = this.audioTrackMetadata.get(elementary_PID);
+
                                 let ext_desc_tag = data[offset + 2];
                                 let channel_config_code: number | null = null;
                                 if (ext_desc_tag === 0x80) { // User defined (provisional Opus)
@@ -830,14 +881,16 @@ class TSDemuxer extends BaseDemuxer {
                                     meta
                                 } as const;
 
-                                if (this.audio_init_segment_dispatched_ == false) {
-                                    this.audio_metadata_ = meta;
-                                    this.dispatchAudioInitSegment(sample);
-                                } else if (this.detectAudioMetadataChange(sample)) {
+                                if (this.currentAudioTrackPid !== elementary_PID) {
+                                    this.audioTrackInitSegments.set(elementary_PID, { ... sample });
+                                    this.audioTrackMetadata.set(elementary_PID, { ... meta });
+                                } else if (this.audio_init_segment_dispatched_ == false) {
+                                    this.dispatchAudioInitSegment(sample, meta, elementary_PID);
+                                } else if (audio_metadata_ == null || this.detectAudioMetadataChange(sample, audio_metadata_, elementary_PID)) {
                                     // flush stashed frames before notify new AudioSpecificConfig
                                     this.dispatchAudioMediaSegment();
                                     // notify new AAC AudioSpecificConfig
-                                    this.dispatchAudioInitSegment(sample);
+                                    this.dispatchAudioInitSegment(sample, meta, elementary_PID);
                                 }
                             }
                         }
@@ -884,18 +937,15 @@ class TSDemuxer extends BaseDemuxer {
 
             i += 5 + ES_info_length;
         }
+        this._updateAudioTrackIds(this.currentAudioTrackIndex, audioPids);
 
         if (program_number === this.current_program_) {
             if (this.pmt_ == undefined) {
                 Log.v(this.TAG, `Parsed first PMT: ${JSON.stringify(pmt)}`);
             }
             this.pmt_ = pmt;
-            if (pmt.common_pids.h264 || pmt.common_pids.h265) {
-                this.has_video_ = true;
-            }
-            if (pmt.common_pids.adts_aac || pmt.common_pids.loas_aac || pmt.common_pids.ac3 || pmt.common_pids.opus || pmt.common_pids.mp3) {
-                this.has_audio_ = true;
-            }
+            this.has_video_ = hasVideo;
+            this.has_audio_ = hasAudio;
         }
     }
 
@@ -1198,7 +1248,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseADTSAACPayload(data: Uint8Array, pts: number) {
+    private parseADTSAACPayload(data: Uint8Array, pts: number, pid: number) {
         if (this.has_video_ && !this.video_init_segment_dispatched_) {
             // If first video IDR frame hasn't been detected,
             // Wait for first IDR frame and video init segment being dispatched
@@ -1212,15 +1262,17 @@ class TSDemuxer extends BaseDemuxer {
             data = buf;
         }
 
+        let audio_metadata_ = this.audioTrackMetadata.get(pid);
+
         let ref_sample_duration: number;
         let base_pts_ms: number;
 
         if (pts != undefined) {
             base_pts_ms = pts / this.timescale_;
         }
-        if (this.audio_metadata_.codec === 'aac') {
+        if (audio_metadata_ && audio_metadata_.codec === 'aac') {
             if (pts == undefined && this.audio_last_sample_pts_ != undefined) {
-                ref_sample_duration = 1024 / this.audio_metadata_.sampling_frequency * 1000;
+                ref_sample_duration = 1024 / audio_metadata_.sampling_frequency * 1000;
                 base_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
             } else if (pts == undefined){
                 Log.w(this.TAG, `AAC: Unknown pts`);
@@ -1228,7 +1280,7 @@ class TSDemuxer extends BaseDemuxer {
             }
 
             if (this.aac_last_incomplete_data_ && this.audio_last_sample_pts_) {
-                ref_sample_duration = 1024 / this.audio_metadata_.sampling_frequency * 1000;
+                ref_sample_duration = 1024 / audio_metadata_.sampling_frequency * 1000;
                 let new_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
 
                 if (Math.abs(new_pts_ms - base_pts_ms) > 1) {
@@ -1245,26 +1297,33 @@ class TSDemuxer extends BaseDemuxer {
         let last_sample_pts_ms: number;
 
         while ((aac_frame = adts_parser.readNextAACFrame()) != null) {
+            const meta = {
+                codec: 'aac',
+                audio_object_type: aac_frame.audio_object_type,
+                sampling_freq_index: aac_frame.sampling_freq_index,
+                sampling_frequency: aac_frame.sampling_frequency,
+                channel_config: aac_frame.channel_config
+            };
+
             ref_sample_duration = 1024 / aac_frame.sampling_frequency * 1000;
             const audio_sample = {
                 codec: 'aac',
                 data: aac_frame
             } as const;
 
+            if (this.currentAudioTrackPid !== pid) {
+                // If not current Audio Track, memoized and discard it
+                this.dispatchAudioInitSegment(audio_sample, meta, pid);
+                continue;
+            }
+
             if (this.audio_init_segment_dispatched_ == false) {
-                this.audio_metadata_ = {
-                    codec: 'aac',
-                    audio_object_type: aac_frame.audio_object_type,
-                    sampling_freq_index: aac_frame.sampling_freq_index,
-                    sampling_frequency: aac_frame.sampling_frequency,
-                    channel_config: aac_frame.channel_config
-                };
-                this.dispatchAudioInitSegment(audio_sample);
-            } else if (this.detectAudioMetadataChange(audio_sample)) {
+                this.dispatchAudioInitSegment(audio_sample, meta, pid);
+            } else if (audio_metadata_ == null || this.detectAudioMetadataChange(audio_sample, audio_metadata_, pid)) {
                 // flush stashed frames before notify new AudioSpecificConfig
                 this.dispatchAudioMediaSegment();
                 // notify new AAC AudioSpecificConfig
-                this.dispatchAudioInitSegment(audio_sample);
+                this.dispatchAudioInitSegment(audio_sample, meta, pid);
             }
 
             last_sample_pts_ms = sample_pts_ms;
@@ -1291,7 +1350,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseLOASAACPayload(data: Uint8Array, pts: number) {
+    private parseLOASAACPayload(data: Uint8Array, pts: number, pid: number) {
         if (this.has_video_ && !this.video_init_segment_dispatched_) {
             // If first video IDR frame hasn't been detected,
             // Wait for first IDR frame and video init segment being dispatched
@@ -1305,15 +1364,17 @@ class TSDemuxer extends BaseDemuxer {
             data = buf;
         }
 
+        let audio_metadata_ = this.audioTrackMetadata.get(pid);
+
         let ref_sample_duration: number;
         let base_pts_ms: number;
 
         if (pts != undefined) {
             base_pts_ms = pts / this.timescale_;
         }
-        if (this.audio_metadata_.codec === 'aac') {
+        if (audio_metadata_ && audio_metadata_.codec === 'aac') {
             if (pts == undefined && this.audio_last_sample_pts_ != undefined) {
-                ref_sample_duration = 1024 / this.audio_metadata_.sampling_frequency * 1000;
+                ref_sample_duration = 1024 / audio_metadata_.sampling_frequency * 1000;
                 base_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
             } else if (pts == undefined){
                 Log.w(this.TAG, `AAC: Unknown pts`);
@@ -1321,7 +1382,7 @@ class TSDemuxer extends BaseDemuxer {
             }
 
             if (this.aac_last_incomplete_data_ && this.audio_last_sample_pts_) {
-                ref_sample_duration = 1024 / this.audio_metadata_.sampling_frequency * 1000;
+                ref_sample_duration = 1024 / audio_metadata_.sampling_frequency * 1000;
                 let new_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
 
                 if (Math.abs(new_pts_ms - base_pts_ms) > 1) {
@@ -1338,6 +1399,14 @@ class TSDemuxer extends BaseDemuxer {
         let last_sample_pts_ms: number;
 
         while ((aac_frame = loas_parser.readNextAACFrame(this.loas_previous_frame ?? undefined)) != null) {
+            const meta = {
+                codec: 'aac',
+                audio_object_type: aac_frame.audio_object_type,
+                sampling_freq_index: aac_frame.sampling_freq_index,
+                sampling_frequency: aac_frame.sampling_frequency,
+                channel_config: aac_frame.channel_config
+            };
+
             this.loas_previous_frame = aac_frame;
             ref_sample_duration = 1024 / aac_frame.sampling_frequency * 1000;
             const audio_sample = {
@@ -1345,20 +1414,19 @@ class TSDemuxer extends BaseDemuxer {
                 data: aac_frame
             } as const;
 
+            if (this.currentAudioTrackPid !== pid) {
+                // If not current Audio Track, memoized and discard it
+                this.dispatchAudioInitSegment(audio_sample, meta, pid);
+                continue;
+            }
+
             if (this.audio_init_segment_dispatched_ == false) {
-                this.audio_metadata_ = {
-                    codec: 'aac',
-                    audio_object_type: aac_frame.audio_object_type,
-                    sampling_freq_index: aac_frame.sampling_freq_index,
-                    sampling_frequency: aac_frame.sampling_frequency,
-                    channel_config: aac_frame.channel_config
-                };
-                this.dispatchAudioInitSegment(audio_sample);
-            } else if (this.detectAudioMetadataChange(audio_sample)) {
+                this.dispatchAudioInitSegment(audio_sample, meta, pid);
+            } else if (audio_metadata_ == null || this.detectAudioMetadataChange(audio_sample, audio_metadata_, pid)) {
                 // flush stashed frames before notify new AudioSpecificConfig
                 this.dispatchAudioMediaSegment();
                 // notify new AAC AudioSpecificConfig
-                this.dispatchAudioInitSegment(audio_sample);
+                this.dispatchAudioInitSegment(audio_sample, meta, pid);
             }
 
             last_sample_pts_ms = sample_pts_ms;
@@ -1385,12 +1453,14 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseAC3Payload(data: Uint8Array, pts: number) {
+    private parseAC3Payload(data: Uint8Array, pts: number, pid: number) {
         if (this.has_video_ && !this.video_init_segment_dispatched_) {
             // If first video IDR frame hasn't been detected,
             // Wait for first IDR frame and video init segment being dispatched
             return;
         }
+
+        let audio_metadata_ = this.audioTrackMetadata.get(pid);
 
         let ref_sample_duration: number;
         let base_pts_ms: number;
@@ -1399,9 +1469,9 @@ class TSDemuxer extends BaseDemuxer {
             base_pts_ms = pts / this.timescale_;
         }
 
-        if (this.audio_metadata_.codec === 'ac-3') {
+        if (audio_metadata_ && audio_metadata_.codec === 'ac-3') {
             if (pts == undefined && this.audio_last_sample_pts_ != undefined) {
-                ref_sample_duration = 1536 / this.audio_metadata_.sampling_frequency * 1000;
+                ref_sample_duration = 1536 / audio_metadata_.sampling_frequency * 1000;
                 base_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
             } else if (pts == undefined){
                 Log.w(this.TAG, `AC3: Unknown pts`);
@@ -1415,27 +1485,34 @@ class TSDemuxer extends BaseDemuxer {
         let last_sample_pts_ms: number;
 
         while ((ac3_frame = adts_parser.readNextAC3Frame()) != null) {
+            const meta = {
+                codec: 'ac-3',
+                sampling_frequency: ac3_frame.sampling_frequency,
+                bit_stream_identification: ac3_frame.bit_stream_identification,
+                bit_stream_mode: ac3_frame.bit_stream_mode,
+                low_frequency_effects_channel_on: ac3_frame.low_frequency_effects_channel_on,
+                channel_mode: ac3_frame.channel_mode,
+            };
+
             ref_sample_duration = 1536 / ac3_frame.sampling_frequency * 1000;
             const audio_sample = {
                 codec: 'ac-3',
                 data: ac3_frame
             } as const;
 
+            if (this.currentAudioTrackPid !== pid) {
+                // If not current Audio Track, memoized and discard it
+                this.dispatchAudioInitSegment(audio_sample, meta, pid);
+                continue;
+            }
+
             if (this.audio_init_segment_dispatched_ == false) {
-                this.audio_metadata_ = {
-                    codec: 'ac-3',
-                    sampling_frequency: ac3_frame.sampling_frequency,
-                    bit_stream_identification: ac3_frame.bit_stream_identification,
-                    bit_stream_mode: ac3_frame.bit_stream_mode,
-                    low_frequency_effects_channel_on: ac3_frame.low_frequency_effects_channel_on,
-                    channel_mode: ac3_frame.channel_mode,
-                };
-                this.dispatchAudioInitSegment(audio_sample);
-            } else if (this.detectAudioMetadataChange(audio_sample)) {
+                this.dispatchAudioInitSegment(audio_sample, meta, pid);
+            } else if (audio_metadata_ == null || this.detectAudioMetadataChange(audio_sample, audio_metadata_, pid)) {
                 // flush stashed frames before notify new AudioSpecificConfig
                 this.dispatchAudioMediaSegment();
                 // notify new AAC AudioSpecificConfig
-                this.dispatchAudioInitSegment(audio_sample);
+                this.dispatchAudioInitSegment(audio_sample, meta, pid);
             }
 
             last_sample_pts_ms = sample_pts_ms;
@@ -1459,7 +1536,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseEAC3Payload(data: Uint8Array, pts: number) {
+    private parseEAC3Payload(data: Uint8Array, pts: number, pid: number) {
         if (this.has_video_ && !this.video_init_segment_dispatched_) {
             // If first video IDR frame hasn't been detected,
             // Wait for first IDR frame and video init segment being dispatched
@@ -1469,47 +1546,54 @@ class TSDemuxer extends BaseDemuxer {
         let ref_sample_duration: number;
         let base_pts_ms: number;
 
-        if (pts != undefined) {
-            base_pts_ms = pts / this.timescale_;
-        }
-
-        if (this.audio_metadata_.codec === 'ec-3') {
-            if (pts == undefined && this.audio_last_sample_pts_ != undefined) {
-                ref_sample_duration = (256 * this.audio_metadata_.num_blks) / this.audio_metadata_.sampling_frequency * 1000; // TODO: AEC3 BLK
-                base_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
-            } else if (pts == undefined){
-                Log.w(this.TAG, `EAC3: Unknown pts`);
-                return;
-            }
-        }
+        let audio_metadata_ = this.audioTrackMetadata.get(pid);
 
         let adts_parser = new EAC3Parser(data);
         let eac3_frame: EAC3Frame = null;
         let sample_pts_ms = base_pts_ms;
         let last_sample_pts_ms: number;
 
+        if (audio_metadata_ && audio_metadata_.codec === 'ec-3') {
+            if (pts == undefined && this.audio_last_sample_pts_ != undefined) {
+                ref_sample_duration = (256 * audio_metadata_.num_blks) / audio_metadata_.sampling_frequency * 1000; // TODO: AEC3 BLK
+                base_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
+            } else if (pts == undefined){
+                Log.w(this.TAG, `EAC3: Unknown pts`);
+                return;
+            }
+        }
+        if (pts != undefined) {
+            base_pts_ms = pts / this.timescale_;
+        }
+
         while ((eac3_frame = adts_parser.readNextEAC3Frame()) != null) {
+            const meta = {
+                codec: 'ec-3',
+                sampling_frequency: eac3_frame.sampling_frequency,
+                bit_stream_identification: eac3_frame.bit_stream_identification,
+                low_frequency_effects_channel_on: eac3_frame.low_frequency_effects_channel_on,
+                num_blks: eac3_frame.num_blks,
+                channel_mode: eac3_frame.channel_mode,
+            };
+
             ref_sample_duration = 1536 / eac3_frame.sampling_frequency * 1000; // TODO: EAC3 BLK
             const audio_sample = {
                 codec: 'ec-3',
                 data: eac3_frame
             } as const;
 
+            if (this.currentAudioTrackPid !== pid) {
+                // If not current Audio Track, memoized and discard it
+                this.dispatchAudioInitSegment(audio_sample, meta, pid);
+            }
+
             if (this.audio_init_segment_dispatched_ == false) {
-                this.audio_metadata_ = {
-                    codec: 'ec-3',
-                    sampling_frequency: eac3_frame.sampling_frequency,
-                    bit_stream_identification: eac3_frame.bit_stream_identification,
-                    low_frequency_effects_channel_on: eac3_frame.low_frequency_effects_channel_on,
-                    num_blks: eac3_frame.num_blks,
-                    channel_mode: eac3_frame.channel_mode,
-                };
-                this.dispatchAudioInitSegment(audio_sample);
-            } else if (this.detectAudioMetadataChange(audio_sample)) {
+                this.dispatchAudioInitSegment(audio_sample, meta, pid);
+            } else if (audio_metadata_ == null || this.detectAudioMetadataChange(audio_sample, audio_metadata_, pid)) {
                 // flush stashed frames before notify new AudioSpecificConfig
                 this.dispatchAudioMediaSegment();
                 // notify new AAC AudioSpecificConfig
-                this.dispatchAudioInitSegment(audio_sample);
+                this.dispatchAudioInitSegment(audio_sample, meta, pid);
             }
 
             last_sample_pts_ms = sample_pts_ms;
@@ -1533,10 +1617,14 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseOpusPayload(data: Uint8Array, pts: number) {
+    private parseOpusPayload(data: Uint8Array, pts: number, pid: number) {
         if (this.has_video_ && !this.video_init_segment_dispatched_) {
             // If first video IDR frame hasn't been detected,
             // Wait for first IDR frame and video init segment being dispatched
+            return;
+        }
+        if (this.currentAudioTrackPid !== pid) {
+            // If not current Audio Track, discard it
             return;
         }
 
@@ -1546,14 +1634,13 @@ class TSDemuxer extends BaseDemuxer {
         if (pts != undefined) {
             base_pts_ms = pts / this.timescale_;
         }
-        if (this.audio_metadata_.codec === 'opus') {
-            if (pts == undefined && this.audio_last_sample_pts_ != undefined) {
-                ref_sample_duration = 20;
-                base_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
-            } else if (pts == undefined){
-                Log.w(this.TAG, `Opus: Unknown pts`);
-                return;
-            }
+
+        if (pts == undefined && this.audio_last_sample_pts_ != undefined) {
+            ref_sample_duration = 20;
+            base_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
+        } else if (pts == undefined){
+            Log.w(this.TAG, `Opus: Unknown pts`);
+            return;
         }
 
         let sample_pts_ms = base_pts_ms;
@@ -1568,8 +1655,8 @@ class TSDemuxer extends BaseDemuxer {
             let size = 0;
 
             while (data[index] === 0xFF) {
-              size += 255;
-              index += 1;
+                size += 255;
+                index += 1;
             }
             size += data[index];
             index += 1;
@@ -1598,7 +1685,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseMP3Payload(data: Uint8Array, pts: number) {
+    private parseMP3Payload(data: Uint8Array, pts: number, pid: number) {
         if (this.has_video_ && !this.video_init_segment_dispatched_) {
             // If first video IDR frame hasn't been detected,
             // Wait for first IDR frame and video init segment being dispatched
@@ -1657,6 +1744,8 @@ class TSDemuxer extends BaseDemuxer {
                 break;
         }
 
+        let audio_metadata_ = this.audioTrackMetadata.get(pid);
+
         const sample = new MP3Data();
         sample.object_type = object_type;
         sample.sample_rate = sample_rate;
@@ -1667,20 +1756,26 @@ class TSDemuxer extends BaseDemuxer {
             data: sample
         } as const;
 
+        const meta = {
+            codec: 'mp3',
+            object_type,
+            sample_rate,
+            channel_count
+        };
+
+        if (this.currentAudioTrackPid !== pid) {
+            // If not current Audio Track, memoized and discard it
+            this.dispatchAudioInitSegment(audio_sample, meta, pid);
+            return;
+        }
 
         if (this.audio_init_segment_dispatched_ == false) {
-            this.audio_metadata_ = {
-                codec: 'mp3',
-                object_type,
-                sample_rate,
-                channel_count
-            }
-            this.dispatchAudioInitSegment(audio_sample);
-        } else if (this.detectAudioMetadataChange(audio_sample)) {
+            this.dispatchAudioInitSegment(audio_sample, meta, pid);
+        } else if (audio_metadata_ == null || this.detectAudioMetadataChange(audio_sample, audio_metadata_, pid)) {
             // flush stashed frames before notify new AudioSpecificConfig
             this.dispatchAudioMediaSegment();
-            // notify new AAC AudioSpecificConfig
-            this.dispatchAudioInitSegment(audio_sample);
+            // notify new MP3 AudioSpecificConfig
+            this.dispatchAudioInitSegment(audio_sample, meta, pid);
         }
 
         let mp3_sample = {
@@ -1693,94 +1788,98 @@ class TSDemuxer extends BaseDemuxer {
         this.audio_track_.length += data.byteLength;
     }
 
-    private detectAudioMetadataChange(sample: AudioData): boolean {
-        if (sample.codec !== this.audio_metadata_.codec) {
+    private detectAudioMetadataChange(sample: AudioData, previous_audio_metadata_: any, pid: number): boolean {
+        if (this.currentAudioTrackPid !== pid) {
+            return false;
+        }
+
+        if (sample.codec !== previous_audio_metadata_.codec) {
             Log.v(this.TAG, `Audio: Audio Codecs changed from ` +
-                                `${this.audio_metadata_.codec} to ${sample.codec}`);
+                                `${previous_audio_metadata_.codec} to ${sample.codec}`);
             return true;
         }
 
-        if (sample.codec === 'aac' && this.audio_metadata_.codec === 'aac') {
+        if (sample.codec === 'aac' && previous_audio_metadata_.codec === 'aac') {
             const frame = sample.data;
-            if (frame.audio_object_type !== this.audio_metadata_.audio_object_type) {
+            if (frame.audio_object_type !== previous_audio_metadata_.audio_object_type) {
                 Log.v(this.TAG, `AAC: AudioObjectType changed from ` +
-                                `${this.audio_metadata_.audio_object_type} to ${frame.audio_object_type}`);
+                                `${previous_audio_metadata_.audio_object_type} to ${frame.audio_object_type}`);
                 return true;
             }
 
-            if (frame.sampling_freq_index !== this.audio_metadata_.sampling_freq_index) {
+            if (frame.sampling_freq_index !== previous_audio_metadata_.sampling_freq_index) {
                 Log.v(this.TAG, `AAC: SamplingFrequencyIndex changed from ` +
-                                `${this.audio_metadata_.sampling_freq_index} to ${frame.sampling_freq_index}`);
+                                `${previous_audio_metadata_.sampling_freq_index} to ${frame.sampling_freq_index}`);
                 return true;
             }
 
-            if (frame.channel_config !== this.audio_metadata_.channel_config) {
+            if (frame.channel_config !== previous_audio_metadata_.channel_config) {
                 Log.v(this.TAG, `AAC: Channel configuration changed from ` +
-                                `${this.audio_metadata_.channel_config} to ${frame.channel_config}`);
+                                `${previous_audio_metadata_.channel_config} to ${frame.channel_config}`);
                 return true;
             }
-        } else if (sample.codec === 'ac-3' && this.audio_metadata_.codec === 'ac-3') {
+        } else if (sample.codec === 'ac-3' && previous_audio_metadata_.codec === 'ac-3') {
             const frame = sample.data;
-            if (frame.sampling_frequency !== this.audio_metadata_.sampling_frequency) {
+            if (frame.sampling_frequency !== previous_audio_metadata_.sampling_frequency) {
                 Log.v(this.TAG, `AC3: Sampling Frequency changed from ` +
-                                `${this.audio_metadata_.sampling_frequency} to ${frame.sampling_frequency}`);
+                                `${previous_audio_metadata_.sampling_frequency} to ${frame.sampling_frequency}`);
                 return true;
             }
 
-            if (frame.bit_stream_identification !== this.audio_metadata_.bit_stream_identification) {
+            if (frame.bit_stream_identification !== previous_audio_metadata_.bit_stream_identification) {
                 Log.v(this.TAG, `AC3: Bit Stream Identification changed from ` +
-                                `${this.audio_metadata_.bit_stream_identification} to ${frame.bit_stream_identification}`);
+                                `${previous_audio_metadata_.bit_stream_identification} to ${frame.bit_stream_identification}`);
                 return true;
             }
 
-            if (frame.bit_stream_mode !== this.audio_metadata_.bit_stream_mode) {
+            if (frame.bit_stream_mode !== previous_audio_metadata_.bit_stream_mode) {
                 Log.v(this.TAG, `AC3: BitStream Mode changed from ` +
-                                `${this.audio_metadata_.bit_stream_mode} to ${frame.bit_stream_mode}`);
+                                `${previous_audio_metadata_.bit_stream_mode} to ${frame.bit_stream_mode}`);
                 return true;
             }
 
-            if (frame.channel_mode !== this.audio_metadata_.channel_mode) {
+            if (frame.channel_mode !== previous_audio_metadata_.channel_mode) {
                 Log.v(this.TAG, `AC3: Channel Mode changed from ` +
-                                `${this.audio_metadata_.channel_mode} to ${frame.channel_mode}`);
+                                `${previous_audio_metadata_.channel_mode} to ${frame.channel_mode}`);
                 return true;
             }
 
-            if (frame.low_frequency_effects_channel_on !== this.audio_metadata_.low_frequency_effects_channel_on) {
+            if (frame.low_frequency_effects_channel_on !== previous_audio_metadata_.low_frequency_effects_channel_on) {
                 Log.v(this.TAG, `AC3: Low Frequency Effects Channel On changed from ` +
-                                `${this.audio_metadata_.low_frequency_effects_channel_on} to ${frame.low_frequency_effects_channel_on}`);
+                                `${previous_audio_metadata_.low_frequency_effects_channel_on} to ${frame.low_frequency_effects_channel_on}`);
                 return true;
             }
-        } else if (sample.codec === 'opus' && this.audio_metadata_.codec === 'opus') {
+        } else if (sample.codec === 'opus' && previous_audio_metadata_.codec === 'opus') {
             const data = sample.meta;
 
-            if (data.sample_rate !== this.audio_metadata_.sample_rate) {
+            if (data.sample_rate !== previous_audio_metadata_.sample_rate) {
                 Log.v(this.TAG, `Opus: SamplingFrequencyIndex changed from ` +
-                                `${this.audio_metadata_.sample_rate} to ${data.sample_rate}`);
+                                `${previous_audio_metadata_.sample_rate} to ${data.sample_rate}`);
                 return true;
             }
 
-            if (data.channel_count !== this.audio_metadata_.channel_count) {
+            if (data.channel_count !== previous_audio_metadata_.channel_count) {
                 Log.v(this.TAG, `Opus: Channel count changed from ` +
-                                `${this.audio_metadata_.channel_count} to ${data.channel_count}`);
+                                `${previous_audio_metadata_.channel_count} to ${data.channel_count}`);
                 return true;
             }
-        } else if (sample.codec === 'mp3' && this.audio_metadata_.codec === 'mp3') {
+        } else if (sample.codec === 'mp3' && previous_audio_metadata_.codec === 'mp3') {
             const data = sample.data;
-            if (data.object_type !== this.audio_metadata_.object_type) {
+            if (data.object_type !== previous_audio_metadata_.object_type) {
                 Log.v(this.TAG, `MP3: AudioObjectType changed from ` +
-                                `${this.audio_metadata_.object_type} to ${data.object_type}`);
+                                `${previous_audio_metadata_.object_type} to ${data.object_type}`);
                 return true;
             }
 
-            if (data.sample_rate !== this.audio_metadata_.sample_rate) {
+            if (data.sample_rate !== previous_audio_metadata_.sample_rate) {
                 Log.v(this.TAG, `MP3: SamplingFrequencyIndex changed from ` +
-                                `${this.audio_metadata_.sample_rate} to ${data.sample_rate}`);
+                                `${previous_audio_metadata_.sample_rate} to ${data.sample_rate}`);
                 return true;
             }
 
-            if (data.channel_count !== this.audio_metadata_.channel_count) {
+            if (data.channel_count !== previous_audio_metadata_.channel_count) {
                 Log.v(this.TAG, `MP3: Channel count changed from ` +
-                                `${this.audio_metadata_.channel_count} to ${data.channel_count}`);
+                                `${previous_audio_metadata_.channel_count} to ${data.channel_count}`);
                 return true;
             }
         }
@@ -1788,14 +1887,14 @@ class TSDemuxer extends BaseDemuxer {
         return false;
     }
 
-    private dispatchAudioInitSegment(sample: AudioData) {
+    private dispatchAudioInitSegment(sample: AudioData, audio_metadata_: any, pid: number) {
         let meta: any = {};
         meta.type = 'audio';
         meta.id = this.audio_track_.id;
         meta.timescale = 1000;
         meta.duration = this.duration_;
 
-        if (this.audio_metadata_.codec === 'aac') {
+        if (audio_metadata_.codec === 'aac') {
             let aac_frame = sample.codec === 'aac' ? sample.data : null;
             let audio_specific_config = new AudioSpecificConfig(aac_frame);
 
@@ -1805,7 +1904,7 @@ class TSDemuxer extends BaseDemuxer {
             meta.originalCodec = audio_specific_config.original_codec_mimetype;
             meta.config = audio_specific_config.config;
             meta.refSampleDuration = 1024 / meta.audioSampleRate * meta.timescale;
-        } else if (this.audio_metadata_.codec === 'ac-3') {
+        } else if (audio_metadata_.codec === 'ac-3') {
             let ac3_frame = sample.codec === 'ac-3' ? sample.data : null;
             let ac3_config = new AC3Config(ac3_frame);
             meta.audioSampleRate = ac3_config.sampling_rate
@@ -1814,7 +1913,7 @@ class TSDemuxer extends BaseDemuxer {
             meta.originalCodec = ac3_config.original_codec_mimetype;
             meta.config = ac3_config.config;
             meta.refSampleDuration = 1536 / meta.audioSampleRate * meta.timescale;
-        } else if (this.audio_metadata_.codec === 'ec-3') {
+        } else if (audio_metadata_.codec === 'ec-3') {
             let ec3_frame = sample.codec === 'ec-3' ? sample.data : null;
             let ec3_config = new EAC3Config(ec3_frame);
             meta.audioSampleRate = ec3_config.sampling_rate
@@ -1823,20 +1922,26 @@ class TSDemuxer extends BaseDemuxer {
             meta.originalCodec = ec3_config.original_codec_mimetype;
             meta.config = ec3_config.config;
             meta.refSampleDuration = (256 * ec3_config.num_blks) / meta.audioSampleRate * meta.timescale; // TODO: blk size
-        } else if (this.audio_metadata_.codec === 'opus') {
-            meta.audioSampleRate = this.audio_metadata_.sample_rate;
-            meta.channelCount = this.audio_metadata_.channel_count;
-            meta.channelConfigCode = this.audio_metadata_.channel_config_code;
+        } else if (audio_metadata_.codec === 'opus') {
+            meta.audioSampleRate = audio_metadata_.sample_rate;
+            meta.channelCount = audio_metadata_.channel_count;
+            meta.channelConfigCode = audio_metadata_.channel_config_code;
             meta.codec = 'opus';
             meta.originalCodec = 'opus';
             meta.config = undefined;
             meta.refSampleDuration = 20;
-        } else if (this.audio_metadata_.codec === 'mp3') {
-            meta.audioSampleRate = this.audio_metadata_.sample_rate;
-            meta.channelCount = this.audio_metadata_.channel_count;
+        } else if (audio_metadata_.codec === 'mp3') {
+            meta.audioSampleRate = audio_metadata_.sample_rate;
+            meta.channelCount = audio_metadata_.channel_count;
             meta.codec = 'mp3';
             meta.originalCodec = 'mp3';
             meta.config = undefined;
+        }
+
+        this.audioTrackInitSegments.set(pid, { ... sample });
+        this.audioTrackMetadata.set(pid, { ... audio_metadata_ });
+        if (this.currentAudioTrackPid !== pid) {
+            return;
         }
 
         if (this.audio_init_segment_dispatched_ == false) {
@@ -1845,7 +1950,7 @@ class TSDemuxer extends BaseDemuxer {
 
         this.onTrackMetadata('audio', meta);
         this.audio_init_segment_dispatched_ = true;
-        this.video_metadata_changed_ = false;
+        this.audio_metadata_changed_ = false;
 
         // notify new MediaInfo
         let mi = this.media_info_;
