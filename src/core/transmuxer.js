@@ -142,6 +142,14 @@ class Transmuxer {
         }
     }
 
+    selectAudioTrack(track) {
+        if (this._worker) {
+            this._worker.postMessage({cmd: 'select_audio_track', param: track});
+        } else {
+            this._controller.selectAudioTrack(track);
+        }
+    }
+
     _onInitSegment(type, initSegment) {
         // do async invoke
         Promise.resolve().then(() => {

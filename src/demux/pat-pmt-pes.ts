@@ -37,22 +37,18 @@ export class PMT {
     common_pids: {
         h264: number | undefined,
         h265: number | undefined;
-        adts_aac: number | undefined,
-        loas_aac: number | undefined,
-        opus: number | undefined,
-        ac3: number | undefined,
-        eac3: number | undefined,
-        mp3: number | undefined
     } = {
         h264: undefined,
         h265: undefined,
-        adts_aac: undefined,
-        loas_aac: undefined,
-        opus: undefined,
-        ac3: undefined,
-        eac3: undefined,
-        mp3: undefined
     };
+
+    audio_pids: {
+        [pid: number]: boolean
+    } = {};
+
+    opus_pids: {
+        [pid: number]: boolean;
+    } = {};
 
     pes_private_data_pids: {
         [pid: number]: boolean

@@ -158,6 +158,7 @@ interface Player {
     unload(): void;
     play(): Promise<void>;
     pause(): void;
+    selectAudioTrack(track: number): void;
     type: string;
     buffered: TimeRanges;
     duration: number;

@@ -29,6 +29,7 @@ declare class PlayerEngineDedicatedThread implements PlayerEngine {
     play(): Promise<void>;
     pause(): void;
     seek(seconds: number): void;
+    selectAudioTrack(track: number): void;
     get mediaInfo(): MediaInfo;
     get statisticsInfo(): any;
     _onLoggingConfigChanged(config: any): void;

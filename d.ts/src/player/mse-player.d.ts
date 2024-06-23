@@ -14,6 +14,7 @@ declare class MSEPlayer {
     unload(): void;
     play(): Promise<void>;
     pause(): void;
+    selectAudioTrack(index: number): void;
     get type(): string;
     get buffered(): TimeRanges;
     get duration(): number;

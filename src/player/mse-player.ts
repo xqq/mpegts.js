@@ -94,6 +94,10 @@ class MSEPlayer {
         this._player_engine.pause();
     }
 
+    public selectAudioTrack(index: number) {
+        this._player_engine.selectAudioTrack(index);
+    }
+
     public get type(): string {
         return this._type;
     }
