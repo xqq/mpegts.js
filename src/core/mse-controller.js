@@ -167,7 +167,7 @@ class MSEController {
             ms.removeEventListener('sourceended', this.e.onSourceEnded);
             ms.removeEventListener('sourceclose', this.e.onSourceClose);
             if (this._useManagedMediaSource) {
-                ms.removeEventListener('startstraming', this.e.onStartStreaming);
+                ms.removeEventListener('startstreaming', this.e.onStartStreaming);
                 ms.removeEventListener('endstreaming', this.e.onEndStreaming);
                 ms.removeEventListener('qualitychange', this.e.onQualityChange);
             }
@@ -559,7 +559,7 @@ class MSEController {
             this._mediaSource.removeEventListener('sourceended', this.e.onSourceEnded);
             this._mediaSource.removeEventListener('sourceclose', this.e.onSourceClose);
             if (this._useManagedMediaSource) {
-                this._mediaSource.removeEventListener('startstraming', this.e.onStartStreaming);
+                this._mediaSource.removeEventListener('startstreaming', this.e.onStartStreaming);
                 this._mediaSource.removeEventListener('endstreaming', this.e.onEndStreaming);
                 this._mediaSource.removeEventListener('qualitychange', this.e.onQualityChange);
             }
