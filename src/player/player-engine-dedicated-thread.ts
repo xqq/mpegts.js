@@ -37,7 +37,8 @@ import {
     WorkerCommandPacketLoggingConfig,
     WorkerCommandPacketTimeUpdate,
     WorkerCommandPacketReadyStateChange,
-    WorkerCommandPacketUnbufferedSeek
+    WorkerCommandPacketUnbufferedSeek,
+    WorkerCommandPacketSelectAudioTrack,
 } from './player-engine-worker-cmd-def.js';
 import {
     WorkerMessagePacket,
@@ -276,6 +277,18 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
         } else {
             this._pending_seek_time = seconds;
         }
+    }
+
+    public selectAudioTrack(track: number): void {
+        if (!this._config.isLive) {
+            this._worker.postMessage({
+                cmd: 'flush',
+            });
+        }
+        this._worker.postMessage({
+            cmd: 'select_audio_track',
+            track,
+        } as WorkerCommandPacketSelectAudioTrack)
     }
 
     public get mediaInfo(): MediaInfo {

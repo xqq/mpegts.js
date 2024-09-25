@@ -33,6 +33,7 @@ import {
     WorkerCommandPacketUnbufferedSeek,
     WorkerCommandPacketTimeUpdate,
     WorkerCommandPacketReadyStateChange,
+    WorkerCommandPacketSelectAudioTrack,
 } from './player-engine-worker-cmd-def.js';
 import {
     WorkerMessagePacket,
@@ -95,6 +96,10 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
             case 'destroy':
                 destroy();
                 break;
+            case 'select_audio_track':
+                const packet = command_packet as WorkerCommandPacketSelectAudioTrack;
+                transmuxer.selectAudioTrack(packet.track);
+                break;
             case 'initialize_mse':
                 initializeMSE();
                 break;
@@ -106,6 +111,9 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
                 break;
             case 'unload':
                 unload();
+                break;
+            case 'flush':
+                mse_controller.flush();
                 break;
             case 'unbuffered_seek': {
                 const packet = command_packet as WorkerCommandPacketUnbufferedSeek;

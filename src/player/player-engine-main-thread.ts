@@ -333,6 +333,13 @@ class PlayerEngineMainThread implements PlayerEngine {
         }
     }
 
+    public selectAudioTrack(track: number): void {
+        if (!this._config.isLive) {
+            this._mse_controller?.flush();
+        }
+        this._transmuxer.selectAudioTrack(track);
+    }
+
     public get mediaInfo(): MediaInfo {
         return Object.assign({}, this._media_info);
     }
