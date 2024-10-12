@@ -80,10 +80,20 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
     private e?: any = null;
 
     public static isSupported(): boolean {
-        return (self.Worker &&
-               self.MediaSource &&
-               ('canConstructInDedicatedWorker' in self.MediaSource) &&
-               self.MediaSource['canConstructInDedicatedWorker'] === true) ? true : false;
+        if (!self.Worker) {
+            return false;
+        }
+        if (self.MediaSource &&
+            ('canConstructInDedicatedWorker' in self.MediaSource) &&
+            (self.MediaSource['canConstructInDedicatedWorker'] === true)) {
+            return true;
+        }
+        if ((self as any).ManagedMediaSource &&
+            ('canConstructInDedicatedWorker' in (self as any).ManagedMediaSource) &&
+            ((self as any).ManagedMediaSource['canConstructInDedicatedWorker'] === true)) {
+            return true;
+        }
+        return false;
     }
 
     public constructor(mediaDataSource: any, config: any) {
@@ -364,6 +374,12 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
         switch (msg) {
             case 'mse_init': {
                 const packet = message_packet as WorkerMessagePacketMSEInit;
+                // Use ManagedMediaSource only if w3c MediaSource is not available (e.g. iOS Safari)
+                const use_managed_media_source = ('ManagedMediaSource' in self) && !('MediaSource' in self);
+                if (use_managed_media_source) {
+                    // When using ManagedMediaSource, MediaSource will not open unless disableRemotePlayback is set to true
+                    this._media_element['disableRemotePlayback'] = true;
+                }
                 // Attach to HTMLMediaElement by using MediaSource Handle
                 this._media_element.srcObject = packet.handle;
                 break;
