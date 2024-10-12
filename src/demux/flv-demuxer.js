@@ -1564,16 +1564,11 @@ class FLVDemuxer {
             this._onError(DemuxErrors.FORMAT_ERROR, 'Flv: Invalid AV1CodecConfigurationRecord');
             return;
         }
-        meta.codecWidth = config.codec_size.width;
-        meta.codecHeight = config.codec_size.height;
-        meta.presentWidth = config.present_size.width;
-        meta.presentHeight = config.present_size.height;
 
         meta.profile = config.profile_string;
         meta.level = config.level_string;
         meta.bitDepth = config.bit_depth;
         meta.chromaFormat = config.chroma_format;
-        meta.sarRatio = config.sar_ratio;
         meta.frameRate = config.frame_rate;
         if (config.frame_rate.fixed === false ||
             config.frame_rate.fps_num === 0 ||
@@ -1584,17 +1579,14 @@ class FLVDemuxer {
         let fps_num = meta.frameRate.fps_num;
         meta.refSampleDuration = meta.timescale * (fps_den / fps_num);
         meta.codec = config.codec_mimetype;
+        meta.extra = config;
 
         let mi = this._mediaInfo;
-        mi.width = meta.codecWidth;
-        mi.height = meta.codecHeight;
         mi.fps = meta.frameRate.fps;
         mi.profile = meta.profile;
         mi.level = meta.level;
         mi.refFrames = config.ref_frames;
         mi.chromaFormat = config.chroma_format_string;
-        mi.sarNum = meta.sarRatio.width;
-        mi.sarDen = meta.sarRatio.height;
         mi.videoCodec = config.codec_mimetype;
 
         if (mi.hasAudio) {
@@ -1609,19 +1601,7 @@ class FLVDemuxer {
         }
         meta.av1c = new Uint8Array(dataSize);
         meta.av1c.set(new Uint8Array(arrayBuffer, dataOffset, dataSize), 0);
-        Log.v(this.TAG, 'Parsed AV1CodecConfigurationRecord');
-
-        if (this._isInitialMetadataDispatched()) {
-            // flush parsed frames
-            if (this._dispatch && (this._audioTrack.length || this._videoTrack.length)) {
-                this._onDataAvailable(this._audioTrack, this._videoTrack);
-            }
-        } else {
-            this._videoInitialMetadataDispatched = true;
-        }
-        // notify new metadata
-        this._dispatch = false;
-        this._onTrackMetadata('video', meta);
+        Log.v(this.TAG, 'Preparing AV1CodecConfigurationRecord');
     }
 
     _parseAVCVideoData(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, cts) {
@@ -1749,6 +1729,42 @@ class FLVDemuxer {
         let offset = 0;
         let dts = this._timestampBase + tagTimestamp;
         let keyframe = (frameType === 1);  // from FLV Frame Type constants
+
+        if (keyframe) {
+            let meta = this._videoMetadata;
+
+            const config = AV1OBUParser.parseOBUs(new Uint8Array(arrayBuffer, dataOffset, dataSize), meta.extra);
+            if (config == null) {
+                this._onError(DemuxErrors.FORMAT_ERROR, 'Flv: Invalid AV1 VideoData');
+                return;
+            }
+            console.log(config);
+            meta.codecWidth = config.codec_size.width;
+            meta.codecHeight = config.codec_size.height;
+            meta.presentWidth = config.present_size.width;
+            meta.presentHeight = config.present_size.height;
+            meta.sarRatio = config.sar_ratio;
+
+            let mi = this._mediaInfo;
+            mi.width = meta.codecWidth;
+            mi.height = meta.codecHeight;
+            mi.sarNum = meta.sarRatio.width;
+            mi.sarDen = meta.sarRatio.height;
+
+            Log.v(this.TAG, 'Parsed AV1DecoderConfigurationRecord');
+
+            if (this._isInitialMetadataDispatched()) {
+                // flush parsed frames
+                if (this._dispatch && (this._audioTrack.length || this._videoTrack.length)) {
+                    this._onDataAvailable(this._audioTrack, this._videoTrack);
+                }
+            } else {
+                this._videoInitialMetadataDispatched = true;
+            }
+            // notify new metadata
+            this._dispatch = false;
+            this._onTrackMetadata('video', meta);
+        }
 
         /* FIXME: NEEDS Inspect Per OBUs */
         length = dataSize;
