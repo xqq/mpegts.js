@@ -128,7 +128,7 @@ class MP4Remuxer {
         this._audioSegmentInfoList.clear();
     }
 
-    remux(audioTrack, videoTrack) {
+    remux(audioTrack, videoTrack, force = false) {
         if (!this._onMediaSegment) {
             throw new IllegalStateException('MP4Remuxer: onMediaSegment callback must be specificed!');
         }
@@ -136,10 +136,10 @@ class MP4Remuxer {
             this._calculateDtsBase(audioTrack, videoTrack);
         }
         if (videoTrack) {
-            this._remuxVideo(videoTrack);
+            this._remuxVideo(videoTrack, force);
         }
         if (audioTrack) {
-            this._remuxAudio(audioTrack);
+            this._remuxAudio(audioTrack, force);
         }
     }
 
@@ -258,7 +258,9 @@ class MP4Remuxer {
         let insertPrefixSilentFrame = false;
 
         if (!samples || samples.length === 0) {
-            return;
+            if (!force || this._audioStashedLastSample == null) {
+                return;
+            }
         }
         if (samples.length === 1 && !force) {
             // If [sample count in current batch] === 1 && (force != true)
@@ -285,7 +287,7 @@ class MP4Remuxer {
         let lastSample = null;
 
         // Pop the lastSample and waiting for stash
-        if (samples.length > 1) {
+        if (samples.length > 1 && !force) {
             lastSample = samples.pop();
             mdatBytes -= lastSample.length;
         }
@@ -582,6 +584,9 @@ class MP4Remuxer {
         let firstPts = -1, lastPts = -1;
 
         if (!samples || samples.length === 0) {
+            if (!force || this._videoStashedLastSample == null) {
+                return;
+            }
             return;
         }
         if (samples.length === 1 && !force) {
@@ -598,7 +603,7 @@ class MP4Remuxer {
         let lastSample = null;
 
         // Pop the lastSample and waiting for stash
-        if (samples.length > 1) {
+        if (samples.length > 1 && !force) {
             lastSample = samples.pop();
             mdatBytes -= lastSample.length;
         }
