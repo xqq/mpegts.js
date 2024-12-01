@@ -221,6 +221,9 @@ class H265NaluParser {
         const sps_temporal_mvp_enabled_flag = gb.readBool();
         const strong_intra_smoothing_enabled_flag = gb.readBool();
         const vui_parameters_present_flag = gb.readBool();
+        let colour_primaries = 2;
+        let transfer_characteristics = 2;
+        let matrix_coeffs = 2;
         if (vui_parameters_present_flag) {
             const aspect_ratio_info_present_flag = gb.readBool();
             if (aspect_ratio_info_present_flag) {
@@ -247,9 +250,9 @@ class H265NaluParser {
                 gb.readBool();
                 const colour_description_present_flag = gb.readBool();
                 if (colour_description_present_flag) {
-                    gb.readByte();
-                    gb.readByte();
-                    gb.readByte();
+                    colour_primaries = gb.readByte();
+                    transfer_characteristics = gb.readByte();
+                    matrix_coeffs = gb.readByte();
                 }
             }
             const chroma_loc_info_present_flag = gb.readBool();
@@ -398,6 +401,10 @@ class H265NaluParser {
             chroma_format_idc,
             bit_depth_luma_minus8,
             bit_depth_chroma_minus8,
+
+            colour_primaries,
+            transfer_characteristics,
+            matrix_coeffs,
 
             frame_rate: {
                 fixed: fps_fixed,
