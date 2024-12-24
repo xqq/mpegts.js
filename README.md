@@ -15,6 +15,7 @@ mpegts.js works by transmuxing MPEG2-TS stream into ISO BMFF (Fragmented MP4) se
 
 ## News
 - v1.8.0
+
     Support working on **iOS Safari** with iOS 17.1+ through Apple's [ManagedMediaSource API](https://github.com/w3c/media-source/issues/320)
 
     Great performance improvements by supporting [MSE in Workers](https://github.com/w3c/media-source/issues/175) on Chrome, Safari 18 (includes iOS)

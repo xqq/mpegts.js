@@ -13,6 +13,7 @@ mpegts.js 通过在 JavaScript 中渐进化解析 MPEG2-TS 流并实时转封装
 
 ## News
 - 1.8.0
+
     支持在 **iOS Safari**（iOS 17.1+）上运行，使用 Apple [ManagedMediaSource API](https://github.com/w3c/media-source/issues/320)
 
     通过使用 [MSE in Workers](https://github.com/w3c/media-source/issues/175) 来显著提升性能（适用于 Chrome 和 Safari 18，包括 iOS）
