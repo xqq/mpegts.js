@@ -14,7 +14,7 @@ mpegts.js works by transmuxing MPEG2-TS stream into ISO BMFF (Fragmented MP4) se
 [Media Source Extensions]: https://w3c.github.io/media-source/
 
 ## News
-- v1.8.0
+- **v1.8.0**
 
     Support working on **iOS Safari** with iOS 17.1+ through Apple's [ManagedMediaSource API](https://github.com/w3c/media-source/issues/320)
 
@@ -30,7 +30,7 @@ mpegts.js works by transmuxing MPEG2-TS stream into ISO BMFF (Fragmented MP4) se
 
     Support Opus and FLAC audio codec over HTTP-FLV (Enhanced RTMP)
 
-- v1.7.3
+- **v1.7.3**
 
     Introduced [Enhanced RTMP] with HEVC support for FLV.
 
@@ -38,7 +38,7 @@ mpegts.js works by transmuxing MPEG2-TS stream into ISO BMFF (Fragmented MP4) se
 
     Introduced LOAS AAC support for MPEG-TS.
 
-- v1.7.0
+- **v1.7.0**
 
     Introduced H.265/HEVC over MPEG-TS/FLV support.
 

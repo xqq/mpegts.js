@@ -12,7 +12,7 @@ mpegts.js は、JavaScript で MPEG2-TS ストリームを解析しながら、�
 [Media Source Extensions]: https://w3c.github.io/media-source/
 
 ## News
-- 1.8.0
+- **v1.8.0**
 
     **iOS Safari**（iOS 17.1+）での動作をサポートし、Apple の [ManagedMediaSource API](https://github.com/w3c/media-source/issues/320) を使用
 
@@ -28,7 +28,7 @@ mpegts.js は、JavaScript で MPEG2-TS ストリームを解析しながら、�
 
     HTTP-FLV（Enhanced RTMP）で Opus および FLAC 音声サポートを追加
 
-- v1.7.3
+- **v1.7.3**
 
     [Enhanced RTMP](https://github.com/veovera/enhanced-rtmp) における FLV での HEVC 転送の仕様をサポート
 
@@ -36,7 +36,7 @@ mpegts.js は、JavaScript で MPEG2-TS ストリームを解析しながら、�
 
     MPEG-TS に LOAS AAC 再生のサポートを追加
 
-- v1.7.0
+- **v1.7.0**
 
     H.265/HEVC 再生のサポートを追加（FLV および MPEG-TS の両方で対応）
 

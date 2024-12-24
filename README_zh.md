@@ -12,7 +12,7 @@ mpegts.js 通过在 JavaScript 中渐进化解析 MPEG2-TS 流并实时转封装
 [Media Source Extensions]: https://w3c.github.io/media-source/
 
 ## News
-- 1.8.0
+- **v1.8.0**
 
     支持在 **iOS Safari**（iOS 17.1+）上运行，使用 Apple [ManagedMediaSource API](https://github.com/w3c/media-source/issues/320)
 
@@ -28,7 +28,7 @@ mpegts.js 通过在 JavaScript 中渐进化解析 MPEG2-TS 流并实时转封装
 
     HTTP-FLV（Enhanced RTMP）新增 Opus 和 FLAC 音频支持
 
-- v1.7.3
+- **v1.7.3**
 
     支持 [Enhanced RTMP] 中关于 FLV 传输 HEVC 的规范
 
@@ -36,7 +36,7 @@ mpegts.js 通过在 JavaScript 中渐进化解析 MPEG2-TS 流并实时转封装
 
     MPEG-TS 新增了 LOAS AAC 播放支持
 
-- v1.7.0
+- **v1.7.0**
 
     H.265/HEVC 播放支持（FLV 或 MPEG-TS 均已支持）
 
