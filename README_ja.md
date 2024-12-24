@@ -12,7 +12,31 @@ mpegts.js は、JavaScript で MPEG2-TS ストリームを解析しながら、�
 [Media Source Extensions]: https://w3c.github.io/media-source/
 
 ## News
-H.265/HEVC 再生支援（over FLV/MPEG-TS）は v1.7.0 から導入されています。
+- 1.8.0
+    **iOS Safari**（iOS 17.1+）での動作をサポートし、Apple の [ManagedMediaSource API](https://github.com/w3c/media-source/issues/320) を使用
+
+    [MSE in Workers](https://github.com/w3c/media-source/issues/175) 利用により、パフォーマンスが大幅に向上：Chrome と Safari 18（iOS 含む）対応
+
+    [AV1 over MPEG-TS](https://aomediacodec.github.io/av1-mpeg2-ts/) をサポート
+
+    [Enhanced RTMP](https://github.com/veovera/enhanced-rtmp) の定義による AV1 over HTTP-FLV をサポート
+
+    再生速度を動的に変更することで、ライブ遅延の追従をよりスムーズにできる
+
+    MPEG-TS に ATSC EAC-3 音声サポートを追加
+
+    HTTP-FLV（Enhanced RTMP）で Opus および FLAC 音声サポートを追加
+
+- v1.7.3
+    [Enhanced RTMP](https://github.com/veovera/enhanced-rtmp) における FLV での HEVC 転送の仕様をサポート
+
+    MPEG-TS に Opus および ATSC AC-3 音声コーデックのサポートを追加
+
+    MPEG-TS に LOAS AAC 再生のサポートを追加
+
+- v1.7.0
+    H.265/HEVC 再生のサポートを追加（FLV および MPEG-TS の両方で対応）
+
 
 ## Demo
 [http://xqq.github.io/mpegts.js/demo/](http://xqq.github.io/mpegts.js/demo/)
@@ -71,8 +95,6 @@ npm run build               # packaged & minimized js will be emitted in dist fo
 
 ## TODO
 - 静的 MPEG2-TS ファイルの再生 （現時点ではシークできません）
-- MP3/AC3 audio codec の支援
-- AV1/OPUS codec over MPEG2-TS stream support (?)
 
 ## Limitations
 - mpeg2video はサポートしていません。映像は H.264 であることが求められます

@@ -12,6 +12,21 @@ mpegts.js 通过在 JavaScript 中渐进化解析 MPEG2-TS 流并实时转封装
 [Media Source Extensions]: https://w3c.github.io/media-source/
 
 ## News
+- 1.8.0
+    支持在 **iOS Safari**（iOS 17.1+）上运行，使用 Apple [ManagedMediaSource API](https://github.com/w3c/media-source/issues/320)
+
+    通过使用 [MSE in Workers](https://github.com/w3c/media-source/issues/175) 来显著提升性能（适用于 Chrome 和 Safari 18，包括 iOS）
+
+    支持 [AV1 over MPEG-TS](https://aomediacodec.github.io/av1-mpeg2-ts/)
+
+    支持 AV1 over HTTP-FLV，定义于 [Enhanced RTMP](https://github.com/veovera/enhanced-rtmp)
+
+    支持更平滑的直播延迟追赶（通过动态改变播放速率）
+
+    MPEG-TS 新增 ATSC EAC-3 音频支持
+
+    HTTP-FLV（Enhanced RTMP）新增 Opus 和 FLAC 音频支持
+
 - v1.7.3
 
     支持 [Enhanced RTMP] 中关于 FLV 传输 HEVC 的规范
@@ -86,8 +101,6 @@ npm run build               # packaged & minimized js will be emitted in dist fo
 
 ## TODO
 - MPEG2-TS 静态文件回放 （目前还不支持 seek）
-- MP3/AC3 音频编码支持
-- AV1/OPUS codec over MPEG2-TS stream support (?)
 
 ## Limitations
 - 不支持 mpeg2video
