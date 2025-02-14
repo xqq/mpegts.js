@@ -19,6 +19,7 @@ export enum StreamType {
     kEAC3 = 0x87,
     kMetadata = 0x15,
     kSCTE35 = 0x86,
+    kPGS = 0x90,
     kH264 = 0x1b,
     kH265 = 0x24
 }
@@ -62,6 +63,13 @@ export class PMT {
 
     timed_id3_pids: {
         [pid: number]: boolean
+    } = {};
+
+    pgs_pids: {
+        [pid: number]: boolean;
+    } = {};
+    pgs_langs: {
+        [pid: number]: string;
     } = {};
 
     synchronous_klv_pids: {
