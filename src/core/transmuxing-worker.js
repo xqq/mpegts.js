@@ -57,6 +57,7 @@ let TransmuxingWorker = function (self) {
                 controller.on(TransmuxingEvents.METADATA_ARRIVED, onMetaDataArrived.bind(this));
                 controller.on(TransmuxingEvents.SCRIPTDATA_ARRIVED, onScriptDataArrived.bind(this));
                 controller.on(TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED, onTimedID3MetadataArrived.bind(this));
+                controller.on(TransmuxingEvents.PGS_SUBTITLE_ARRIVED, onPGSSubtitleDataArrived.bind(this));
                 controller.on(TransmuxingEvents.SYNCHRONOUS_KLV_METADATA_ARRIVED, onSynchronousKLVMetadataArrived.bind(this));
                 controller.on(TransmuxingEvents.ASYNCHRONOUS_KLV_METADATA_ARRIVED, onAsynchronousKLVMetadataArrived.bind(this));
                 controller.on(TransmuxingEvents.SMPTE2038_METADATA_ARRIVED, onSMPTE2038MetadataArrived.bind(this));
@@ -165,6 +166,14 @@ let TransmuxingWorker = function (self) {
     function onTimedID3MetadataArrived (data) {
         let obj = {
             msg: TransmuxingEvents.TIMED_ID3_METADATA_ARRIVED,
+            data: data
+        };
+        self.postMessage(obj);
+    }
+
+    function onPGSSubtitleDataArrived (data) {
+        let obj = {
+            msg: TransmuxingEvents.PGS_SUBTITLE_ARRIVED,
             data: data
         };
         self.postMessage(obj);

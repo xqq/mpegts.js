@@ -36,6 +36,7 @@ import { AC3Config, AC3Frame, AC3Parser, EAC3Config, EAC3Frame, EAC3Parser } fro
 import { KLVData, klv_parse } from './klv';
 import AV1OBUInMpegTsParser from './av1';
 import AV1OBUParser from './av1-parser';
+import { PGSData } from './pgs-data';
 
 type AdaptationFieldInfo = {
     discontinuity_indicator?: number;
@@ -353,6 +354,7 @@ class TSDemuxer extends BaseDemuxer {
                             || pid === this.pmt_.common_pids.mp3
                             || this.pmt_.pes_private_data_pids[pid] === true
                             || this.pmt_.timed_id3_pids[pid] === true
+                            || this.pmt_.pgs_pids[pid] === true
                             || this.pmt_.synchronous_klv_pids[pid] === true
                             || this.pmt_.asynchronous_klv_pids[pid] === true
                             ) {
@@ -637,6 +639,9 @@ class TSDemuxer extends BaseDemuxer {
                         this.parseSynchronousKLVMetadataPayload(payload, pts, dts, pes_data.pid, stream_id);
                     }
                     break;
+                case StreamType.kPGS:
+                    this.parsePGSPayload(payload, pts, dts, pes_data.pid, stream_id, this.pmt_.pgs_langs[pes_data.pid]);
+                    break;
                 case StreamType.kH264:
                     this.parseH264Payload(payload, pts, dts, pes_data.file_position, pes_data.random_access_indicator);
                     break;
@@ -894,6 +899,21 @@ class TSDemuxer extends BaseDemuxer {
                 }
             } else if (stream_type === StreamType.kSCTE35) {
                 pmt.scte_35_pids[elementary_PID] = true;
+            } else if (stream_type === StreamType.kPGS) {
+                pmt.pgs_langs[elementary_PID] = 'und';
+                if (ES_info_length > 0) {
+                    // parse descriptor
+                    for (let offset = i + 5; offset < i + 5 + ES_info_length; ) {
+                        let tag = data[offset + 0];
+                        let length = data[offset + 1];
+                        if (tag === 0x0a) { // ISO_639_LANGUAGE_DESCRIPTOR
+                            const lang = String.fromCharCode(... Array.from(data.slice(offset + 2, offset + 5)));
+                            pmt.pgs_langs[elementary_PID] = lang;
+                        }
+                        offset += 2 + length;
+                    }
+                }
+                pmt.pgs_pids[elementary_PID] = true;
             }
 
             i += 5 + ES_info_length;
@@ -2001,6 +2021,30 @@ class TSDemuxer extends BaseDemuxer {
 
         if (this.onTimedID3Metadata) {
             this.onTimedID3Metadata(timed_id3_metadata);
+        }
+    }
+
+    private parsePGSPayload(data: Uint8Array, pts: number, dts: number, pid: number, stream_id: number, lang: string) {
+        let pgs_data = new PGSData();
+
+        pgs_data.pid = pid;
+        pgs_data.lang = lang;
+        pgs_data.stream_id = stream_id;
+        pgs_data.len = data.byteLength;
+        pgs_data.data = data;
+
+        if (pts != undefined) {
+            let pts_ms = Math.floor(pts / this.timescale_);
+            pgs_data.pts = pts_ms;
+        }
+
+        if (dts != undefined) {
+            let dts_ms = Math.floor(dts / this.timescale_);
+            pgs_data.dts = dts_ms;
+        }
+
+        if (this.onPGSSubtitleData) {
+            this.onPGSSubtitleData(pgs_data);
         }
     }
 
