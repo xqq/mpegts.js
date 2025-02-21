@@ -170,6 +170,19 @@ class RangeLoader extends BaseLoader {
             }
         }
 
+        if (this._config.requestTimeout !== Infinity && this._config.requestTimeout > 0) {
+            xhr.requestTimeoutId = window.setTimeout(() => {
+                xhr.abort();
+
+                this._status = LoaderStatus.kError;
+                if (this._onError) {
+                    this._onError(LoaderErrors.CONNECTING_TIMEOUT, {code: -1, msg: 'RangeLoader connecting timeout'});
+                } else {
+                    throw new RuntimeException('RangeLoader: connecting timeout');
+                }
+            }, this._config.requestTimeout);
+        }
+
         xhr.send();
     }
 
@@ -181,6 +194,7 @@ class RangeLoader extends BaseLoader {
 
     _internalAbort() {
         if (this._xhr) {
+            this._clearRequestTimeout();
             this._xhr.onreadystatechange = null;
             this._xhr.onprogress = null;
             this._xhr.onload = null;
@@ -194,6 +208,8 @@ class RangeLoader extends BaseLoader {
         let xhr = e.target;
 
         if (xhr.readyState === 2) {  // HEADERS_RECEIVED
+            this._clearRequestTimeout();
+
             if (xhr.responseURL != undefined) {  // if the browser support this property
                 let redirectedURL = this._seekHandler.removeURLParameters(xhr.responseURL);
                 if (xhr.responseURL !== this._currentRequestURL && redirectedURL !== this._currentRedirectedURL) {
@@ -341,6 +357,8 @@ class RangeLoader extends BaseLoader {
     }
 
     _onXhrError(e) {
+        this._clearRequestTimeout();
+
         this._status = LoaderStatus.kError;
         let type = 0;
         let info = null;
@@ -361,6 +379,12 @@ class RangeLoader extends BaseLoader {
         }
     }
 
+    _clearRequestTimeout() {
+        if (this._xhr && this._xhr.requestTimeoutId) {
+            clearTimeout(this._xhr.requestTimeoutId);
+            this._xhr.requestTimeoutId = undefined;
+        }
+    }
 }
 
 export default RangeLoader;
