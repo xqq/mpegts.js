@@ -31,9 +31,11 @@ class MP4 {
             stco: [], stsc: [], stsd: [], stsz: [],
             stts: [], tfdt: [], tfhd: [], traf: [],
             trak: [], trun: [], trex: [], tkhd: [],
-            vmhd: [], smhd: [], '.mp3': [],
-            Opus: [], dOps: [], 'ac-3': [], dac3: [], 'ec-3': [], dec3: [],
-            fLaC: [], dfLa: [],
+            vmhd: [], smhd: [], chnl: [],
+            '.mp3': [],
+            Opus: [], dOps: [], fLaC: [], dfLa: [],
+            ipcm: [], pcmC: [],
+            'ac-3': [], dac3: [], 'ec-3': [], dec3: [],
         };
 
         for (let name in MP4.types) {
@@ -331,6 +333,8 @@ class MP4 {
                 return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.Opus(meta));
             } else if (meta.codec == 'flac') {
                 return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.fLaC(meta));
+            } else if (meta.codec == 'ipcm') {
+                return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.ipcm(meta));
             }
             // else: aac -> mp4a
             return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.mp4a(meta));
@@ -576,6 +580,51 @@ class MP4 {
             ... meta.config
         ]);
         return MP4.box(MP4.types.dfLa, data);
+    }
+
+    static ipcm(meta) {
+        let channelCount = meta.channelCount;
+        let sampleRate = Math.min(meta.audioSampleRate, 65535);
+        let sampleSize = meta.sampleSize;
+
+        let data = new Uint8Array([
+            0x00, 0x00, 0x00, 0x00,  // reserved(4)
+            0x00, 0x00, 0x00, 0x01,  // reserved(2) + data_reference_index(2)
+            0x00, 0x00, 0x00, 0x00,  // reserved: 2 * 4 bytes
+            0x00, 0x00, 0x00, 0x00,
+            0x00, channelCount, // channelCount(2)
+            0x00, (sampleSize), // sampleSize(2)
+            0x00, 0x00, 0x00, 0x00,  // reserved(4)
+            (sampleRate >>> 8) & 0xFF,  // Audio sample rate
+            (sampleRate) & 0xFF,
+            0x00, 0x00
+        ]);
+
+        if (meta.channelCount === 1) {
+            return MP4.box(MP4.types.ipcm, data, MP4.pcmC(meta));
+        } else {
+            return MP4.box(MP4.types.ipcm, data, MP4.chnl(meta), MP4.pcmC(meta));
+        }
+    }
+
+    static chnl(meta) {
+        let data = new Uint8Array([
+            0x00, 0x00, 0x00, 0x00, // version, flag
+            0x01, // Channel Based Layout
+            meta.channelCount, // AudioConfiguration
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // omittedChannelsMap
+        ]);
+        return MP4.box(MP4.types.chnl, data);
+    }
+
+    static pcmC(meta) {
+        let littleEndian = meta.littleEndian ? 0x01 : 0x00
+        let sampleSize = meta.sampleSize;
+        let data = new Uint8Array([
+            0x00, 0x00, 0x00, 0x00, // version, flag
+            littleEndian, sampleSize
+        ]);
+        return MP4.box(MP4.types.pcmC, data);
     }
 
     static avc1(meta) {
