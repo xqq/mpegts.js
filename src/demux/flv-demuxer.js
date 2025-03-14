@@ -516,7 +516,7 @@ class FLVDemuxer {
         }
         // Legacy FLV
 
-        if (soundFormat !== 2 && soundFormat !== 10) {  // MP3 or AAC
+        if (soundFormat !== 2 && soundFormat !== 3 && soundFormat !== 10) {  // PCM or MP3 or AAC
             this._onError(DemuxErrors.CODEC_UNSUPPORTED, 'Flv: Unsupported audio codec idx: ' + soundFormat);
             return;
         }
@@ -532,7 +532,6 @@ class FLVDemuxer {
 
         let soundSize = (soundSpec & 2) >>> 1;  // unused
         let soundType = (soundSpec & 1);
-
 
         let meta = this._audioMetadata;
         let track = this._audioTrack;
@@ -655,6 +654,39 @@ class FLVDemuxer {
             let dts = this._timestampBase + tagTimestamp;
             let mp3Sample = {unit: data, length: data.byteLength, dts: dts, pts: dts};
             track.samples.push(mp3Sample);
+            track.length += data.length;
+        } else if (soundFormat === 3) {
+            if (!meta.codec) {
+                meta.audioSampleRate = soundRate;
+                meta.sampleSize = (soundSize + 1) * 8;
+                meta.littleEndian = true;
+                meta.codec = 'ipcm';
+                meta.originalCodec = 'ipcm';
+
+                this._audioInitialMetadataDispatched = true;
+                this._onTrackMetadata('audio', meta);
+
+                let mi = this._mediaInfo;
+                mi.audioCodec = meta.codec;
+                mi.audioSampleRate = meta.audioSampleRate;
+                mi.audioChannelCount = meta.channelCount;
+                mi.audioDataRate = meta.sampleSize * meta.audioSampleRate;
+                if (mi.hasVideo) {
+                    if (mi.videoCodec != null) {
+                        mi.mimeType = 'video/x-flv; codecs="' + mi.videoCodec + ',' + mi.audioCodec + '"';
+                    }
+                } else {
+                    mi.mimeType = 'video/x-flv; codecs="' + mi.audioCodec + '"';
+                }
+                if (mi.isComplete()) {
+                    this._onMediaInfo(mi);
+                }
+            }
+
+            let data = new Uint8Array(arrayBuffer, dataOffset + 1, dataSize - 1);
+            let dts = this._timestampBase + tagTimestamp;
+            let pcmSample = {unit: data, length: data.byteLength, dts: dts, pts: dts};
+            track.samples.push(pcmSample);
             track.length += data.length;
         }
     }
