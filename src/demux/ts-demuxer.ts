@@ -1657,45 +1657,54 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         let sample_pts_ms = base_pts_ms;
-        let last_sample_pts_ms: number;
+        // let last_sample_pts_ms: number;
+        let sample_pts_ms_int = Math.floor(sample_pts_ms);
+        let opus_sample = {
+            unit: data,
+            length: data.byteLength,
+            pts: sample_pts_ms_int,
+            dts: sample_pts_ms_int
+        };
+        this.audio_track_.samples.push(opus_sample);
+        this.audio_track_.length += data.byteLength;
 
-        for (let offset = 0; offset < data.length; ) {
-            ref_sample_duration = 20;
+        // for (let offset = 0; offset < data.length; ) {
+        //     ref_sample_duration = 20;
 
-            const opus_pending_trim_start = (data[offset + 1] & 0x10) !== 0;
-            const trim_end = (data[offset + 1] & 0x08) !== 0;
-            let index = offset + 2;
-            let size = 0;
+        //     const opus_pending_trim_start = (data[offset + 1] & 0x10) !== 0;
+        //     const trim_end = (data[offset + 1] & 0x08) !== 0;
+        //     let index = offset + 2;
+        //     let size = 0;
 
-            while (data[index] === 0xFF) {
-              size += 255;
-              index += 1;
-            }
-            size += data[index];
-            index += 1;
-            index += opus_pending_trim_start ? 2 : 0;
-            index += trim_end ? 2 : 0;
+        //     while (data[index] === 0xFF) {
+        //       size += 255;
+        //       index += 1;
+        //     }
+        //     size += data[index];
+        //     index += 1;
+        //     index += opus_pending_trim_start ? 2 : 0;
+        //     index += trim_end ? 2 : 0;
 
-            last_sample_pts_ms = sample_pts_ms;
-            let sample_pts_ms_int = Math.floor(sample_pts_ms);
-            let sample = data.slice(index, index + size)
+        //     last_sample_pts_ms = sample_pts_ms;
+        //     let sample_pts_ms_int = Math.floor(sample_pts_ms);
+        //     let sample = data.slice(index, index + size)
 
-            let opus_sample = {
-                unit: sample,
-                length: sample.byteLength,
-                pts: sample_pts_ms_int,
-                dts: sample_pts_ms_int
-            };
-            this.audio_track_.samples.push(opus_sample);
-            this.audio_track_.length += sample.byteLength;
+        //     let opus_sample = {
+        //         unit: sample,
+        //         length: sample.byteLength,
+        //         pts: sample_pts_ms_int,
+        //         dts: sample_pts_ms_int
+        //     };
+        //     this.audio_track_.samples.push(opus_sample);
+        //     this.audio_track_.length += sample.byteLength;
 
-            sample_pts_ms += ref_sample_duration;
-            offset = index + size;
-        }
+        //     sample_pts_ms += ref_sample_duration;
+        //     offset = index + size;
+        // }
 
-        if (last_sample_pts_ms) {
-            this.audio_last_sample_pts_ = last_sample_pts_ms;
-        }
+        // if (last_sample_pts_ms) {
+        //     this.audio_last_sample_pts_ = last_sample_pts_ms;
+        // }
     }
 
     private parseMP3Payload(data: Uint8Array, pts: number) {
