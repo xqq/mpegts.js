@@ -112,6 +112,19 @@ class MozChunkedLoader extends BaseLoader {
             }
         }
 
+        if (this._config.requestTimeout !== Infinity && this._config.requestTimeout > 0) {
+            xhr.requestTimeoutId = window.setTimeout(() => {
+                xhr.abort();
+
+                this._status = LoaderStatus.kError;
+                if (this._onError) {
+                    this._onError(LoaderErrors.CONNECTING_TIMEOUT, {code: -1, msg: 'MozChunkedLoader connecting timeout'});
+                } else {
+                    throw new RuntimeException('MozChunkedLoader: connecting timeout');
+                }
+            }, this._config.requestTimeout);
+        }
+
         this._status = LoaderStatus.kConnecting;
         xhr.send();
     }
@@ -119,6 +132,7 @@ class MozChunkedLoader extends BaseLoader {
     abort() {
         this._requestAbort = true;
         if (this._xhr) {
+            this._clearRequestTimeout();
             this._xhr.abort();
         }
         this._status = LoaderStatus.kComplete;
@@ -128,6 +142,8 @@ class MozChunkedLoader extends BaseLoader {
         let xhr = e.target;
 
         if (xhr.readyState === 2) {  // HEADERS_RECEIVED
+            this._clearRequestTimeout();
+
             if (xhr.responseURL != undefined && xhr.responseURL !== this._requestURL) {
                 if (this._onURLRedirect) {
                     let redirectedURL = this._seekHandler.removeURLParameters(xhr.responseURL);
@@ -187,6 +203,8 @@ class MozChunkedLoader extends BaseLoader {
     }
 
     _onXhrError(e) {
+        this._clearRequestTimeout();
+
         this._status = LoaderStatus.kError;
         let type = 0;
         let info = null;
@@ -206,6 +224,12 @@ class MozChunkedLoader extends BaseLoader {
         }
     }
 
+    _clearRequestTimeout() {
+        if (this._xhr && this._xhr.requestTimeoutId) {
+            clearTimeout(this._xhr.requestTimeoutId);
+            this._xhr.requestTimeoutId = undefined;
+        }
+    }
 }
 
 export default MozChunkedLoader;

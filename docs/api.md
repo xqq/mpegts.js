@@ -97,6 +97,7 @@ In multipart mode, `duration` `filesize` `url` field in `MediaDataSource` struct
 | `reuseRedirectedURL?`            | `boolean` | `false`                      | Reuse 301/302 redirected url for subsequence request like seek, reconnect, etc. |
 | `referrerPolicy?`                | `string`  | `no-referrer-when-downgrade` | Indicates the [Referrer Policy][] when using FetchStreamLoader |
 | `headers?`                       | `object`  | `undefined`                  | Indicates additional headers that will be added to request |
+| `requestTimeout?`                | `number`  | `Infinity`                   | Timeout setting for IO Connection, in **milliseconds**. `requestTimeout` must greater than zero. |
 
 
 [Referrer Policy]: https://w3c.github.io/webappsec-referrer-policy/#referrer-policy
