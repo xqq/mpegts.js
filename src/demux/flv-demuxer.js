@@ -304,6 +304,7 @@ class FLVDemuxer {
             offset += 4;
         }
 
+        let lastValidOffset = offset;
         while (offset < chunk.byteLength) {
             this._dispatch = true;
 
@@ -317,16 +318,29 @@ class FLVDemuxer {
             let tagType = v.getUint8(0);
             let dataSize = v.getUint32(0, !le) & 0x00FFFFFF;
 
-            if (offset + 11 + dataSize + 4 > chunk.byteLength) {
-                // data not enough for parsing actual data body
-                break;
+            // unsupported tag? try to figure it out!
+            if (tagType !== 8 && tagType !== 9 && tagType !== 18) {
+                // not possible for a tag. should be a wrong byte, skip.
+                if (offset + 11 + dataSize + 4 > chunk.byteLength) {
+                    offset += 1;
+                    continue;
+                }
+
+                const tagSize = v.getUint32(11 + dataSize, !le);
+                if (tagSize === 11 + dataSize) {
+                    Log.w(this.TAG, `Consumed an unsupported tag with type ${tagType} of size ${dataSize}`);
+                    offset += 11 + dataSize + 4;
+                    continue;
+                }
+
+                // not a valid tag. should be a wrong byte, skip.
+                offset += 1;
+                continue;
             }
 
-            if (tagType !== 8 && tagType !== 9 && tagType !== 18) {
-                Log.w(this.TAG, `Unsupported tag type ${tagType}, skipped`);
-                // consume the whole tag (skip it)
-                offset += 11 + dataSize + 4;
-                continue;
+            // not enough for a tag, stop and wait.
+            if (offset + 11 + dataSize + 4 > chunk.byteLength) {
+                break;
             }
 
             let ts2 = v.getUint8(4);
@@ -338,7 +352,20 @@ class FLVDemuxer {
 
             let streamId = v.getUint32(7, !le) & 0x00FFFFFF;
             if (streamId !== 0) {
-                Log.w(this.TAG, 'Meet tag which has StreamID != 0!');
+                // invalid tag, should be skipped.
+                offset += 1;
+                continue;
+            }
+
+            let prevTagSize = v.getUint32(11 + dataSize, !le);
+            if (prevTagSize !== 11 + dataSize) {
+                // invalid tag, should skipped.
+                offset += 1;
+                continue;
+            }
+
+            if (lastValidOffset !== offset) {
+                Log.w(this.TAG, `Skipped ${offset - lastValidOffset} bytes of invalid data`);
             }
 
             let dataOffset = offset + 11;
@@ -355,12 +382,8 @@ class FLVDemuxer {
                     break;
             }
 
-            let prevTagSize = v.getUint32(11 + dataSize, !le);
-            if (prevTagSize !== 11 + dataSize) {
-                Log.w(this.TAG, `Invalid PrevTagSize ${prevTagSize}`);
-            }
-
             offset += 11 + dataSize + 4;  // tagBody + dataSize + prevTagSize
+            lastValidOffset = offset;
         }
 
         // dispatch parsed frames to consumer (typically, the remuxer)
