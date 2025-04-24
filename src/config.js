@@ -46,6 +46,7 @@ export const defaultConfig = {
     statisticsInfoReportInterval: 600,
 
     fixAudioTimestampGap: true,
+    dropSEI: false,
 
     accurateSeek: false,
     seekType: 'range',  // [range, param, custom]
