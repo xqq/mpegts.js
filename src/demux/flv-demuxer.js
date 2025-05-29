@@ -363,6 +363,15 @@ class FLVDemuxer {
             offset += 11 + dataSize + 4;  // tagBody + dataSize + prevTagSize
         }
 
+        if (this._hasAudio && this._hasVideo && !this._audioInitialMetadataDispatched) {
+            // both audio & video, but audio initial meta data still not dispatched
+            let samples = this._videoTrack.samples;
+            if (samples.length > 0 && samples[samples.length - 1].dts > samples[0].dts + 3000) {
+                Log.d(this.TAG, 'we need regard it as video only, last sample: ' + samples[samples.length - 1].dts + ', first sample: ' + samples[0].dts);
+                this._hasAudio = false;
+            }
+        }
+        
         // dispatch parsed frames to consumer (typically, the remuxer)
         if (this._isInitialMetadataDispatched()) {
             if (this._dispatch && (this._audioTrack.length || this._videoTrack.length)) {
