@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "es6-promise": "^4.2.5",
-    "webworkify-webpack": "xqq/webworkify-webpack"
+    "webworkify-webpack": "^2.1.5"
   },
   "devDependencies": {
     "@types/node": "^10.12.18",
