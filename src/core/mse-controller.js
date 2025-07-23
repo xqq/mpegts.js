@@ -48,7 +48,7 @@ class MSEController {
         };
 
         // Use ManagedMediaSource only if w3c MediaSource is not available (e.g. iOS Safari)
-        this._useManagedMediaSource = ('ManagedMediaSource' in self) && !('MediaSource' in self);
+        this._useManagedMediaSource = (typeof self.ManagedMediaSource === 'function') && !(typeof self.MediaSource === 'function');
 
         this._mediaSource = null;
         this._mediaSourceObjectURL = null;
