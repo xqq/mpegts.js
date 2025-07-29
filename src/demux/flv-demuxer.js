@@ -1668,10 +1668,14 @@ class FLVDemuxer {
                 keyframe = true;
             }
 
-            let data = new Uint8Array(arrayBuffer, dataOffset + offset, lengthSize + naluSize);
-            let unit = {type: unitType, data: data};
-            units.push(unit);
-            length += data.byteLength;
+            if (this._config.dropSEI && unitType === 6) { // SEI
+                // skip SEI Nalu
+            } else {
+                let data = new Uint8Array(arrayBuffer, dataOffset + offset, lengthSize + naluSize);
+                let unit = {type: unitType, data: data};
+                units.push(unit);
+                length += data.byteLength;
+            }
 
             offset += lengthSize + naluSize;
         }
@@ -1726,10 +1730,14 @@ class FLVDemuxer {
                 keyframe = true;
             }
 
-            let data = new Uint8Array(arrayBuffer, dataOffset + offset, lengthSize + naluSize);
-            let unit = {type: unitType, data: data};
-            units.push(unit);
-            length += data.byteLength;
+            if (this._config.dropSEI && (uintType === 39 || uintType === 40)) { // SEI
+                // drop SEI Nalu
+            } else {
+                let data = new Uint8Array(arrayBuffer, dataOffset + offset, lengthSize + naluSize);
+                let unit = {type: unitType, data: data};
+                units.push(unit);
+                length += data.byteLength;
+            }
 
             offset += lengthSize + naluSize;
         }
