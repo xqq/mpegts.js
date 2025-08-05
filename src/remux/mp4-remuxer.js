@@ -128,11 +128,33 @@ class MP4Remuxer {
         this._videoSegmentInfoList.clear();
         this._audioSegmentInfoList.clear();
     }
+    correctionVideoDts(videoTrack){
+        let outOrderSamples=[];
+        let preDts = 0;
+        for(let i=0;i<videoTrack.samples.length;i++){
+            let dts =  videoTrack.samples[i].dts;
+            if(dts<=preDts){
+                outOrderSamples.push(videoTrack.samples[i]);
+            }else{
+                if(outOrderSamples.length>0){
+                    let duration = (dts-preDts)/(outOrderSamples.length+1)
+                    for(let j=0;j<outOrderSamples.length;j++){
+                        let oldDts = outOrderSamples[j].dts;
+                        outOrderSamples[j].dts = preDts+ (j+1)*duration;
+                        outOrderSamples[j].pts = outOrderSamples[j].pts+(oldDts-outOrderSamples[j].dts);
+                    }
+                }
+                outOrderSamples=[];
+                preDts = dts;
+            }
+        }
+    }
 
     remux(audioTrack, videoTrack) {
         if (!this._onMediaSegment) {
             throw new IllegalStateException('MP4Remuxer: onMediaSegment callback must be specificed!');
         }
+        this.correctionVideoDts(videoTrack);
         if (!this._dtsBaseInited) {
             this._calculateDtsBase(audioTrack, videoTrack);
         }
@@ -678,7 +700,9 @@ class MP4Remuxer {
                 syncPoint.fileposition = sample.fileposition;
                 info.appendSyncPoint(syncPoint);
             }
-
+            if(dts<0||sampleDuration<0){
+                debugger
+            }else
             mp4Samples.push({
                 dts: dts,
                 pts: pts,
