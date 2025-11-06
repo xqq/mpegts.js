@@ -273,6 +273,18 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
         transmuxer.on(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, (private_data: any) => {
             emitPlayerEventsExtraData(PlayerEvents.PES_PRIVATE_DATA_ARRIVED, private_data);
         });
+        transmuxer.on(TransmuxingEvents.BUFFERING_START, () => {
+            self.postMessage({
+                msg: 'player_event',
+                event: PlayerEvents.BUFFERING_START,
+            } as WorkerMessagePacketPlayerEvent);
+        });
+        transmuxer.on(TransmuxingEvents.BUFFERING_END, () => {
+            self.postMessage({
+                msg: 'player_event',
+                event: PlayerEvents.BUFFERING_END,
+            } as WorkerMessagePacketPlayerEvent);
+        });
 
         transmuxer.open();
     }

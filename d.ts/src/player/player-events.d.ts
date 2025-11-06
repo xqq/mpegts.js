@@ -14,6 +14,8 @@ declare enum PlayerEvents {
     PES_PRIVATE_DATA_DESCRIPTOR = "pes_private_data_descriptor",
     PES_PRIVATE_DATA_ARRIVED = "pes_private_data_arrived",
     STATISTICS_INFO = "statistics_info",
+    BUFFERING_START = "buffering_start",
+    BUFFERING_END = "buffering_end",
     DESTROYING = "destroying"
 }
 export default PlayerEvents;

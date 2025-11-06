@@ -416,6 +416,14 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
                 if (packet.event == PlayerEvents.ERROR) {
                     const packet = message_packet as WorkerMessagePacketPlayerEventError;
                     this._emitter.emit(PlayerEvents.ERROR, packet.error_type, packet.error_detail, packet.info);
+                } else if (packet.event == PlayerEvents.LOADING_COMPLETE) {
+                    this._emitter.emit(PlayerEvents.LOADING_COMPLETE);
+                } else if (packet.event == PlayerEvents.RECOVERED_EARLY_EOF) {
+                    this._emitter.emit(PlayerEvents.RECOVERED_EARLY_EOF);
+                } else if (packet.event == PlayerEvents.BUFFERING_START) {
+                    this._emitter.emit(PlayerEvents.BUFFERING_START);
+                } else if (packet.event == PlayerEvents.BUFFERING_END) {
+                    this._emitter.emit(PlayerEvents.BUFFERING_END);
                 } else if ('extraData' in packet) {
                     const packet = message_packet as WorkerMessagePacketPlayerEventExtraData;
                     this._emitter.emit(packet.event, packet.extraData);

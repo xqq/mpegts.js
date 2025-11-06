@@ -66,6 +66,8 @@ let TransmuxingWorker = function (self) {
                 controller.on(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, onPESPrivateDataArrived.bind(this));
                 controller.on(TransmuxingEvents.STATISTICS_INFO, onStatisticsInfo.bind(this));
                 controller.on(TransmuxingEvents.RECOMMEND_SEEKPOINT, onRecommendSeekpoint.bind(this));
+                controller.on(TransmuxingEvents.BUFFERING_START, onBufferingStart.bind(this));
+                controller.on(TransmuxingEvents.BUFFERING_END, onBufferingEnd.bind(this));
                 break;
             case 'destroy':
                 if (controller) {
@@ -259,6 +261,18 @@ let TransmuxingWorker = function (self) {
         self.postMessage({
             msg: TransmuxingEvents.RECOMMEND_SEEKPOINT,
             data: milliseconds
+        });
+    }
+
+    function onBufferingStart() {
+        self.postMessage({
+            msg: TransmuxingEvents.BUFFERING_START
+        });
+    }
+
+    function onBufferingEnd() {
+        self.postMessage({
+            msg: TransmuxingEvents.BUFFERING_END
         });
     }
 

@@ -252,6 +252,12 @@ class PlayerEngineMainThread implements PlayerEngine {
         this._transmuxer.on(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, (private_data: any) => {
             this._emitter.emit(PlayerEvents.PES_PRIVATE_DATA_ARRIVED, private_data);
         });
+        this._transmuxer.on(TransmuxingEvents.BUFFERING_START, () => {
+            this._emitter.emit(PlayerEvents.BUFFERING_START);
+        });
+        this._transmuxer.on(TransmuxingEvents.BUFFERING_END, () => {
+            this._emitter.emit(PlayerEvents.BUFFERING_END);
+        });
 
         this._seeking_handler = new SeekingHandler(
             this._config,

@@ -84,6 +84,16 @@ class TransmuxingController {
         this._pendingResolveSeekPoint = null;
 
         this._statisticsReporter = null;
+
+        // Intelligent probing state for unseekable media
+        this._isProbing = false;
+        this._probeTargetTime = null;
+        this._probeAttempts = 0;
+        this._probeCurrentOffset = 0;  // Track current probe offset
+        this._discoveredKeyframes = new Map();  // Map<timestamp, fileposition>
+        this._probeHistory = [];  // Array of {timestamp, fileposition} for better estimation
+        this._maxProbeAttempts = 10;  // Maximum number of probing iterations
+        this._probeChunkSize = 256 * 1024;  // 256KB per probe request
     }
 
     destroy() {
@@ -105,6 +115,9 @@ class TransmuxingController {
             this._remuxer.destroy();
             this._remuxer = null;
         }
+
+        this._discoveredKeyframes = null;
+        this._probeHistory = null;
 
         this._emitter.removeAllListeners();
         this._emitter = null;
@@ -170,10 +183,21 @@ class TransmuxingController {
     }
 
     seek(milliseconds) {
-        if (this._mediaInfo == null || !this._mediaInfo.isSeekable()) {
+        if (this._mediaInfo == null) {
             return;
         }
 
+        // Check if media has index (normal seekable media)
+        if (this._mediaInfo.isSeekable()) {
+            this._performIndexedSeek(milliseconds);
+            return;
+        }
+
+        // Media is unseekable (no index), use intelligent probing
+        this._performIntelligentSeek(milliseconds);
+    }
+
+    _performIndexedSeek(milliseconds) {
         let targetSegmentIndex = this._searchSegmentIndexContains(milliseconds);
 
         if (targetSegmentIndex === this._currentSegmentIndex) {
@@ -218,6 +242,138 @@ class TransmuxingController {
         }
 
         this._enableStatisticsReporter();
+    }
+
+    _performIntelligentSeek(milliseconds) {
+        // For unseekable media, check if we have a discovered keyframe nearby
+        let nearestKeyframe = this._findNearestDiscoveredKeyframe(milliseconds);
+
+        if (nearestKeyframe && Math.abs(nearestKeyframe.milliseconds - milliseconds) < 5000) {
+            // Found a nearby keyframe (within 5 seconds), use it directly
+            Log.i(this.TAG, `Using discovered keyframe at ${nearestKeyframe.milliseconds}ms for seek to ${milliseconds}ms`);
+            this._internalAbort();
+            this._remuxer.seek(nearestKeyframe.milliseconds);
+            this._remuxer.insertDiscontinuity();
+            this._loadSegment(this._currentSegmentIndex, nearestKeyframe.fileposition);
+            this._pendingResolveSeekPoint = nearestKeyframe.milliseconds;
+            this._enableStatisticsReporter();
+        } else {
+            // No nearby keyframe found, initiate intelligent probing
+            Log.i(this.TAG, `Starting intelligent probing for seek to ${milliseconds}ms`);
+            this._startProbing(milliseconds);
+        }
+    }
+
+    _findNearestDiscoveredKeyframe(targetTime) {
+        if (this._probeHistory.length === 0) {
+            return null;
+        }
+
+        let nearest = null;
+        let minDistance = Infinity;
+
+        for (let entry of this._probeHistory) {
+            let distance = Math.abs(entry.milliseconds - targetTime);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearest = entry;
+            }
+        }
+
+        return nearest;
+    }
+
+    _startProbing(targetTime) {
+        if (this._isProbing) {
+            Log.w(this.TAG, 'Already probing, ignoring new probe request');
+            return;
+        }
+
+        this._isProbing = true;
+        this._probeTargetTime = targetTime;
+        this._probeAttempts = 0;
+
+        // Emit buffering start event
+        this._emitter.emit(TransmuxingEvents.BUFFERING_START);
+
+        // Calculate initial estimate
+        let estimatedOffset = this._estimateByteOffset(targetTime);
+        this._probeCurrentOffset = estimatedOffset;
+        Log.i(this.TAG, `Probing attempt 1: seeking to ${targetTime}ms, estimated offset: ${estimatedOffset}`);
+
+        // Abort current downloads and start probing
+        this._internalAbort();
+        if (this._remuxer) {
+            this._remuxer.seek();
+            this._remuxer.insertDiscontinuity();
+        }
+
+        // Load from estimated offset
+        this._loadSegment(this._currentSegmentIndex, estimatedOffset);
+    }
+
+    _estimateByteOffset(targetTime) {
+        // If we have no data points, use simple linear interpolation
+        if (this._probeHistory.length === 0) {
+            let duration = this._mediaDataSource.duration;
+            let filesize = this._mediaDataSource.segments[this._currentSegmentIndex].filesize;
+
+            if (duration && filesize) {
+                let ratio = targetTime / duration;
+                return Math.floor(filesize * ratio);
+            }
+            // Fallback: assume middle of file
+            return Math.floor((filesize || 0) / 2);
+        }
+
+        // We have data points, use them for better estimation
+        // Sort by timestamp
+        let sorted = [...this._probeHistory].sort((a, b) => a.milliseconds - b.milliseconds);
+
+        // Find two points that bracket the target time
+        let before = null;
+        let after = null;
+
+        for (let i = 0; i < sorted.length; i++) {
+            if (sorted[i].milliseconds <= targetTime) {
+                before = sorted[i];
+            }
+            if (sorted[i].milliseconds >= targetTime && !after) {
+                after = sorted[i];
+            }
+        }
+
+        // If we have both bracketing points, interpolate
+        if (before && after && before !== after) {
+            let timeRange = after.milliseconds - before.milliseconds;
+            let offsetRange = after.fileposition - before.fileposition;
+            let timeOffset = targetTime - before.milliseconds;
+            let ratio = timeOffset / timeRange;
+            return Math.floor(before.fileposition + (offsetRange * ratio));
+        }
+
+        // If we only have one side, extrapolate
+        if (before) {
+            let duration = this._mediaDataSource.duration;
+            let filesize = this._mediaDataSource.segments[this._currentSegmentIndex].filesize;
+            let remainingTime = duration - before.milliseconds;
+            let remainingBytes = filesize - before.fileposition;
+            let bytesPerMs = remainingBytes / remainingTime;
+            let offset = before.fileposition + ((targetTime - before.milliseconds) * bytesPerMs);
+            return Math.floor(Math.max(0, Math.min(filesize, offset)));
+        }
+
+        if (after) {
+            let timeFromStart = after.milliseconds;
+            let bytesFromStart = after.fileposition;
+            let bytesPerMs = bytesFromStart / timeFromStart;
+            let offset = targetTime * bytesPerMs;
+            let filesize = this._mediaDataSource.segments[this._currentSegmentIndex].filesize;
+            return Math.floor(Math.max(0, Math.min(filesize, offset)));
+        }
+
+        // Fallback
+        return 0;
     }
 
     _searchSegmentIndexContains(milliseconds) {
@@ -526,6 +682,12 @@ class TransmuxingController {
     }
 
     _onRemuxerMediaSegmentArrival(type, mediaSegment) {
+        // If we're in probing mode, handle the probe data instead of playing it
+        if (this._isProbing && type === 'video') {
+            this._handleProbeArrival(mediaSegment);
+            return;
+        }
+
         if (this._pendingSeekTime != null) {
             // Media segments after new-segment cross-seeking should be dropped.
             return;
@@ -546,6 +708,94 @@ class TransmuxingController {
 
             this._emitter.emit(TransmuxingEvents.RECOMMEND_SEEKPOINT, seekpoint);
         }
+    }
+
+    _handleProbeArrival(mediaSegment) {
+        this._probeAttempts++;
+
+        // Extract the first keyframe's timestamp and file position
+        let syncPoints = mediaSegment.info.syncPoints;
+        if (!syncPoints || syncPoints.length === 0) {
+            Log.e(this.TAG, 'Probe failed: no sync points found');
+            this._failProbing();
+            return;
+        }
+
+        // Get the first keyframe's timestamp
+        let firstKeyframe = syncPoints[0];
+        let foundTimestamp = firstKeyframe.originalDts;
+        let foundOffset = this._probeCurrentOffset;
+
+        Log.i(this.TAG, `Probe attempt ${this._probeAttempts}: found timestamp ${foundTimestamp}ms at offset ${foundOffset}, target: ${this._probeTargetTime}ms`);
+
+        // Store this discovery in our sparse index
+        this._probeHistory.push({
+            milliseconds: foundTimestamp,
+            fileposition: foundOffset
+        });
+
+        // Check if we're close enough to the target (within 2 seconds)
+        let timeDiff = Math.abs(foundTimestamp - this._probeTargetTime);
+        if (timeDiff < 2000) {
+            // Success! We found the right location
+            Log.i(this.TAG, `Probe succeeded: found ${foundTimestamp}ms (target: ${this._probeTargetTime}ms, diff: ${timeDiff}ms)`);
+            this._finishProbing(foundOffset, foundTimestamp);
+            return;
+        }
+
+        // Check if we've exceeded max attempts
+        if (this._probeAttempts >= this._maxProbeAttempts) {
+            Log.w(this.TAG, `Probe failed: max attempts (${this._maxProbeAttempts}) reached. Using closest found position.`);
+            this._finishProbing(foundOffset, foundTimestamp);
+            return;
+        }
+
+        // Not close enough, calculate a better estimate and try again
+        Log.i(this.TAG, `Probe miss (diff: ${timeDiff}ms), attempting correction...`);
+        let newEstimate = this._estimateByteOffset(this._probeTargetTime);
+        this._probeCurrentOffset = newEstimate;
+
+        // Abort current download and start new probe
+        this._internalAbort();
+        this._loadSegment(this._currentSegmentIndex, newEstimate);
+    }
+
+    _finishProbing(finalOffset, finalTime) {
+        Log.i(this.TAG, `Finishing probe at offset ${finalOffset}, time ${finalTime}ms`);
+
+        // Clear probing state
+        this._isProbing = false;
+        this._probeTargetTime = null;
+        this._probeAttempts = 0;
+
+        // Emit buffering end event
+        this._emitter.emit(TransmuxingEvents.BUFFERING_END);
+
+        // Reset remuxer state to prepare for playback at the new position
+        this._internalAbort();
+        this._remuxer.seek(finalTime);
+        this._remuxer.insertDiscontinuity();
+
+        // Begin normal media loading for playback from the discovered position
+        this._loadSegment(this._currentSegmentIndex, finalOffset);
+        this._pendingResolveSeekPoint = finalTime;
+
+        this._enableStatisticsReporter();
+    }
+
+    _failProbing() {
+        Log.e(this.TAG, 'Probing failed, falling back to start of segment');
+        this._isProbing = false;
+        this._probeTargetTime = null;
+        this._probeAttempts = 0;
+        this._emitter.emit(TransmuxingEvents.BUFFERING_END);
+
+        // Fallback: just start from beginning
+        this._internalAbort();
+        this._remuxer.seek(0);
+        this._remuxer.insertDiscontinuity();
+        this._loadSegment(this._currentSegmentIndex);
+        this._enableStatisticsReporter();
     }
 
     _enableStatisticsReporter() {

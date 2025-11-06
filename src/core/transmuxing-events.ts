@@ -35,7 +35,9 @@ enum TransmuxingEvents {
     PES_PRIVATE_DATA_DESCRIPTOR = 'pes_private_data_descriptor',
     PES_PRIVATE_DATA_ARRIVED = 'pes_private_data_arrived',
     STATISTICS_INFO = 'statistics_info',
-    RECOMMEND_SEEKPOINT = 'recommend_seekpoint'
+    RECOMMEND_SEEKPOINT = 'recommend_seekpoint',
+    BUFFERING_START = 'buffering_start',
+    BUFFERING_END = 'buffering_end'
 };
 
 export default TransmuxingEvents;
