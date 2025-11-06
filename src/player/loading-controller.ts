@@ -29,6 +29,7 @@ class LoadingController {
 
     private _paused: boolean = false;
     private _seeking: boolean = false;  // Flag to disable suspension during seeks
+    private _seek_end_time: number = 0;  // Timestamp of last seek end
 
     private e?: any = null;
 
@@ -96,8 +97,14 @@ class LoadingController {
 
     private _suspendTransmuxerIfBufferedPositionExceeded(buffered_end: number): void {
         const current_time = this._media_element.currentTime;
-        // Don't suspend if we're currently seeking
-        if (buffered_end >= current_time + this._config.lazyLoadMaxDuration && !this._paused && !this._seeking) {
+
+        // Don't suspend if:
+        // 1. We're currently seeking
+        // 2. A seek just completed (give 2 second grace period)
+        const time_since_seek = Date.now() - this._seek_end_time;
+        const in_seek_grace_period = time_since_seek < 2000;
+
+        if (buffered_end >= current_time + this._config.lazyLoadMaxDuration && !this._paused && !this._seeking && !in_seek_grace_period) {
             Log.v(this.TAG, 'Maximum buffering duration exceeded, suspend transmuxing task');
             this.suspendTransmuxer();
             this._media_element.addEventListener('timeupdate', this.e.onMediaTimeUpdate);
@@ -116,6 +123,8 @@ class LoadingController {
 
     public notifySeekEnd(): void {
         this._seeking = false;
+        this._seek_end_time = Date.now();
+        Log.v(this.TAG, 'Seek ended, starting grace period to prevent immediate suspension');
     }
 
     public suspendTransmuxer(): void {

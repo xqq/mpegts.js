@@ -315,16 +315,24 @@ class TransmuxingController {
     }
 
     _estimateByteOffset(targetTime) {
+        let duration = this._mediaDataSource.duration;
+        let filesize = this._mediaDataSource.segments[this._currentSegmentIndex].filesize;
+
         // If we have no data points, use simple linear interpolation
         if (this._probeHistory.length === 0) {
-            let duration = this._mediaDataSource.duration;
-            let filesize = this._mediaDataSource.segments[this._currentSegmentIndex].filesize;
-
             if (duration && filesize) {
                 let ratio = targetTime / duration;
                 return Math.floor(filesize * ratio);
             }
-            // Fallback: assume middle of file
+            // If duration is unknown, estimate based on typical bitrate assumptions
+            // Assume ~2Mbps average bitrate for video
+            if (filesize) {
+                let estimatedDuration = (filesize * 8) / (2 * 1000 * 1000);  // seconds
+                let ratio = (targetTime / 1000) / estimatedDuration;
+                Log.v(this.TAG, `Duration unknown, estimating based on filesize. Estimated duration: ${estimatedDuration}s, seeking to ${targetTime/1000}s (${Math.round(ratio*100)}% of file)`);
+                return Math.floor(filesize * Math.min(ratio, 0.95));  // Cap at 95% to avoid EOF
+            }
+            // Last resort fallback
             return Math.floor((filesize || 0) / 2);
         }
 
@@ -356,12 +364,22 @@ class TransmuxingController {
 
         // If we only have one side, extrapolate
         if (before) {
-            let duration = this._mediaDataSource.duration;
             let filesize = this._mediaDataSource.segments[this._currentSegmentIndex].filesize;
-            let remainingTime = duration - before.milliseconds;
-            let remainingBytes = filesize - before.fileposition;
-            let bytesPerMs = remainingBytes / remainingTime;
+
+            // Calculate bitrate from the known point
+            let bytesPerMs = before.fileposition / before.milliseconds;
             let offset = before.fileposition + ((targetTime - before.milliseconds) * bytesPerMs);
+
+            // If we have duration, use it to bound the estimate
+            if (duration) {
+                let remainingTime = duration - before.milliseconds;
+                let remainingBytes = filesize - before.fileposition;
+                let altBytesPerMs = remainingBytes / remainingTime;
+                // Average the two estimates for better accuracy
+                bytesPerMs = (bytesPerMs + altBytesPerMs) / 2;
+                offset = before.fileposition + ((targetTime - before.milliseconds) * bytesPerMs);
+            }
+
             return Math.floor(Math.max(0, Math.min(filesize, offset)));
         }
 
