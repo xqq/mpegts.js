@@ -218,6 +218,7 @@ class PlayerEngineMainThread implements PlayerEngine {
             this._emitter.emit(PlayerEvents.STATISTICS_INFO, Object.assign({}, statInfo));
         });
         this._transmuxer.on(TransmuxingEvents.RECOMMEND_SEEKPOINT, (milliseconds: number) => {
+            this._loading_controller.notifySeekEnd();
             if (this._media_element && !this._config.accurateSeek) {
                 this._seeking_handler.directSeek(milliseconds / 1000);
             }
@@ -256,6 +257,7 @@ class PlayerEngineMainThread implements PlayerEngine {
             this._emitter.emit(PlayerEvents.BUFFERING_START);
         });
         this._transmuxer.on(TransmuxingEvents.BUFFERING_END, () => {
+            this._loading_controller.notifySeekEnd();
             this._emitter.emit(PlayerEvents.BUFFERING_END);
         });
 
@@ -410,6 +412,7 @@ class PlayerEngineMainThread implements PlayerEngine {
     }
 
     private _onRequiredUnbufferedSeek(milliseconds: number): void {
+        this._loading_controller.notifySeekStart();
         this._mse_controller.flush();
         this._transmuxer.seek(milliseconds);
     }

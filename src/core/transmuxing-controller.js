@@ -189,11 +189,13 @@ class TransmuxingController {
 
         // Check if media has index (normal seekable media)
         if (this._mediaInfo.isSeekable()) {
+            Log.v(this.TAG, `Seeking to ${milliseconds}ms using indexed seek`);
             this._performIndexedSeek(milliseconds);
             return;
         }
 
         // Media is unseekable (no index), use intelligent probing
+        Log.v(this.TAG, `Seeking to ${milliseconds}ms using intelligent probing (no index)`);
         this._performIntelligentSeek(milliseconds);
     }
 
@@ -502,6 +504,9 @@ class TransmuxingController {
             this._mediaInfo.segments = [];
             this._mediaInfo.segmentCount = this._mediaDataSource.segments.length;
             Object.setPrototypeOf(this._mediaInfo, MediaInfo.prototype);
+
+            // Log seekability info
+            Log.i(this.TAG, `Media info received - hasKeyframesIndex: ${mediaInfo.hasKeyframesIndex}, isSeekable: ${this._mediaInfo.isSeekable()}`);
         }
 
         let segmentInfo = Object.assign({}, mediaInfo);

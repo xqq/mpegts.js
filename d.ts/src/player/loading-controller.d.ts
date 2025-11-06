@@ -5,6 +5,7 @@ declare class LoadingController {
     private _on_pause_transmuxer;
     private _on_resume_transmuxer;
     private _paused;
+    private _seeking;
     private e?;
     constructor(config: any, media_element: HTMLMediaElement, on_pause_transmuxer: () => void, on_resume_transmuxer: () => void);
     destroy(): void;
@@ -12,6 +13,8 @@ declare class LoadingController {
     private _onMediaTimeUpdate;
     private _suspendTransmuxerIfNeeded;
     private _suspendTransmuxerIfBufferedPositionExceeded;
+    notifySeekStart(): void;
+    notifySeekEnd(): void;
     suspendTransmuxer(): void;
     private _resumeTransmuxerIfNeeded;
     resumeTransmuxer(): void;

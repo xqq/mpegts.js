@@ -28,6 +28,7 @@ class LoadingController {
     private _on_resume_transmuxer: () => void = null;
 
     private _paused: boolean = false;
+    private _seeking: boolean = false;  // Flag to disable suspension during seeks
 
     private e?: any = null;
 
@@ -95,11 +96,26 @@ class LoadingController {
 
     private _suspendTransmuxerIfBufferedPositionExceeded(buffered_end: number): void {
         const current_time = this._media_element.currentTime;
-        if (buffered_end >= current_time + this._config.lazyLoadMaxDuration && !this._paused) {
+        // Don't suspend if we're currently seeking
+        if (buffered_end >= current_time + this._config.lazyLoadMaxDuration && !this._paused && !this._seeking) {
             Log.v(this.TAG, 'Maximum buffering duration exceeded, suspend transmuxing task');
             this.suspendTransmuxer();
             this._media_element.addEventListener('timeupdate', this.e.onMediaTimeUpdate);
         }
+    }
+
+    public notifySeekStart(): void {
+        this._seeking = true;
+        // Resume transmuxer if it was paused, as we need to load data for the seek
+        if (this._paused) {
+            Log.v(this.TAG, 'Seek started, resuming transmuxer');
+            this.resumeTransmuxer();
+            this._media_element.removeEventListener('timeupdate', this.e.onMediaTimeUpdate);
+        }
+    }
+
+    public notifySeekEnd(): void {
+        this._seeking = false;
     }
 
     public suspendTransmuxer(): void {
