@@ -90,10 +90,11 @@ class TransmuxingController {
         this._probeTargetTime = null;
         this._probeAttempts = 0;
         this._probeCurrentOffset = 0;  // Track current probe offset
+        this._probeTimeout = null;  // Timeout for probe fallback
         this._discoveredKeyframes = new Map();  // Map<timestamp, fileposition>
         this._probeHistory = [];  // Array of {timestamp, fileposition} for better estimation
         this._maxProbeAttempts = 10;  // Maximum number of probing iterations
-        this._probeChunkSize = 256 * 1024;  // 256KB per probe request
+        this._probeChunkSize = 1024 * 1024;  // 1MB per probe request (increased from 256KB)
     }
 
     destroy() {
@@ -118,6 +119,11 @@ class TransmuxingController {
 
         this._discoveredKeyframes = null;
         this._probeHistory = null;
+
+        if (this._probeTimeout) {
+            clearTimeout(this._probeTimeout);
+            this._probeTimeout = null;
+        }
 
         this._emitter.removeAllListeners();
         this._emitter = null;
@@ -662,6 +668,36 @@ class TransmuxingController {
     }
 
     _onIOComplete(extraData) {
+        // If we're probing, the IO completion just means the probe chunk finished loading
+        // Don't emit LOADING_COMPLETE, just wait for the probe analysis
+        if (this._isProbing) {
+            Log.v(this.TAG, `IO complete during probing (loaded probe chunk), waiting for media segments`);
+            // If no media segments arrived yet, the probe chunk might not have contained a keyframe
+            // Give it a moment, then check if we need to try a different offset
+            if (this._probeTimeout) {
+                clearTimeout(this._probeTimeout);
+            }
+            this._probeTimeout = setTimeout(() => {
+                if (this._isProbing) {
+                    Log.w(this.TAG, `No video segments received after probe chunk loaded, trying next probe`);
+                    // Increment attempts and try again with a slightly different offset
+                    this._probeAttempts++;
+                    if (this._probeAttempts >= this._maxProbeAttempts) {
+                        Log.e(this.TAG, `Probe failed after ${this._maxProbeAttempts} attempts with no video data`);
+                        this._failProbing();
+                    } else {
+                        // Try probing a bit further ahead
+                        let newOffset = this._probeCurrentOffset + this._probeChunkSize;
+                        this._probeCurrentOffset = newOffset;
+                        Log.i(this.TAG, `Probing again at offset ${newOffset}`);
+                        this._internalAbort();
+                        this._loadSegment(this._currentSegmentIndex, newOffset);
+                    }
+                }
+            }, 500);  // Wait 500ms for media segments to arrive
+            return;
+        }
+
         let segmentIndex = extraData;
         let nextSegmentIndex = segmentIndex + 1;
 
@@ -706,9 +742,15 @@ class TransmuxingController {
 
     _onRemuxerMediaSegmentArrival(type, mediaSegment) {
         // If we're in probing mode, handle the probe data instead of playing it
-        if (this._isProbing && type === 'video') {
-            this._handleProbeArrival(mediaSegment);
-            return;
+        if (this._isProbing) {
+            if (type === 'video') {
+                Log.v(this.TAG, `Received video media segment during probing`);
+                this._handleProbeArrival(mediaSegment);
+                return;
+            } else {
+                Log.v(this.TAG, `Received ${type} media segment during probing, ignoring`);
+                return;  // Ignore audio segments during probing
+            }
         }
 
         if (this._pendingSeekTime != null) {
@@ -734,6 +776,12 @@ class TransmuxingController {
     }
 
     _handleProbeArrival(mediaSegment) {
+        // Clear the timeout since we received video data
+        if (this._probeTimeout) {
+            clearTimeout(this._probeTimeout);
+            this._probeTimeout = null;
+        }
+
         this._probeAttempts++;
 
         // Extract the first keyframe's timestamp and file position
@@ -791,6 +839,11 @@ class TransmuxingController {
         this._probeTargetTime = null;
         this._probeAttempts = 0;
 
+        if (this._probeTimeout) {
+            clearTimeout(this._probeTimeout);
+            this._probeTimeout = null;
+        }
+
         // Emit buffering end event
         this._emitter.emit(TransmuxingEvents.BUFFERING_END);
 
@@ -811,6 +864,12 @@ class TransmuxingController {
         this._isProbing = false;
         this._probeTargetTime = null;
         this._probeAttempts = 0;
+
+        if (this._probeTimeout) {
+            clearTimeout(this._probeTimeout);
+            this._probeTimeout = null;
+        }
+
         this._emitter.emit(TransmuxingEvents.BUFFERING_END);
 
         // Fallback: just start from beginning
