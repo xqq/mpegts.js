@@ -1818,7 +1818,8 @@ class FLVDemuxer {
                                         dropThisFrame = true;
                                     } else {
                                         Log.w(this.TAG, 'frame_num not continuous: ' + this._h264LastVideoFrame + '(' + this._h264LastVideoFrameDts + '), ' + 
-                                            result.data.frame_num + '(' + dts + '), but I frame not dropped, just warning.');
+                                            result.data.frame_num + '(' + dts + '), but I frame not dropped, last I frame ' + this._h264LastIFrameDts + 
+                                            ', gop duration: ' + this._h264MinGopDuration + ', just warning.');
                                         this._h264LastVideoFrame = result.data.frame_num;
                                         this._h264LastVideoFrameDts = dts;
                                         this._h264LastVideoFramePts = (dts + cts);
@@ -1834,6 +1835,7 @@ class FLVDemuxer {
                 }
             } else {
                 Log.w(this.TAG, 'parse slice fail, video sample, dts: ' + dts + ', size: ' + length + ', keyframe: ' + keyframe);
+                dropThisFrame = true;
             }
 
             if (!dropThisFrame) {
