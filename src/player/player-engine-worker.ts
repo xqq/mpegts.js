@@ -264,6 +264,9 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
         transmuxer.on(TransmuxingEvents.SMPTE2038_METADATA_ARRIVED, (smpte2038_metadata: any) => {
             emitPlayerEventsExtraData(PlayerEvents.SMPTE2038_METADATA_ARRIVED, smpte2038_metadata);
         });
+        transmuxer.on(TransmuxingEvents.SEI_ARRIVED, (sei_data: any) => {
+            emitPlayerEventsExtraData(PlayerEvents.SEI_ARRIVED, sei_data);
+        });
         transmuxer.on(TransmuxingEvents.SCTE35_METADATA_ARRIVED, (scte35_metadata: any) => {
             emitPlayerEventsExtraData(PlayerEvents.SCTE35_METADATA_ARRIVED, scte35_metadata);
         });

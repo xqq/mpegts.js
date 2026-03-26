@@ -4,6 +4,7 @@ import { SMPTE2038Data } from './smpte2038';
 import { SCTE35Data } from './scte35';
 import { KLVData } from './klv';
 import { PGSData } from './pgs-data';
+import { SEIData } from './sei';
 
 type OnErrorCallback = (type: string, info: string) => void;
 type OnMediaInfoCallback = (mediaInfo: MediaInfo) => void;
@@ -15,6 +16,7 @@ type onPGSSubitleDataCallback = (pgs_data: PGSData) => void;
 type OnSynchronousKLVMetadataCallback = (synchronous_klv_data: KLVData) => void;
 type OnAsynchronousKLVMetadataCallback = (asynchronous_klv_data: PESPrivateData) => void;
 type OnSMPTE2038MetadataCallback = (smpte2038_data: SMPTE2038Data) => void;
+type OnSEICallback = (sei_data: SEIData) => void;
 type OnSCTE35MetadataCallback = (scte35_data: SCTE35Data) => void;
 type OnPESPrivateDataCallback = (private_data: PESPrivateData) => void;
 type OnPESPrivateDataDescriptorCallback = (private_data_descriptor: PESPrivateDataDescriptor) => void;
@@ -31,6 +33,7 @@ export default abstract class BaseDemuxer {
     public onSynchronousKLVMetadata: OnSynchronousKLVMetadataCallback
     public onAsynchronousKLVMetadata: OnAsynchronousKLVMetadataCallback;
     public onSMPTE2038Metadata: OnSMPTE2038MetadataCallback;
+    public onSEI: OnSEICallback;
     public onSCTE35Metadata: OnSCTE35MetadataCallback;
     public onPESPrivateData: OnPESPrivateDataCallback;
     public onPESPrivateDataDescriptor: OnPESPrivateDataDescriptorCallback;
@@ -48,6 +51,7 @@ export default abstract class BaseDemuxer {
         this.onSynchronousKLVMetadata = null;
         this.onAsynchronousKLVMetadata = null;
         this.onSMPTE2038Metadata = null;
+        this.onSEI = null;
         this.onSCTE35Metadata = null;
         this.onPESPrivateData = null;
         this.onPESPrivateDataDescriptor = null;

@@ -66,6 +66,7 @@ export type WorkerMessagePacketPlayerEventExtraData = WorkerMessagePacketPlayerE
         | PlayerEvents.SYNCHRONOUS_KLV_METADATA_ARRIVED
         | PlayerEvents.ASYNCHRONOUS_KLV_METADATA_ARRIVED
         | PlayerEvents.SMPTE2038_METADATA_ARRIVED
+        | PlayerEvents.SEI_ARRIVED
         | PlayerEvents.SCTE35_METADATA_ARRIVED
         | PlayerEvents.PES_PRIVATE_DATA_DESCRIPTOR
         | PlayerEvents.PES_PRIVATE_DATA_ARRIVED,

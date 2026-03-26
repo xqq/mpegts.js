@@ -66,6 +66,7 @@ class Transmuxer {
             ctl.on(TransmuxingEvents.SYNCHRONOUS_KLV_METADATA_ARRIVED, this._onSynchronousKLVMetadataArrived.bind(this));
             ctl.on(TransmuxingEvents.ASYNCHRONOUS_KLV_METADATA_ARRIVED, this._onAsynchronousKLVMetadataArrived.bind(this));
             ctl.on(TransmuxingEvents.SMPTE2038_METADATA_ARRIVED, this._onSMPTE2038MetadataArrived.bind(this));
+            ctl.on(TransmuxingEvents.SEI_ARRIVED, this._onSEIArrived.bind(this));
             ctl.on(TransmuxingEvents.SCTE35_METADATA_ARRIVED, this._onSCTE35MetadataArrived.bind(this));
             ctl.on(TransmuxingEvents.PES_PRIVATE_DATA_DESCRIPTOR, this._onPESPrivateDataDescriptor.bind(this));
             ctl.on(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, this._onPESPrivateDataArrived.bind(this));
@@ -215,6 +216,12 @@ class Transmuxer {
         })
     }
 
+    _onSEIArrived (data) {
+        Promise.resolve().then(() => {
+            this._emitter.emit(TransmuxingEvents.SEI_ARRIVED, data);
+        })
+    }
+
     _onSCTE35MetadataArrived (data) {
         Promise.resolve().then(() => {
             this._emitter.emit(TransmuxingEvents.SCTE35_METADATA_ARRIVED, data);
@@ -295,6 +302,7 @@ class Transmuxer {
             case TransmuxingEvents.ASYNCHRONOUS_KLV_METADATA_ARRIVED:
             case TransmuxingEvents.SMPTE2038_METADATA_ARRIVED:
             case TransmuxingEvents.SCTE35_METADATA_ARRIVED:
+            case TransmuxingEvents.SEI_ARRIVED:
             case TransmuxingEvents.PES_PRIVATE_DATA_DESCRIPTOR:
             case TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED:
             case TransmuxingEvents.STATISTICS_INFO:

@@ -8,6 +8,8 @@ export enum H265NaluType {
     kSliceSPS = 33,
     kSlicePPS = 34,
     kSliceAUD = 35,
+    kSliceSEI = 39,
+    kSliceSEISuffix = 40,
 }
 
 export class H265NaluPayload {

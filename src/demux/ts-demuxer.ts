@@ -27,6 +27,7 @@ import SPSParser from './sps-parser';
 import { AACADTSParser, AACFrame, AACLOASParser, AudioSpecificConfig, LOASAACFrame } from './aac';
 import { MPEG4AudioObjectTypes, MPEG4SamplingFrequencyIndex } from './mpeg4-audio';
 import { PESPrivateData, PESPrivateDataDescriptor } from './pes-private-data';
+import { parseSEI } from './sei';
 import { readSCTE35, SCTE35Data } from './scte35';
 import { H265AnnexBParser, H265NaluHVC1, H265NaluPayload, H265NaluType, HEVCDecoderConfigurationRecord } from './h265';
 import H265Parser from './h265-parser';
@@ -1047,6 +1048,8 @@ class TSDemuxer extends BaseDemuxer {
             } else if (nalu_avc1.type === H264NaluType.kSliceNonIDR && random_access_indicator === 1) {
                 // For open-gop stream, use random_access_indicator to identify keyframe
                 keyframe = true;
+            } else if (nalu_avc1.type === H264NaluType.kSliceSEI) {
+                this.parseSEIPayload(nalu_payload.data, pts, 'h264');
             }
 
             // Push samples to remuxer only if initialization metadata has been dispatched
@@ -1127,6 +1130,8 @@ class TSDemuxer extends BaseDemuxer {
                 }
             } else if (nalu_hvc1.type === H265NaluType.kSliceIDR_W_RADL || nalu_hvc1.type === H265NaluType.kSliceIDR_N_LP || nalu_hvc1.type === H265NaluType.kSliceCRA_NUT) {
                 keyframe = true;
+            } else if (nalu_hvc1.type === H265NaluType.kSliceSEI || nalu_hvc1.type === H265NaluType.kSliceSEISuffix) {
+                this.parseSEIPayload(nalu_payload.data, pts, 'h265');
             }
 
             // Push samples to remuxer only if initialization metadata has been dispatched
@@ -2108,6 +2113,15 @@ class TSDemuxer extends BaseDemuxer {
         smpte2038_data.ancillaries = smpte2038parse(data);
         if (this.onSMPTE2038Metadata) {
             this.onSMPTE2038Metadata(smpte2038_data);
+        }
+    }
+
+    private parseSEIPayload(data: Uint8Array, pts: number, codec: 'h264' | 'h265') {
+        let timestamp = pts != undefined ? Math.floor(pts / this.timescale_) : undefined;
+        let sei_data = parseSEI(data, timestamp, codec);
+
+        if (sei_data && this.onSEI) {
+            this.onSEI(sei_data);
         }
     }
 
