@@ -23,8 +23,7 @@
     "serve": "webpack serve --mode=development --progress"
   },
   "dependencies": {
-    "es6-promise": "^4.2.5",
-    "webworkify-webpack": "xqq/webworkify-webpack"
+    "es6-promise": "^4.2.5"
   },
   "devDependencies": {
     "@types/node": "^10.12.18",

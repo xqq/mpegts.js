@@ -17,7 +17,7 @@
  */
 
 import * as EventEmitter from 'events';
-import * as work from 'webworkify-webpack';
+import * as work from '../utils/webworkify-webpack';
 import type PlayerEngine from './player-engine';
 import Log from '../utils/logger';
 import LoggingControl from '../utils/logging-control.js';

@@ -17,7 +17,7 @@
  */
 
 import EventEmitter from 'events';
-import work from 'webworkify-webpack';
+import work from '../utils/webworkify-webpack';
 import Log from '../utils/logger.js';
 import LoggingControl from '../utils/logging-control.js';
 import TransmuxingController from './transmuxing-controller.js';
