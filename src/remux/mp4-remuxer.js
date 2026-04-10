@@ -127,6 +127,15 @@ class MP4Remuxer {
         this._audioSegmentInfoList.clear();
     }
 
+    // Compatibility API: called by TransmuxingController on segment/file end.
+    // New remux pipeline keeps last sample in track queue for duration estimation,
+    // so there is no extra stashed buffer in remuxer to flush here.
+    // TODO: Project maintainer should decide whether to keep this no-op API long-term
+    // or introduce an explicit remuxer capability contract and remove this call path.
+    flushStashedSamples() {
+        // no-op
+    }
+
     remux(audioTrack, videoTrack) {
         if (!this._onMediaSegment) {
             throw new IllegalStateException('MP4Remuxer: onMediaSegment callback must be specificed!');

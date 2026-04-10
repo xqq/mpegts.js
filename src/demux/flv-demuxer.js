@@ -47,6 +47,9 @@ function ReadBig32(array, index) {
             (array[index + 3]));
 }
 
+const AUDIO_TRACK_DETECT_MAX_TAGS = 200;
+const AUDIO_TRACK_DETECT_MAX_BYTES = 512 * 1024;
+
 function isMacOS() {
     if (navigator.userAgentData?.platform === "macOS") return true;
 
@@ -89,6 +92,10 @@ class FLVDemuxer {
         this._metadata = null;
         this._audioMetadata = null;
         this._videoMetadata = null;
+
+        this._audioTagDetected = false;
+        this._audioTrackDetectTagCount = 0;
+        this._audioTrackDetectBytes = 0;
 
         this._h264SpsInfo = null;
         this._h264MaxFrameNum = -1;
@@ -291,6 +298,20 @@ class FLVDemuxer {
         return false;
     }
 
+    _tryFallbackToVideoOnly() {
+        if (!this._hasAudio || !this._hasVideo || this._audioInitialMetadataDispatched || this._audioTagDetected) {
+            return;
+        }
+
+        if (this._audioTrackDetectTagCount >= AUDIO_TRACK_DETECT_MAX_TAGS ||
+            this._audioTrackDetectBytes >= AUDIO_TRACK_DETECT_MAX_BYTES) {
+            Log.d(this.TAG, `No audio tag detected after scanning ${this._audioTrackDetectTagCount} tags, `
+                + `${this._audioTrackDetectBytes} bytes. Fallback to video-only mode.`);
+            this._hasAudio = false;
+            this._mediaInfo.hasAudio = false;
+        }
+    }
+
     // function parseChunks(chunk: ArrayBuffer, byteStart: number): number;
     parseChunks(chunk, byteStart) {
         if (!this._onError || !this._onMediaInfo || !this._onTrackMetadata || !this._onDataAvailable) {
@@ -361,6 +382,13 @@ class FLVDemuxer {
             }
 
             let dataOffset = offset + 11;
+            if (this._hasAudio && this._hasVideo && !this._audioInitialMetadataDispatched && !this._audioTagDetected) {
+                this._audioTrackDetectTagCount++;
+                this._audioTrackDetectBytes += 11 + dataSize + 4;
+                if (tagType === 8) {
+                    this._audioTagDetected = true;
+                }
+            }
 
             switch (tagType) {
                 case 8:  // Audio
@@ -382,14 +410,7 @@ class FLVDemuxer {
             offset += 11 + dataSize + 4;  // tagBody + dataSize + prevTagSize
         }
 
-        if (this._hasAudio && this._hasVideo && !this._audioInitialMetadataDispatched) {
-            // both audio & video, but audio initial meta data still not dispatched
-            let samples = this._videoTrack.samples;
-            if (samples.length > 0 && samples[samples.length - 1].dts > samples[0].dts + 3000) {
-                Log.d(this.TAG, 'we need regard it as video only, last sample: ' + samples[samples.length - 1].dts + ', first sample: ' + samples[0].dts);
-                this._hasAudio = false;
-            }
-        }
+        this._tryFallbackToVideoOnly();
 
         // dispatch parsed frames to consumer (typically, the remuxer)
         if (this._isInitialMetadataDispatched()) {
@@ -1834,8 +1855,10 @@ class FLVDemuxer {
                     this._h264LastVideoFrame = -1;
                 }
             } else {
-                Log.w(this.TAG, 'parse slice fail, video sample, dts: ' + dts + ', size: ' + length + ', keyframe: ' + keyframe);
-                dropThisFrame = true;
+                Log.d(this.TAG, 'parse slice fail, fallback keep sample, dts: ' + dts + ', size: ' + length + ', keyframe: ' + keyframe);
+                // Slice header parsing may fail on some valid streams (e.g. non-VCL first NALU).
+                // Fallback to keeping sample to avoid unnecessary frame loss.
+                dropThisFrame = false;
             }
 
             if (!dropThisFrame) {
