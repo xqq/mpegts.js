@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+import Log from '../utils/logger.js';
 import ExpGolomb from './exp-golomb.js';
 
 class SPSParser {
@@ -56,13 +57,14 @@ class SPSParser {
 
         gb.readByte();
         let profile_idc = gb.readByte();  // profile_idc
-        gb.readByte();  // constraint_set_flags[5] + reserved_zero[3]
+        gb.readByte();  // constraint_set_flags[6] + reserved_zero[2]
         let level_idc = gb.readByte();  // level_idc
         gb.readUEG();  // seq_parameter_set_id
 
         let profile_string = SPSParser.getProfileString(profile_idc);
         let level_string = SPSParser.getLevelString(level_idc);
         let chroma_format_idc = 1;
+        let separate_colour_plane_flag = 0;
         let chroma_format = 420;
         let chroma_format_table = [0, 420, 422, 444];
         let bit_depth_luma = 8;
@@ -72,10 +74,15 @@ class SPSParser {
             profile_idc === 244 || profile_idc === 44 || profile_idc === 83 ||
             profile_idc === 86 || profile_idc === 118 || profile_idc === 128 ||
             profile_idc === 138 || profile_idc === 144) {
-
             chroma_format_idc = gb.readUEG();
+            if (chroma_format_idc > 3) {
+                Log.e('SPSParser', 'illegal chroma format idc: ' + chroma_format_idc);
+                return {
+                };
+            }
+
             if (chroma_format_idc === 3) {
-                gb.readBits(1);  // separate_colour_plane_flag
+                separate_colour_plane_flag = gb.readBits(1);  // separate_colour_plane_flag
             }
             if (chroma_format_idc <= 3) {
                 chroma_format = chroma_format_table[chroma_format_idc];
@@ -97,12 +104,14 @@ class SPSParser {
                 }
             }
         }
-        gb.readUEG();  // log2_max_frame_num_minus4
-        let pic_order_cnt_type = gb.readUEG();
+        let log2_max_frame_num_minus4 = gb.readUEG();  // log2_max_frame_num_minus4
+        let pic_order_cnt_type = gb.readUEG();  // pic_order_cnt_type
+        let log2_max_pic_order_cnt_lsb_minus_4 = 0;
+        let delta_pic_order_always_zero_flag = 0;
         if (pic_order_cnt_type === 0) {
-            gb.readUEG();  // log2_max_pic_order_cnt_lsb_minus_4
+            log2_max_pic_order_cnt_lsb_minus_4 = gb.readUEG();  // log2_max_pic_order_cnt_lsb_minus_4
         } else if (pic_order_cnt_type === 1) {
-            gb.readBits(1);  // delta_pic_order_always_zero_flag
+            delta_pic_order_always_zero_flag = gb.readBits(1);  // delta_pic_order_always_zero_flag
             gb.readSEG();  // offset_for_non_ref_pic
             gb.readSEG();  // offset_for_top_to_bottom_field
             let num_ref_frames_in_pic_order_cnt_cycle = gb.readUEG();
@@ -212,9 +221,14 @@ class SPSParser {
             profile_string,  // baseline, high, high10, ...
             level_string,  // 3, 3.1, 4, 4.1, 5, 5.1, ...
             chroma_format_idc,
+            separate_colour_plane_flag,
             bit_depth: bit_depth_luma,  // 8bit, 10bit, ...
             bit_depth_luma,
             bit_depth_chroma,
+            log2_max_frame_num_minus4,
+            pic_order_cnt_type,
+            log2_max_pic_order_cnt_lsb_minus_4,
+            delta_pic_order_always_zero_flag,
             ref_frames,
             chroma_format,  // 4:2:0, 4:2:2, ...
             chroma_format_string: SPSParser.getChromaFormatString(chroma_format),
@@ -291,6 +305,11 @@ class SPSParser {
             default:
                 return 'Unknown';
         }
+    }
+
+    static getChromaFormat(chroma_format_idc) {
+        const chroma_format_table = [0, 420, 422, 444];
+        return chroma_format_table[chroma_format_idc];
     }
 
 }

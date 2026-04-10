@@ -26,6 +26,7 @@ import H265Parser from './h265-parser.js';
 import buffersAreEqual from '../utils/typedarray-equality.ts';
 import AV1OBUParser from './av1-parser.ts';
 import ExpGolomb from './exp-golomb.js';
+import {FrameType, SliceHeaderParser} from './slice-header-parser.js';
 
 function Swap16(src) {
     return (((src >>> 8) & 0xFF) |
@@ -46,11 +47,22 @@ function ReadBig32(array, index) {
             (array[index + 3]));
 }
 
+const AUDIO_TRACK_DETECT_MAX_TAGS = 200;
+const AUDIO_TRACK_DETECT_MAX_BYTES = 512 * 1024;
+
+function isMacOS() {
+    if (navigator.userAgentData?.platform === "macOS") return true;
+
+    return false;
+}
 
 class FLVDemuxer {
 
     constructor(probeData, config) {
         this.TAG = 'FLVDemuxer';
+
+        this._isMacOS = isMacOS();
+        Log.d(this.TAG, 'isMacOS: ' + this._isMacOS);
 
         this._config = config;
 
@@ -80,6 +92,20 @@ class FLVDemuxer {
         this._metadata = null;
         this._audioMetadata = null;
         this._videoMetadata = null;
+
+        this._audioTagDetected = false;
+        this._audioTrackDetectTagCount = 0;
+        this._audioTrackDetectBytes = 0;
+
+        this._h264SpsInfo = null;
+        this._h264MaxFrameNum = -1;
+        this._h264HasBFrame = false;
+        this._h264DroppingFrame = false;
+        this._h264LastVideoFrame = -1;
+        this._h264LastVideoFrameDts = -1;
+        this._h264LastVideoFramePts = -1;
+        this._h264LastIFrameDts = -1;
+        this._h264MinGopDuration = -1;
 
         this._naluLengthSize = 4;
         this._timestampBase = 0;  // int32, in milliseconds
@@ -272,6 +298,20 @@ class FLVDemuxer {
         return false;
     }
 
+    _tryFallbackToVideoOnly() {
+        if (!this._hasAudio || !this._hasVideo || this._audioInitialMetadataDispatched || this._audioTagDetected) {
+            return;
+        }
+
+        if (this._audioTrackDetectTagCount >= AUDIO_TRACK_DETECT_MAX_TAGS ||
+            this._audioTrackDetectBytes >= AUDIO_TRACK_DETECT_MAX_BYTES) {
+            Log.d(this.TAG, `No audio tag detected after scanning ${this._audioTrackDetectTagCount} tags, `
+                + `${this._audioTrackDetectBytes} bytes. Fallback to video-only mode.`);
+            this._hasAudio = false;
+            this._mediaInfo.hasAudio = false;
+        }
+    }
+
     // function parseChunks(chunk: ArrayBuffer, byteStart: number): number;
     parseChunks(chunk, byteStart) {
         if (!this._onError || !this._onMediaInfo || !this._onTrackMetadata || !this._onDataAvailable) {
@@ -342,6 +382,13 @@ class FLVDemuxer {
             }
 
             let dataOffset = offset + 11;
+            if (this._hasAudio && this._hasVideo && !this._audioInitialMetadataDispatched && !this._audioTagDetected) {
+                this._audioTrackDetectTagCount++;
+                this._audioTrackDetectBytes += 11 + dataSize + 4;
+                if (tagType === 8) {
+                    this._audioTagDetected = true;
+                }
+            }
 
             switch (tagType) {
                 case 8:  // Audio
@@ -362,6 +409,8 @@ class FLVDemuxer {
 
             offset += 11 + dataSize + 4;  // tagBody + dataSize + prevTagSize
         }
+
+        this._tryFallbackToVideoOnly();
 
         // dispatch parsed frames to consumer (typically, the remuxer)
         if (this._isInitialMetadataDispatched()) {
@@ -1321,6 +1370,11 @@ class FLVDemuxer {
                 continue;
             }
 
+            if (Object.keys(config).length === 0) continue;
+
+            this._h264SpsInfo = config;
+            this._h264MaxFrameNum = Math.pow(2, config.log2_max_frame_num_minus4 + 4);
+
             meta.codecWidth = config.codec_size.width;
             meta.codecHeight = config.codec_size.height;
             meta.presentWidth = config.present_size.width;
@@ -1686,11 +1740,132 @@ class FLVDemuxer {
                 cts: cts,
                 pts: (dts + cts)
             };
+
             if (keyframe) {
                 avcSample.fileposition = tagPosition;
+                if (this._h264LastIFrameDts !== -1) {
+                    let gopDuration = dts - this._h264LastIFrameDts;
+                    if (gopDuration > 0 && gopDuration < 50000) {
+                        // valid GOP duration 0~50s
+                        if (this._h264MinGopDuration === -1 || gopDuration < this._h264MinGopDuration) {
+                            this._h264MinGopDuration = gopDuration;
+                            Log.v(this.TAG, 'GOP minimum duration: ' + this._h264MinGopDuration);
+                        }
+                    }
+                }
+
+                this._h264LastIFrameDts = dts;
             }
-            track.samples.push(avcSample);
-            track.length += length;
+
+            let dropThisFrame = false;
+            let slice = units[0].data.slice(lengthSize, units[0].data.length - lengthSize);
+            let result = SliceHeaderParser.parseSliceHeader(slice, this._h264SpsInfo);
+            if (result.success === true) {
+                Log.d(this.TAG, 'video sample, dts: ' + dts + ', size: ' + length + ', frame_type: ' + result.data.frame_type + 
+                    ', frame_num: ' + result.data.frame_num);
+
+                if (result.data.frame_type === FrameType.FrameType_B) {
+                    this._h264HasBFrame = true;
+                }
+
+                // drop frame only for no B Frame case
+                if (this._h264HasBFrame === false) {
+                    if (result.data.frame_type === FrameType.FrameType_I) {
+                        // I frame
+                        if (this._h264DroppingFrame) {
+                            // after dropping frames, we need modify the timestamp for I frame
+                            // since if non I frame has big duration, MSE will hang
+                            let meta = this._videoMetadata;
+                            if (meta) {
+                                Log.w(this.TAG, 'dropping meet I frame, need stop dropping, last video frame dts: ' + 
+                                    this._h264LastVideoFrameDts + ', I frame dts: ' + dts + ', ref duration: ' + meta.refSampleDuration);
+                                avcSample.dts = this._h264LastVideoFrameDts + meta.refSampleDuration;
+                                avcSample.pts = this._h264LastVideoFramePts + meta.refSampleDuration;
+                            } else {
+                                Log.w(this.TAG, 'dropping meet I frame, need stop dropping, last video frame dts: ' + 
+                                    this._h264LastVideoFrameDts + ', I frame dts: ' + dts + ', ref duration: nil');
+                                avcSample.dts = this._h264LastVideoFrameDts + 40;
+                                avcSample.pts = this._h264LastVideoFramePts + 40;
+                            }
+                        }
+                        this._h264DroppingFrame = false;
+                        this._h264LastVideoFrame = result.data.frame_num;
+                        this._h264LastVideoFrameDts = dts;
+                        this._h264LastVideoFramePts = (dts + cts);
+                    } else {
+                        // not I frame
+                        if (this._h264DroppingFrame) {
+                            dropThisFrame = true;
+                        } else {
+                            // if not dropping frame, we need judge if need start dropping
+                            // 1, first frame;
+                            // 2, normal case;
+                            // 3, normal frame_num overflow case;
+                            if ((this._h264LastVideoFrame === -1) || 
+                                (this._h264LastVideoFrame + 1 === result.data.frame_num) || 
+                                ((this._h264LastVideoFrame + 1) === this._h264MaxFrameNum && result.data.frame_num === 0)) {
+                                this._h264LastVideoFrame = result.data.frame_num;
+                                this._h264LastVideoFrameDts = dts;
+                                this._h264LastVideoFramePts = (dts + cts);
+                            } else if (this._h264LastVideoFrame === result.data.frame_num) {
+                                // if same frame_num, we need judge timestamp
+                                if (this._h264MinGopDuration !== -1 && dts > this._h264LastVideoFrameDts + this._h264MinGopDuration / 2) {
+                                    // maybe cross GOP
+                                    Log.w(this.TAG, 'frame_num not continuous(cross GOP): ' + this._h264LastVideoFrame + '(' + this._h264LastVideoFrameDts + '), ' + 
+                                        result.data.frame_num + '(' + dts + '), need dropping...');
+                                    this._h264DroppingFrame = true;
+                                    dropThisFrame = true;
+                                } else {
+                                    // in same GOP, it is normal case since non-reference frame will use the same frame_num as previous reference frame
+                                    this._h264LastVideoFrame = result.data.frame_num;
+                                    this._h264LastVideoFrameDts = dts;
+                                    this._h264LastVideoFramePts = (dts + cts);
+                                }
+                            } else {
+                                if (this._isMacOS) {
+                                    Log.w(this.TAG, 'frame_num not continuous: ' + this._h264LastVideoFrame + '(' + this._h264LastVideoFrameDts + '), ' + 
+                                        result.data.frame_num + '(' + dts + '), need dropping...');
+                                    this._h264DroppingFrame = true;
+                                    dropThisFrame = true;
+                                } else {
+                                    if (this._h264LastIFrameDts !== -1 && this._h264MinGopDuration !== -1 && 
+                                        dts >= this._h264LastIFrameDts + this._h264MinGopDuration) {
+                                        // only I frame dropped, we need drop frames to next I frame
+                                        // it seems MSE can handle P frames dropped case
+                                        Log.w(this.TAG, 'frame_num not continuous: ' + this._h264LastVideoFrame + '(' + this._h264LastVideoFrameDts + '), ' + 
+                                            result.data.frame_num + '(' + dts + '), and I frame seems dropped, last I frame ' + this._h264LastIFrameDts + 
+                                            ', gop duration: ' + this._h264MinGopDuration + ', need dropping...');
+                                        this._h264DroppingFrame = true;
+                                        dropThisFrame = true;
+                                    } else {
+                                        Log.w(this.TAG, 'frame_num not continuous: ' + this._h264LastVideoFrame + '(' + this._h264LastVideoFrameDts + '), ' + 
+                                            result.data.frame_num + '(' + dts + '), but I frame not dropped, last I frame ' + this._h264LastIFrameDts + 
+                                            ', gop duration: ' + this._h264MinGopDuration + ', just warning.');
+                                        this._h264LastVideoFrame = result.data.frame_num;
+                                        this._h264LastVideoFrameDts = dts;
+                                        this._h264LastVideoFramePts = (dts + cts);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // B frame detected, disable drop frame mechanism
+                    this._h264DroppingFrame = false;
+                    this._h264LastVideoFrame = -1;
+                }
+            } else {
+                Log.d(this.TAG, 'parse slice fail, fallback keep sample, dts: ' + dts + ', size: ' + length + ', keyframe: ' + keyframe);
+                // Slice header parsing may fail on some valid streams (e.g. non-VCL first NALU).
+                // Fallback to keeping sample to avoid unnecessary frame loss.
+                dropThisFrame = false;
+            }
+
+            if (!dropThisFrame) {
+                // Log.d(this.TAG, 'video sample, dts: ' + dts + ', size: ' + length + ', keyframe: ' + keyframe);
+                track.samples.push(avcSample);
+                track.length += length;
+            }
         }
     }
 
