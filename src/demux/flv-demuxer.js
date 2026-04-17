@@ -470,8 +470,7 @@ class FLVDemuxer {
     }
 
     _parseSEIPayload(data, pts, codec) {
-        let timestamp = pts != undefined ? Math.floor(pts / this._timescale) : undefined;
-        let sei_data = parseSEI(data, timestamp, codec);
+        let sei_data = parseSEI(data, pts, codec);
 
         if (sei_data && typeof this._onSeiArrived === 'function') {
             this._onSeiArrived(sei_data);
@@ -1694,7 +1693,7 @@ class FLVDemuxer {
             length += data.byteLength;
 
             if (unitType === 6) {  // SEI
-                this._parseSEIPayload(data, dts + cts, 'h264');
+                this._parseSEIPayload(data.subarray(lengthSize), dts + cts, 'h264');
             }
 
             offset += lengthSize + naluSize;
@@ -1756,7 +1755,7 @@ class FLVDemuxer {
             length += data.byteLength;
 
             if (unitType === 39 || unitType === 40) {  // Prefix / Suffix SEI
-                this._parseSEIPayload(data, dts + cts, 'h265');
+                this._parseSEIPayload(data.subarray(lengthSize), dts + cts, 'h265');
             }
 
             offset += lengthSize + naluSize;
