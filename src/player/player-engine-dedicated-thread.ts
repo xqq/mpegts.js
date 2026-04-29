@@ -375,7 +375,7 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
             case 'mse_init': {
                 const packet = message_packet as WorkerMessagePacketMSEInit;
                 // Use ManagedMediaSource only if w3c MediaSource is not available (e.g. iOS Safari)
-                const use_managed_media_source = ('ManagedMediaSource' in self) && !('MediaSource' in self);
+                const use_managed_media_source = ('ManagedMediaSource' in self) && (!('MediaSource' in self) || !self.MediaSource);
                 if (use_managed_media_source) {
                     // When using ManagedMediaSource, MediaSource will not open unless disableRemotePlayback is set to true
                     this._media_element['disableRemotePlayback'] = true;
