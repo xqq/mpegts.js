@@ -26,6 +26,7 @@ import H265Parser from './h265-parser.js';
 import buffersAreEqual from '../utils/typedarray-equality.ts';
 import AV1OBUParser from './av1-parser.ts';
 import ExpGolomb from './exp-golomb.js';
+import { parseSEI } from './sei';
 
 function Swap16(src) {
     return (((src >>> 8) & 0xFF) |
@@ -60,6 +61,7 @@ class FLVDemuxer {
         this._onScriptDataArrived = null;
         this._onTrackMetadata = null;
         this._onDataAvailable = null;
+        this._onSeiArrived = null;
 
         this._dataOffset = probeData.dataOffset;
         this._firstParse = true;
@@ -132,6 +134,7 @@ class FLVDemuxer {
         this._onScriptDataArrived = null;
         this._onTrackMetadata = null;
         this._onDataAvailable = null;
+        this._onSeiArrived = null;
     }
 
     static probe(buffer) {
@@ -201,6 +204,14 @@ class FLVDemuxer {
 
     set onScriptDataArrived(callback) {
         this._onScriptDataArrived = callback;
+    }
+
+    get onSeiArrived() {
+        return this._onSeiArrived
+    }
+
+    set onSeiArrived(callback) {
+        this._onSeiArrived = callback;
     }
 
     // prototype: function(type: number, info: string): void
@@ -455,6 +466,14 @@ class FLVDemuxer {
             if (this._onScriptDataArrived) {
                 this._onScriptDataArrived(Object.assign({}, scriptData));
             }
+        }
+    }
+
+    _parseSEIPayload(data, pts, codec) {
+        let sei_data = parseSEI(data, pts, codec);
+
+        if (sei_data && typeof this._onSeiArrived === 'function') {
+            this._onSeiArrived(sei_data);
         }
     }
 
@@ -1673,6 +1692,10 @@ class FLVDemuxer {
             units.push(unit);
             length += data.byteLength;
 
+            if (unitType === 6) {  // SEI
+                this._parseSEIPayload(data.subarray(lengthSize), dts + cts, 'h264');
+            }
+
             offset += lengthSize + naluSize;
         }
 
@@ -1730,6 +1753,10 @@ class FLVDemuxer {
             let unit = {type: unitType, data: data};
             units.push(unit);
             length += data.byteLength;
+
+            if (unitType === 39 || unitType === 40) {  // Prefix / Suffix SEI
+                this._parseSEIPayload(data.subarray(lengthSize), dts + cts, 'h265');
+            }
 
             offset += lengthSize + naluSize;
         }
