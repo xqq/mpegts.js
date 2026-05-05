@@ -1,14 +1,12 @@
 {
   "compilerOptions": {
-    "outDir": "./dist/",
     "allowJs": true,
     "sourceMap": true,
     "module": "es6",
     "moduleResolution": "node",
     "target": "es5",
     "experimentalDecorators": true,
-    "declaration": true,
-    "declarationDir": "./d.ts/",
+    "noEmit": true,
     "types": ["node"],
     "lib": ["dom", "es5", "es2015.promise", "es2015.collection", "ESNext", "WebWorker"]
   },

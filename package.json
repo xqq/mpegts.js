@@ -20,7 +20,7 @@
     "build": "webpack --mode=production --progress",
     "build:debug": "webpack --mode=development --progress",
     "lint": "eslint src webpack.config.js",
-    "tsc": "tsc -p tsconfig.json --noEmit --skipLibCheck && tsc -p types/tsconfig.json --skipLibCheck",
+    "tsc": "tsc -p tsconfig.json --skipLibCheck && tsc -p types/tsconfig.json --skipLibCheck",
     "check": "pnpm lint && pnpm tsc",
     "watch": "webpack --mode=development --progress --watch",
     "serve": "webpack serve --mode=development --progress",
