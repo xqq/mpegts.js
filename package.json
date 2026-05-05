@@ -37,6 +37,7 @@
     "file-loader": "^3.0.1",
     "loader-utils": ">=1.4.1",
     "minimist": ">=1.2.6",
+    "prettier": "^3.8.3",
     "socket.io-parser": ">=3.3.3",
     "source-map-loader": "^0.2.4",
     "ssri": ">=8.0.1",

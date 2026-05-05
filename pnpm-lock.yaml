@@ -45,6 +45,9 @@ importers:
       minimist:
         specifier: '>=1.2.6'
         version: 1.2.8
+      prettier:
+        specifier: ^3.8.3
+        version: 3.8.3
       socket.io-parser:
         specifier: '>=3.3.3'
         version: 4.2.6
@@ -1944,6 +1947,11 @@ packages:
   prelude-ls@1.1.2:
     resolution: {integrity: sha512-ESF23V4SKG6lVSGZgYNpbsiaAkdab6ZgOxe52p7+Kid3W3u3bxR4Vfd/o21dmN7jSt0IwgZ4v5MUd26FEtXE9w==}
     engines: {node: '>= 0.8.0'}
+
+  prettier@3.8.3:
+    resolution: {integrity: sha512-7igPTM53cGHMW8xWuVTydi2KO233VFiTNyF5hLJqpilHfmn8C8gPf+PS7dUT64YcXFbiMGZxS9pCSxL/Dxm/Jw==}
+    engines: {node: '>=14'}
+    hasBin: true
 
   process-nextick-args@2.0.1:
     resolution: {integrity: sha512-3ouUOpQhtgrbOa17J7+uxOTpITYWaGP7/AhoR3+A+/1e9skrzelGi/dXzEYyvbxubEF6Wn2ypscTKiKJFFn1ag==}
@@ -4966,6 +4974,8 @@ snapshots:
   possible-typed-array-names@1.1.0: {}
 
   prelude-ls@1.1.2: {}
+
+  prettier@3.8.3: {}
 
   process-nextick-args@2.0.1: {}
 
