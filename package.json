@@ -19,6 +19,9 @@
   "scripts": {
     "build": "webpack --mode=production --progress",
     "build:debug": "webpack --mode=development --progress",
+    "lint": "eslint src webpack.config.js",
+    "tsc": "tsc -p tsconfig.json --noEmit --skipLibCheck && tsc -p types/tsconfig.json --skipLibCheck",
+    "check": "pnpm lint && pnpm tsc",
     "watch": "webpack --mode=development --progress --watch",
     "serve": "webpack serve --mode=development --progress"
   },
@@ -26,15 +29,15 @@
     "es6-promise": "^4.2.5"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@types/express-serve-static-core": "4.17.37",
-    "@types/node": "^10.12.18",
-    "@typescript-eslint/eslint-plugin": "^1.4.2",
-    "@typescript-eslint/parser": "^1.4.2",
+    "@types/node": "^18.19.130",
     "@webpack-cli/serve": "^1.7.0",
     "browser-sync": "^2.26.10",
-    "eslint": "^5.15.0",
+    "eslint": "^9.39.4",
     "exports-loader": "^0.7.0",
     "file-loader": "^3.0.1",
+    "globals": "^17.6.0",
     "loader-utils": ">=1.4.1",
     "minimist": ">=1.2.6",
     "prettier": "^3.8.3",
@@ -44,6 +47,7 @@
     "terser-webpack-plugin": "^1.2.3",
     "ts-loader": "^8.4.0",
     "typescript": "^5.2.2",
+    "typescript-eslint": "^8.59.2",
     "webpack": "^4.47.0",
     "webpack-cli": "^4.4.0",
     "webpack-dev-server": "^4.9.3",
