@@ -74,9 +74,8 @@ npm install --save mpegts.js
 
 ## Build
 ```bash
-npm install                 # install dev-dependencies
-npm install -g webpack-cli  # install build tool
-npm run build               # packaged & minimized js will be emitted in dist folder
+pnpm install
+pnpm build
 ```
 
 [cnpm](https://github.com/cnpm/cnpm) mirror is recommended if you are in Mainland China.
@@ -132,9 +131,8 @@ See [api.md](docs/api.md)
 
 ## Debug
 ```bash
-npm install                 # install dev-dependencies
-npm install -g webpack-cli  # install build tool
-npm run build:debug         # packaged & minimized js will be emitted in dist folder
+pnpm install
+pnpm build:debug
 ```
 
 ## Design

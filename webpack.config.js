@@ -42,7 +42,7 @@ module.exports = {
             {
                 test: /\.(ts|js)$/,
                 use: 'ts-loader',
-                exclude: /node-modules/
+                exclude: /node_modules/
             },
             {
                 enforce: 'pre',
