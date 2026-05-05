@@ -23,7 +23,8 @@
     "tsc": "tsc -p tsconfig.json --noEmit --skipLibCheck && tsc -p types/tsconfig.json --skipLibCheck",
     "check": "pnpm lint && pnpm tsc",
     "watch": "webpack --mode=development --progress --watch",
-    "serve": "webpack serve --mode=development --progress"
+    "serve": "webpack serve --mode=development --progress",
+    "prepare": "husky"
   },
   "dependencies": {
     "es6-promise": "^4.2.5"
@@ -38,6 +39,8 @@
     "exports-loader": "^0.7.0",
     "file-loader": "^3.0.1",
     "globals": "^17.6.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "loader-utils": ">=1.4.1",
     "minimist": ">=1.2.6",
     "prettier": "^3.8.3",
@@ -59,5 +62,14 @@
   "engines": {
     "node": ">=18.12.0",
     "pnpm": ">=10"
+  },
+  "lint-staged": {
+    "*.{js,mjs,cjs,ts,mts,cts}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "!(*.js|*.mjs|*.cjs|*.ts|*.mts|*.cts)": [
+      "prettier --write --ignore-unknown"
+    ]
   }
 }
