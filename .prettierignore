@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+build
+tmp
+.local
+pnpm-lock.yaml
+package-lock.json
+d.ts
