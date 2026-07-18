@@ -179,7 +179,9 @@ class FetchStreamLoader extends BaseLoader {
             if (this._abortController) {
                 try {
                     this._abortController.abort();
-                } catch (e) {}
+                } catch (e) {
+                    // Ignore abort exceptions while tearing down an in-flight request.
+                }
             }
         }
     }

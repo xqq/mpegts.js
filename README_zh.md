@@ -73,9 +73,8 @@ npm install --save mpegts.js
 
 ## Build
 ```bash
-npm install                 # install dev-dependencies
-npm install -g webpack-cli  # install build tool
-npm run build               # packaged & minimized js will be emitted in dist folder
+pnpm install
+pnpm build
 ```
 
 若在中国大陆可尝试 [cnpm](https://github.com/cnpm/cnpm) 镜像。
@@ -106,7 +105,7 @@ npm run build               # packaged & minimized js will be emitted in dist fo
 ## Limitations
 - 不支持 mpeg2video
 - IE11 等旧浏览器不支持 HTTP MPEG2-TS/FLV 直播流回放
-- iOS 由于屏蔽了 [Media Source Extensions][] 因而无法使用，但在 iPadOS 上可用
+- iOS 17.1+ 可通过 Apple 的 ManagedMediaSource API 使用；iOS 17.0 及更早版本仍不可用
 
 ## Features inherited from flv.js
 - H.264 + AAC / MP3 编码的 FLV 文件回放
@@ -131,9 +130,8 @@ npm run build               # packaged & minimized js will be emitted in dist fo
 
 ## Debug
 ```bash
-npm install                 # install dev-dependencies
-npm install -g webpack-cli  # install build tool
-npm run build:debug         # packaged & minimized js will be emitted in dist folder
+pnpm install
+pnpm build:debug
 ```
 
 ## Design
