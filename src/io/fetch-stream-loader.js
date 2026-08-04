@@ -123,6 +123,24 @@ class FetchStreamLoader extends BaseLoader {
             params.signal = this._abortController.signal;
         }
 
+        // Validate URL scheme to prevent SSRF via non-http(s) protocols
+        try {
+            let parsedURL = new URL(seekConfig.url);
+            if (parsedURL.protocol !== 'http:' && parsedURL.protocol !== 'https:') {
+                this._status = LoaderStatus.kError;
+                if (this._onError) {
+                    this._onError(LoaderErrors.EXCEPTION, {code: -1, msg: 'FetchStreamLoader: URL scheme not allowed: ' + parsedURL.protocol});
+                }
+                return;
+            }
+        } catch (e) {
+            this._status = LoaderStatus.kError;
+            if (this._onError) {
+                this._onError(LoaderErrors.EXCEPTION, {code: -1, msg: 'FetchStreamLoader: Invalid URL: ' + e.message});
+            }
+            return;
+        }
+
         this._status = LoaderStatus.kConnecting;
         self.fetch(seekConfig.url, params).then((res) => {
             if (this._requestAbort) {
