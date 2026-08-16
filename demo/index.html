@@ -16,6 +16,8 @@
                     <label for="sURL">Stream URL:</label>
                     <input id="sURL" type="text" value="http://127.0.0.1/flv/7182741-1.flv" />
                     <button onclick="switch_mds()">Switch to MediaDataSource</button>
+                    <label for="file">FLV File:</label>
+                    <input type="file" id="file" accept=".flv" onchange="flv_file_load()" />
                 </div>
                 <div class="options">
                     <input type="checkbox" id="isLive" onchange="saveSettings()" checked />
@@ -105,6 +107,31 @@
             });
             player.attachMediaElement(element);
             player.load();
+        }
+
+        function flv_file_load() {
+            var fileEl = document.getElementById('file');
+            var file = fileEl.files[0];
+
+            if (!file) {
+                return;
+            }
+
+            console.log('FLV File:', file);
+
+            var i;
+            var mediaDataSource = {
+                type: 'flv'
+            };
+            for (i = 0; i < checkBoxFields.length; i++) {
+                var field = checkBoxFields[i];
+                /** @type {HTMLInputElement} */
+                var checkbox = document.getElementById(field);
+                mediaDataSource[field] = checkbox.checked;
+            }
+            mediaDataSource['url'] = URL.createObjectURL(file);
+            console.log('MediaDataSource:', mediaDataSource);
+            player_load_mds(mediaDataSource);
         }
 
         function player_start() {
