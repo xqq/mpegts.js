@@ -121,6 +121,12 @@ class FetchStreamLoader extends BaseLoader {
         if (self.AbortController) {
             this._abortController = new self.AbortController();
             params.signal = this._abortController.signal;
+
+            if (this._config.requestTimeout !== Infinity && this._config.requestTimeout > 0) {
+                this._timeoutId = self.setTimeout(() => {
+                    this.abort('timeout');
+                }, this._config.requestTimeout);
+            }
         }
 
         this._status = LoaderStatus.kConnecting;
@@ -130,6 +136,9 @@ class FetchStreamLoader extends BaseLoader {
                 res.body.cancel();
                 return;
             }
+
+            this.clearFetchTimeout();
+
             if (res.ok && (res.status >= 200 && res.status <= 299)) {
                 if (res.url !== seekConfig.url) {
                     if (this._onURLRedirect) {
@@ -159,8 +168,18 @@ class FetchStreamLoader extends BaseLoader {
             }
         }).catch((e) => {
             if (this._abortController && this._abortController.signal.aborted) {
+                if (this._abortController.signal.reason === 'timeout') {
+                    this._status = LoaderStatus.kError;
+                    if (this._onError) {
+                        this._onError(LoaderErrors.CONNECTING_TIMEOUT, {code: -1, msg: 'fetch stream loader connecting timeout'});
+                    } else {
+                        throw new RuntimeException('FetchStreamLoader: connecting timeout');
+                    }
+                }
                 return;
             }
+
+            this.clearFetchTimeout();
 
             this._status = LoaderStatus.kError;
             if (this._onError) {
@@ -171,14 +190,16 @@ class FetchStreamLoader extends BaseLoader {
         });
     }
 
-    abort() {
+    abort(reason) {
         this._requestAbort = true;
+
+        this.clearFetchTimeout();
 
         if (this._status !== LoaderStatus.kBuffering || !Browser.chrome) {
             // Chrome may throw Exception-like things here, avoid using if is buffering
             if (this._abortController) {
                 try {
-                    this._abortController.abort();
+                    this._abortController.abort(reason);
                 } catch (e) {}
             }
         }
@@ -261,6 +282,12 @@ class FetchStreamLoader extends BaseLoader {
         });
     }
 
+    clearFetchTimeout() {
+        if (this._timeoutId) {
+            self.clearTimeout(this._timeoutId);
+            this._timeoutId = null;
+        }
+    }
 }
 
 export default FetchStreamLoader;
