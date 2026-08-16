@@ -1687,10 +1687,14 @@ class FLVDemuxer {
                 keyframe = true;
             }
 
-            let data = new Uint8Array(arrayBuffer, dataOffset + offset, lengthSize + naluSize);
-            let unit = {type: unitType, data: data};
-            units.push(unit);
-            length += data.byteLength;
+            if (this._config.dropSEI && unitType === 6) { // SEI
+                // skip SEI Nalu
+            } else {
+                let data = new Uint8Array(arrayBuffer, dataOffset + offset, lengthSize + naluSize);
+                let unit = {type: unitType, data: data};
+                units.push(unit);
+                length += data.byteLength;
+            }
 
             if (unitType === 6) {  // SEI
                 this._parseSEIPayload(data.subarray(lengthSize), dts + cts, 'h264');
@@ -1749,10 +1753,14 @@ class FLVDemuxer {
                 keyframe = true;
             }
 
-            let data = new Uint8Array(arrayBuffer, dataOffset + offset, lengthSize + naluSize);
-            let unit = {type: unitType, data: data};
-            units.push(unit);
-            length += data.byteLength;
+            if (this._config.dropSEI && (uintType === 39 || uintType === 40)) { // SEI
+                // drop SEI Nalu
+            } else {
+                let data = new Uint8Array(arrayBuffer, dataOffset + offset, lengthSize + naluSize);
+                let unit = {type: unitType, data: data};
+                units.push(unit);
+                length += data.byteLength;
+            }
 
             if (unitType === 39 || unitType === 40) {  // Prefix / Suffix SEI
                 this._parseSEIPayload(data.subarray(lengthSize), dts + cts, 'h265');
