@@ -6,6 +6,10 @@
         "sourceMap": true,
         "module": "es6",
         "target": "es5",
+        // TypeScript 6 deprecates target: es5 and errors without this acknowledgement.
+        // The vendored webworkify shim rebuilds worker source from
+        // Function.prototype.toString(), so the output must stay ES5 for now.
+        "ignoreDeprecations": "6.0",
         "experimentalDecorators": true,
         "strict": true,
         "declaration": true,
