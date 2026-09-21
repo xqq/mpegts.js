@@ -24,12 +24,12 @@ class SeekingHandler {
     private readonly TAG: string = 'SeekingHandler';
 
     private _config: any = null;
-    private _media_element: HTMLMediaElement = null;
+    private _media_element: HTMLMediaElement;
     private _always_seek_keyframe: boolean = false;
-    private _on_unbuffered_seek: (milliseconds: number) => void = null;
+    private _on_unbuffered_seek: (milliseconds: number) => void;
 
     private _request_set_current_time: boolean = false;
-    private _seek_request_record_clocktime?: number = null;
+    private _seek_request_record_clocktime: number | null = null;
     private _idr_sample_list: IDRSampleList = new IDRSampleList();
 
     private e?: any = null;
@@ -47,9 +47,12 @@ class SeekingHandler {
             onMediaSeeking: this._onMediaSeeking.bind(this),
         };
 
+        // Browser.version.build is absent when the UA reports fewer than three version
+        // components. Assert rather than defaulting: `undefined < 2661` is false today,
+        // and a `?? 0` fallback would flip this branch to true for those UAs.
         let chrome_need_idr_fix = (Browser.chrome &&
                                   (Browser.version.major < 50 ||
-                                  (Browser.version.major === 50 && Browser.version.build < 2661)));
+                                  (Browser.version.major === 50 && Browser.version.build! < 2661)));
         this._always_seek_keyframe = (chrome_need_idr_fix || Browser.msedge || Browser.msie) ? true : false;
         if (this._always_seek_keyframe) {
             this._config.accurateSeek = false;
@@ -60,10 +63,10 @@ class SeekingHandler {
 
     public destroy(): void {
         this._idr_sample_list.clear();
-        this._idr_sample_list = null;
+        this._idr_sample_list = null!;
         this._media_element.removeEventListener('seeking', this.e.onMediaSeeking);
-        this._media_element = null;
-        this._on_unbuffered_seek = null;
+        this._media_element = null!;
+        this._on_unbuffered_seek = null!;
     }
 
     public seek(seconds: number): void {

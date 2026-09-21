@@ -20,7 +20,7 @@
 class LiveLatencySynchronizer {
 
     private _config: any = null;
-    private _media_element: HTMLMediaElement = null;
+    private _media_element: HTMLMediaElement;
 
     private e?: any = null;
 
@@ -37,7 +37,7 @@ class LiveLatencySynchronizer {
 
     public destroy(): void {
         this._media_element.removeEventListener('timeupdate', this.e.onMediaTimeUpdate);
-        this._media_element = null;
+        this._media_element = null!;
         this._config = null;
     }
 

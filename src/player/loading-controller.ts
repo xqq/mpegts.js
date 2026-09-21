@@ -23,9 +23,9 @@ class LoadingController {
     private readonly TAG: string = 'LoadingController';
 
     private _config: any = null;
-    private _media_element: HTMLMediaElement = null;
-    private _on_pause_transmuxer: () => void = null;
-    private _on_resume_transmuxer: () => void = null;
+    private _media_element: HTMLMediaElement;
+    private _on_pause_transmuxer: () => void;
+    private _on_resume_transmuxer: () => void;
 
     private _paused: boolean = false;
 
@@ -50,10 +50,10 @@ class LoadingController {
     public destroy(): void {
         this._media_element.removeEventListener('timeupdate', this.e.onMediaTimeUpdate);
         this.e = null;
-        this._media_element = null;
+        this._media_element = null!;
         this._config = null;
-        this._on_pause_transmuxer = null;
-        this._on_resume_transmuxer = null;
+        this._on_pause_transmuxer = null!;
+        this._on_resume_transmuxer = null!;
     }
 
     // buffered_position: in seconds

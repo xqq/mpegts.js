@@ -61,20 +61,20 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
     private _media_data_source: any;
     private _config: any;
 
-    private _media_element?: HTMLMediaElement = null;
+    private _media_element: HTMLMediaElement | null = null;
 
     private _worker: Worker;
     private _worker_destroying: boolean = false;
 
-    private _seeking_handler?: SeekingHandler = null;
-    private _loading_controller?: LoadingController = null;
-    private _startup_stall_jumper?: StartupStallJumper = null;
-    private _live_latency_chaser?: LiveLatencyChaser = null;
-    private _live_latency_synchronizer?: LiveLatencySynchronizer = null;
+    private _seeking_handler: SeekingHandler | null = null;
+    private _loading_controller: LoadingController | null = null;
+    private _startup_stall_jumper: StartupStallJumper | null = null;
+    private _live_latency_chaser: LiveLatencyChaser | null = null;
+    private _live_latency_synchronizer: LiveLatencySynchronizer | null = null;
 
-    private _pending_seek_time?: number = null;
+    private _pending_seek_time: number | null = null;
 
-    private _media_info?: MediaInfo = null;
+    private _media_info: MediaInfo | null = null;
     private _statistics_info?: any = null;
 
     private e?: any = null;
@@ -147,7 +147,7 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
         this._media_data_source = null;
 
         this._emitter.removeAllListeners();
-        this._emitter = null;
+        this._emitter = null!;
     }
 
     public on(event: string, listener: (...args: any[]) => void): void {
@@ -211,26 +211,26 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
 
         this._seeking_handler = new SeekingHandler(
             this._config,
-            this._media_element,
+            this._media_element!,
             this._onRequiredUnbufferedSeek.bind(this)
         );
 
         this._loading_controller = new LoadingController(
             this._config,
-            this._media_element,
+            this._media_element!,
             this._onRequestPauseTransmuxer.bind(this),
             this._onRequestResumeTransmuxer.bind(this)
         );
 
         this._startup_stall_jumper = new StartupStallJumper(
-            this._media_element,
+            this._media_element!,
             this._onRequestDirectSeek.bind(this)
         );
 
         if (this._config.isLive && this._config.liveBufferLatencyChasing) {
             this._live_latency_chaser = new LiveLatencyChaser(
                 this._config,
-                this._media_element,
+                this._media_element!,
                 this._onRequestDirectSeek.bind(this)
             );
         }
@@ -238,12 +238,12 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
         if (this._config.isLive && this._config.liveSync) {
             this._live_latency_synchronizer = new LiveLatencySynchronizer(
                 this._config,
-                this._media_element
+                this._media_element!
             );
         }
 
         // Reset currentTime to 0
-        if (this._media_element.readyState > 0) {
+        if (this._media_element!.readyState > 0) {
             // IE11 may throw InvalidStateError if readyState === 0
             this._seeking_handler.directSeek(0);
         }
@@ -273,11 +273,11 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
     }
 
     public play(): Promise<void> {
-        return this._media_element.play();
+        return this._media_element!.play();
     }
 
     public pause(): void {
-        this._media_element.pause();
+        this._media_element!.pause();
     }
 
     public seek(seconds: number): void {
@@ -308,23 +308,23 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
             this._live_latency_chaser.notifyBufferedRangeUpdate();
         }
 
-        this._loading_controller.notifyBufferedPositionChanged();
+        this._loading_controller!.notifyBufferedPositionChanged();
     }
 
     private _onMSEBufferFull(): void {
         Log.v(this.TAG, 'MSE SourceBuffer is full, suspend transmuxing task');
-        this._loading_controller.suspendTransmuxer();
+        this._loading_controller!.suspendTransmuxer();
     }
 
     private _onMediaLoadedMetadata(e: any): void {
         if (this._pending_seek_time != null) {
-            this._seeking_handler.seek(this._pending_seek_time);
+            this._seeking_handler!.seek(this._pending_seek_time);
             this._pending_seek_time = null;
         }
     }
 
     private _onRequestDirectSeek(target: number): void {
-        this._seeking_handler.directSeek(target);
+        this._seeking_handler!.directSeek(target);
     }
 
     private _onRequiredUnbufferedSeek(milliseconds: number): void {
@@ -367,7 +367,7 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
         if (msg == 'destroyed' || this._worker_destroying) {
             this._worker_destroying = false;
             this._worker?.terminate();
-            this._worker = null;
+            this._worker = null!;
             return;
         }
 
@@ -378,10 +378,10 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
                 const use_managed_media_source = (typeof (self as any).ManagedMediaSource === 'function') && !(typeof self.MediaSource === 'function');
                 if (use_managed_media_source) {
                     // When using ManagedMediaSource, MediaSource will not open unless disableRemotePlayback is set to true
-                    this._media_element['disableRemotePlayback'] = true;
+                    this._media_element!['disableRemotePlayback'] = true;
                 }
                 // Attach to HTMLMediaElement by using MediaSource Handle
-                this._media_element.srcObject = packet.handle;
+                this._media_element!.srcObject = packet.handle;
                 break;
             }
             case 'mse_event': {
@@ -406,7 +406,7 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
                 } else if (packet.event == TransmuxingEvents.RECOMMEND_SEEKPOINT) {
                     const packet = message_packet as WorkerMessagePacketTransmuxingEventRecommendSeekpoint;
                     if (this._media_element && !this._config.accurateSeek) {
-                        this._seeking_handler.directSeek(packet.milliseconds / 1000);
+                        this._seeking_handler!.directSeek(packet.milliseconds / 1000);
                     }
                 }
                 break;
@@ -429,7 +429,7 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
             }
             case 'buffered_position_changed': {
                 const packet = message_packet as WorkerMessagePacketBufferedPositionChanged;
-                this._loading_controller.notifyBufferedPositionChanged(packet.buffered_position_milliseconds / 1000);
+                this._loading_controller!.notifyBufferedPositionChanged(packet.buffered_position_milliseconds / 1000);
                 break;
             }
         }
@@ -452,7 +452,9 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
             dropped = quality.droppedVideoFrames;
         } else if (this._media_element['webkitDecodedFrameCount'] != undefined) {
             decoded = this._media_element['webkitDecodedFrameCount'];
-            dropped = this._media_element['webkitDroppedFrameCount'];
+            // Guarded above by the webkitDecodedFrameCount probe; a browser exposing one
+            // counter exposes both, so assert rather than defaulting and changing the value.
+            dropped = this._media_element['webkitDroppedFrameCount']!;
         } else {
             has_quality_info = false;
         }

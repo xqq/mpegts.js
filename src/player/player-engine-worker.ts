@@ -55,8 +55,8 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
     let media_data_source: any = null;
     let config: any = null;
 
-    let mse_controller: MSEController = null;
-    let transmuxer: Transmuxer = null;
+    let mse_controller: MSEController | null = null;
+    let transmuxer: Transmuxer | null = null;
 
     let mse_source_opened: boolean = false;
     let has_pending_load: boolean = false;
@@ -109,8 +109,8 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
                 break;
             case 'unbuffered_seek': {
                 const packet = command_packet as WorkerCommandPacketUnbufferedSeek;
-                mse_controller.flush();
-                transmuxer.seek(packet.milliseconds);
+                mse_controller!.flush();
+                transmuxer!.seek(packet.milliseconds);
                 break;
             }
             case 'timeupdate': {
@@ -124,10 +124,10 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
                 break;
             }
             case 'pause_transmuxer':
-                transmuxer.pause();
+                transmuxer!.pause();
                 break;
             case 'resume_transmuxer':
-                transmuxer.resume();
+                transmuxer!.resume();
                 break;
         }
     });
@@ -191,17 +191,17 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
         transmuxer = new Transmuxer(media_data_source, config);
 
         transmuxer.on(TransmuxingEvents.INIT_SEGMENT, (type: string, is: any) => {
-            mse_controller.appendInitSegment(is);
+            mse_controller!.appendInitSegment(is);
         });
         transmuxer.on(TransmuxingEvents.MEDIA_SEGMENT, (type: string, ms: any) => {
-            mse_controller.appendMediaSegment(ms);
+            mse_controller!.appendMediaSegment(ms);
             self.postMessage({
                 msg: 'buffered_position_changed',
                 buffered_position_milliseconds: ms.info.endDts,
             } as WorkerMessagePacketBufferedPositionChanged);
         });
         transmuxer.on(TransmuxingEvents.LOADING_COMPLETE, () => {
-            mse_controller.endOfStream();
+            mse_controller!.endOfStream();
             self.postMessage({
                 msg: 'player_event',
                 event: PlayerEvents.LOADING_COMPLETE,
