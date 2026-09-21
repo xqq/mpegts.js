@@ -83,7 +83,7 @@ export const smpte2038parse = (data: Uint8Array) => {
     }
 
     gb.destroy();
-    gb = null;
+    gb = null!;
 
     return ancillaries;
 }

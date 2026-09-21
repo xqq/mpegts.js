@@ -75,7 +75,7 @@ export class AC3Parser {
 
     public readNextAC3Frame(): AC3Frame | null {
         let data = this.data_;
-        let ac3_frame: AC3Frame = null;
+        let ac3_frame: AC3Frame | null = null;
 
         while (ac3_frame == null) {
             if (this.eof_flag_) {
@@ -133,7 +133,7 @@ export class AC3Parser {
         return this.has_last_incomplete_data;
     }
 
-    public getIncompleteData(): Uint8Array {
+    public getIncompleteData(): Uint8Array | null {
         if (!this.has_last_incomplete_data) {
             return null;
         }
@@ -154,7 +154,7 @@ export class AC3Config {
     public original_codec_mimetype: string;
 
     public constructor(frame: AC3Frame) {
-        let config: Array<number> = null;
+        let config: Array<number> | null = null;
 
         config = [
             (frame.sampling_rate_code << 6) | (frame.bit_stream_identification << 1) | (frame.bit_stream_mode >> 2),
@@ -225,7 +225,7 @@ export class EAC3Parser {
 
     public readNextEAC3Frame(): EAC3Frame | null {
         let data = this.data_;
-        let eac3_frame: EAC3Frame = null;
+        let eac3_frame: EAC3Frame | null = null;
 
         while (eac3_frame == null) {
             if (this.eof_flag_) {
@@ -288,7 +288,7 @@ export class EAC3Parser {
         return this.has_last_incomplete_data;
     }
 
-    public getIncompleteData(): Uint8Array {
+    public getIncompleteData(): Uint8Array | null {
         if (!this.has_last_incomplete_data) {
             return null;
         }
@@ -309,7 +309,7 @@ export class EAC3Config {
     public original_codec_mimetype: string;
 
     public constructor(frame: EAC3Frame) {
-        let config: Array<number> = null;
+        let config: Array<number> | null = null;
 
         const data_rate_sub = Math.floor((frame.frame_size * frame.sampling_frequency) / (frame.num_blks * 16))
 

@@ -54,7 +54,7 @@ export class AACADTSParser {
 
     public readNextAACFrame(): AACFrame | null {
         let data = this.data_;
-        let aac_frame: AACFrame = null;
+        let aac_frame: AACFrame | null = null;
 
         while (aac_frame == null) {
             if (this.eof_flag_) {
@@ -117,7 +117,7 @@ export class AACADTSParser {
         return this.has_last_incomplete_data;
     }
 
-    public getIncompleteData(): Uint8Array {
+    public getIncompleteData(): Uint8Array | null {
         if (!this.has_last_incomplete_data) {
             return null;
         }
@@ -175,7 +175,7 @@ export class AACLOASParser {
 
     public readNextAACFrame(privious?: LOASAACFrame): LOASAACFrame | null {
         let data = this.data_;
-        let aac_frame: LOASAACFrame = null;
+        let aac_frame: LOASAACFrame | null = null;
 
         while (aac_frame == null) {
             if (this.eof_flag_) {
@@ -316,7 +316,7 @@ export class AACLOASParser {
         return this.has_last_incomplete_data;
     }
 
-    public getIncompleteData(): Uint8Array {
+    public getIncompleteData(): Uint8Array | null {
         if (!this.has_last_incomplete_data) {
             return null;
         }
@@ -334,7 +334,7 @@ export class AudioSpecificConfig {
     public original_codec_mimetype: string;
 
     public constructor(frame: AACFrame) {
-        let config: Array<number> = null;
+        let config: Array<number> | null = null;
 
         let original_audio_object_type = frame.audio_object_type;
         let audio_object_type = frame.audio_object_type;

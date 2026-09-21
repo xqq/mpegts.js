@@ -44,6 +44,13 @@ type AdaptationFieldInfo = {
     random_access_indicator?: number;
     elementary_stream_priority_indicator?: number;
 };
+type UnsetAudioMetadata = {
+    codec: undefined,
+    audio_object_type: undefined;
+    sampling_freq_index: undefined;
+    sampling_frequency: undefined;
+    channel_config: undefined;
+};
 type AACAudioMetadata = {
     codec: 'aac',
     audio_object_type: MPEG4AudioObjectTypes;
@@ -133,7 +140,7 @@ class TSDemuxer extends BaseDemuxer {
         details: undefined
     };
 
-    private audio_metadata_: AACAudioMetadata | AC3AudioMetadata | EAC3AudioMetadata | OpusAudioMetadata | MP3AudioMetadata = {
+    private audio_metadata_: AACAudioMetadata | AC3AudioMetadata | EAC3AudioMetadata | OpusAudioMetadata | MP3AudioMetadata | UnsetAudioMetadata = {
         codec: undefined,
         audio_object_type: undefined,
         sampling_freq_index: undefined,
@@ -145,8 +152,8 @@ class TSDemuxer extends BaseDemuxer {
     private last_pcr_base_: number = NaN;
     private timestamp_offset_: number = 0;
 
-    private audio_last_sample_pts_: number = undefined;
-    private aac_last_incomplete_data_: Uint8Array = null;
+    private audio_last_sample_pts_: number | undefined = undefined;
+    private aac_last_incomplete_data_: Uint8Array | null = null;
 
     private has_video_ = false;
     private has_audio_ = false;
@@ -168,16 +175,16 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     public destroy() {
-        this.media_info_ = null;
-        this.pes_slice_queues_ = null;
-        this.section_slice_queues_ = null;
+        this.media_info_ = null!;
+        this.pes_slice_queues_ = null!;
+        this.section_slice_queues_ = null!;
 
-        this.video_metadata_ = null;
-        this.audio_metadata_ = null;
+        this.video_metadata_ = null!;
+        this.audio_metadata_ = null!;
         this.aac_last_incomplete_data_ = null;
 
-        this.video_track_ = null;
-        this.audio_track_ = null;
+        this.video_track_ = null!;
+        this.audio_track_ = null!;
 
         super.destroy();
     }
@@ -690,7 +697,7 @@ class TSDemuxer extends BaseDemuxer {
         let section_number = data[6];
         let last_section_number = data[7];
 
-        let pat: PAT = null;
+        let pat: PAT | null = null;
 
         if (current_next_indicator === 1 && section_number === 0) {
             pat = new PAT();
@@ -754,7 +761,7 @@ class TSDemuxer extends BaseDemuxer {
         let section_number = data[6];
         let last_section_number = data[7];
 
-        let pmt: PMT = null;
+        let pmt: PMT | null = null;
 
         if (current_next_indicator === 1 && section_number === 0) {
             pmt = new PMT();
@@ -949,7 +956,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseAV1Payload(data: Uint8Array, pts: number, dts: number, file_position: number, random_access_indicator: number) {
+    private parseAV1Payload(data: Uint8Array, pts: number | undefined, dts: number | undefined, file_position: number, random_access_indicator: number) {
         let av1_in_ts_parser = new AV1OBUInMpegTsParser(data);
         let payload: Uint8Array | null = null;
         let units: {data: Uint8Array}[] = [];
@@ -978,14 +985,14 @@ class TSDemuxer extends BaseDemuxer {
             this.video_metadata_.details = details;
 
             //if (this.video_init_segment_dispatched_) {
-                keyframe ||= details.keyframe;
+                keyframe ||= details!.keyframe!;
                 units.push({ data: payload });
                 length += payload.byteLength;
             //}
         }
 
-        let pts_ms = Math.floor(pts / this.timescale_);
-        let dts_ms = Math.floor(dts / this.timescale_);
+        let pts_ms = Math.floor(pts! / this.timescale_);
+        let dts_ms = Math.floor(dts! / this.timescale_);
 
         if (units.length) {
             let track = this.video_track_;
@@ -1003,9 +1010,9 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseH264Payload(data: Uint8Array, pts: number, dts: number, file_position: number, random_access_indicator: number) {
+    private parseH264Payload(data: Uint8Array, pts: number | undefined, dts: number | undefined, file_position: number, random_access_indicator: number) {
         let annexb_parser = new H264AnnexBParser(data);
-        let nalu_payload: H264NaluPayload = null;
+        let nalu_payload: H264NaluPayload | null = null;
         let units: {type: H264NaluType, data: Uint8Array}[] = [];
         let length = 0;
         let keyframe = false;
@@ -1052,8 +1059,8 @@ class TSDemuxer extends BaseDemuxer {
             }
         }
 
-        let pts_ms = Math.floor(pts / this.timescale_);
-        let dts_ms = Math.floor(dts / this.timescale_);
+        let pts_ms = Math.floor(pts! / this.timescale_);
+        let dts_ms = Math.floor(dts! / this.timescale_);
 
         if (units.length) {
             let track = this.video_track_;
@@ -1071,9 +1078,9 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseH265Payload(data: Uint8Array, pts: number, dts: number, file_position: number, random_access_indicator: number) {
+    private parseH265Payload(data: Uint8Array, pts: number | undefined, dts: number | undefined, file_position: number, random_access_indicator: number) {
         let annexb_parser = new H265AnnexBParser(data);
-        let nalu_payload: H265NaluPayload = null;
+        let nalu_payload: H265NaluPayload | null = null;
         let units: {type: H265NaluType, data: Uint8Array}[] = [];
         let length = 0;
         let keyframe = false;
@@ -1134,8 +1141,8 @@ class TSDemuxer extends BaseDemuxer {
             }
         }
 
-        let pts_ms = Math.floor(pts / this.timescale_);
-        let dts_ms = Math.floor(dts / this.timescale_);
+        let pts_ms = Math.floor(pts! / this.timescale_);
+        let dts_ms = Math.floor(dts! / this.timescale_);
 
         if (units.length) {
             let track = this.video_track_;
@@ -1153,7 +1160,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private detectVideoMetadataChange(new_sps: H264NaluAVC1 | H265NaluHVC1, new_details: any): boolean {
+    private detectVideoMetadataChange(new_sps: H264NaluAVC1 | H265NaluHVC1 | null, new_details: any): boolean {
         if (new_details.codec_mimetype !== this.video_metadata_.details.codec_mimetype) {
             Log.v(this.TAG, `Video: Codec mimeType changed from ` +
                             `${this.video_metadata_.details.codec_mimetype} to ${new_details.codec_mimetype}`);
@@ -1232,8 +1239,8 @@ class TSDemuxer extends BaseDemuxer {
             }
         } else if (this.video_metadata_.vps) {
             let vps_without_header = this.video_metadata_.vps.data.subarray(4);
-            let sps_without_header = this.video_metadata_.sps.data.subarray(4);
-            let pps_without_header = this.video_metadata_.pps.data.subarray(4);
+            let sps_without_header = this.video_metadata_.sps!.data.subarray(4);
+            let pps_without_header = this.video_metadata_.pps!.data.subarray(4);
             let hvcc = new HEVCDecoderConfigurationRecord(vps_without_header, sps_without_header, pps_without_header, details);
             meta.hvcc = hvcc.getData();
 
@@ -1241,8 +1248,8 @@ class TSDemuxer extends BaseDemuxer {
                 Log.v(this.TAG, `Generated first HEVCDecoderConfigurationRecord for mimeType: ${meta.codec}`);
             }
         } else {
-            let sps_without_header = this.video_metadata_.sps.data.subarray(4);
-            let pps_without_header = this.video_metadata_.pps.data.subarray(4);
+            let sps_without_header = this.video_metadata_.sps!.data.subarray(4);
+            let pps_without_header = this.video_metadata_.pps!.data.subarray(4);
             let avcc = new AVCDecoderConfigurationRecord(sps_without_header, pps_without_header, details);
             meta.avcc = avcc.getData();
 
@@ -1250,7 +1257,7 @@ class TSDemuxer extends BaseDemuxer {
                 Log.v(this.TAG, `Generated first AVCDecoderConfigurationRecord for mimeType: ${meta.codec}`);
             }
         }
-        this.onTrackMetadata('video', meta);
+        this.onTrackMetadata!('video', meta);
         this.video_init_segment_dispatched_ = true;
         this.video_metadata_changed_ = false;
 
@@ -1275,14 +1282,14 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         if (mi.isComplete()) {
-            this.onMediaInfo(mi);
+            this.onMediaInfo!(mi);
         }
     }
 
     private dispatchVideoMediaSegment() {
         if (this.isInitSegmentDispatched()) {
             if (this.video_track_.length) {
-                this.onDataAvailable(null, this.video_track_);
+                this.onDataAvailable!(null, this.video_track_);
             }
         }
     }
@@ -1290,7 +1297,7 @@ class TSDemuxer extends BaseDemuxer {
     private dispatchAudioMediaSegment() {
         if (this.isInitSegmentDispatched()) {
             if (this.audio_track_.length) {
-                this.onDataAvailable(this.audio_track_, null);
+                this.onDataAvailable!(this.audio_track_, null);
             }
         }
     }
@@ -1298,12 +1305,12 @@ class TSDemuxer extends BaseDemuxer {
     private dispatchAudioVideoMediaSegment() {
         if (this.isInitSegmentDispatched()) {
             if (this.audio_track_.length || this.video_track_.length) {
-                this.onDataAvailable(this.audio_track_, this.video_track_);
+                this.onDataAvailable!(this.audio_track_, this.video_track_);
             }
         }
     }
 
-    private parseADTSAACPayload(data: Uint8Array, pts: number) {
+    private parseADTSAACPayload(data: Uint8Array, pts: number | undefined) {
         if (this.has_video_ && !this.video_init_segment_dispatched_) {
             // If first video IDR frame hasn't been detected,
             // Wait for first IDR frame and video init segment being dispatched
@@ -1318,7 +1325,7 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         let ref_sample_duration: number;
-        let base_pts_ms: number;
+        let base_pts_ms!: number;
 
         if (pts != undefined) {
             base_pts_ms = pts / this.timescale_;
@@ -1345,9 +1352,9 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         let adts_parser = new AACADTSParser(data);
-        let aac_frame: AACFrame = null;
+        let aac_frame: AACFrame | null = null;
         let sample_pts_ms = base_pts_ms;
-        let last_sample_pts_ms: number;
+        let last_sample_pts_ms: number | undefined;
 
         while ((aac_frame = adts_parser.readNextAACFrame()) != null) {
             ref_sample_duration = 1024 / aac_frame.sampling_frequency * 1000;
@@ -1396,7 +1403,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseLOASAACPayload(data: Uint8Array, pts: number) {
+    private parseLOASAACPayload(data: Uint8Array, pts: number | undefined) {
         if (this.has_video_ && !this.video_init_segment_dispatched_) {
             // If first video IDR frame hasn't been detected,
             // Wait for first IDR frame and video init segment being dispatched
@@ -1411,7 +1418,7 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         let ref_sample_duration: number;
-        let base_pts_ms: number;
+        let base_pts_ms!: number;
 
         if (pts != undefined) {
             base_pts_ms = pts / this.timescale_;
@@ -1438,9 +1445,9 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         let loas_parser = new AACLOASParser(data);
-        let aac_frame: LOASAACFrame = null;
+        let aac_frame: LOASAACFrame | null = null;
         let sample_pts_ms = base_pts_ms;
-        let last_sample_pts_ms: number;
+        let last_sample_pts_ms: number | undefined;
 
         while ((aac_frame = loas_parser.readNextAACFrame(this.loas_previous_frame ?? undefined)) != null) {
             this.loas_previous_frame = aac_frame;
@@ -1490,7 +1497,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseAC3Payload(data: Uint8Array, pts: number) {
+    private parseAC3Payload(data: Uint8Array, pts: number | undefined) {
         if (this.has_video_ && !this.video_init_segment_dispatched_) {
             // If first video IDR frame hasn't been detected,
             // Wait for first IDR frame and video init segment being dispatched
@@ -1498,7 +1505,7 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         let ref_sample_duration: number;
-        let base_pts_ms: number;
+        let base_pts_ms!: number;
 
         if (pts != undefined) {
             base_pts_ms = pts / this.timescale_;
@@ -1515,9 +1522,9 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         let adts_parser = new AC3Parser(data);
-        let ac3_frame: AC3Frame = null;
+        let ac3_frame: AC3Frame | null = null;
         let sample_pts_ms = base_pts_ms;
-        let last_sample_pts_ms: number;
+        let last_sample_pts_ms: number | undefined;
 
         while ((ac3_frame = adts_parser.readNextAC3Frame()) != null) {
             ref_sample_duration = 1536 / ac3_frame.sampling_frequency * 1000;
@@ -1564,7 +1571,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseEAC3Payload(data: Uint8Array, pts: number) {
+    private parseEAC3Payload(data: Uint8Array, pts: number | undefined) {
         if (this.has_video_ && !this.video_init_segment_dispatched_) {
             // If first video IDR frame hasn't been detected,
             // Wait for first IDR frame and video init segment being dispatched
@@ -1572,7 +1579,7 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         let ref_sample_duration: number;
-        let base_pts_ms: number;
+        let base_pts_ms!: number;
 
         if (pts != undefined) {
             base_pts_ms = pts / this.timescale_;
@@ -1589,9 +1596,9 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         let adts_parser = new EAC3Parser(data);
-        let eac3_frame: EAC3Frame = null;
+        let eac3_frame: EAC3Frame | null = null;
         let sample_pts_ms = base_pts_ms;
-        let last_sample_pts_ms: number;
+        let last_sample_pts_ms: number | undefined;
 
         while ((eac3_frame = adts_parser.readNextEAC3Frame()) != null) {
             ref_sample_duration = 1536 / eac3_frame.sampling_frequency * 1000; // TODO: EAC3 BLK
@@ -1638,7 +1645,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseOpusPayload(data: Uint8Array, pts: number) {
+    private parseOpusPayload(data: Uint8Array, pts: number | undefined) {
         if (this.has_video_ && !this.video_init_segment_dispatched_) {
             // If first video IDR frame hasn't been detected,
             // Wait for first IDR frame and video init segment being dispatched
@@ -1646,7 +1653,7 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         let ref_sample_duration: number;
-        let base_pts_ms: number;
+        let base_pts_ms!: number;
 
         if (pts != undefined) {
             base_pts_ms = pts / this.timescale_;
@@ -1662,7 +1669,7 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         let sample_pts_ms = base_pts_ms;
-        let last_sample_pts_ms: number;
+        let last_sample_pts_ms: number | undefined;
 
         for (let offset = 0; offset < data.length; ) {
             ref_sample_duration = 20;
@@ -1703,7 +1710,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseMP3Payload(data: Uint8Array, pts: number) {
+    private parseMP3Payload(data: Uint8Array, pts: number | undefined) {
         if (this.has_video_ && !this.video_init_segment_dispatched_) {
             // If first video IDR frame hasn't been detected,
             // Wait for first IDR frame and video init segment being dispatched
@@ -1791,8 +1798,8 @@ class TSDemuxer extends BaseDemuxer {
         let mp3_sample = {
             unit: data,
             length: data.byteLength,
-            pts: pts / this.timescale_,
-            dts: pts / this.timescale_
+            pts: pts! / this.timescale_,
+            dts: pts! / this.timescale_
         };
         this.audio_track_.samples.push(mp3_sample);
         this.audio_track_.length += data.byteLength;
@@ -1902,7 +1909,7 @@ class TSDemuxer extends BaseDemuxer {
 
         if (this.audio_metadata_.codec === 'aac') {
             let aac_frame = sample.codec === 'aac' ? sample.data : null;
-            let audio_specific_config = new AudioSpecificConfig(aac_frame);
+            let audio_specific_config = new AudioSpecificConfig(aac_frame!);
 
             meta.audioSampleRate = audio_specific_config.sampling_rate;
             meta.channelCount = audio_specific_config.channel_count;
@@ -1912,7 +1919,7 @@ class TSDemuxer extends BaseDemuxer {
             meta.refSampleDuration = 1024 / meta.audioSampleRate * meta.timescale;
         } else if (this.audio_metadata_.codec === 'ac-3') {
             let ac3_frame = sample.codec === 'ac-3' ? sample.data : null;
-            let ac3_config = new AC3Config(ac3_frame);
+            let ac3_config = new AC3Config(ac3_frame!);
             meta.audioSampleRate = ac3_config.sampling_rate
             meta.channelCount = ac3_config.channel_count;
             meta.codec = ac3_config.codec_mimetype;
@@ -1921,7 +1928,7 @@ class TSDemuxer extends BaseDemuxer {
             meta.refSampleDuration = 1536 / meta.audioSampleRate * meta.timescale;
         } else if (this.audio_metadata_.codec === 'ec-3') {
             let ec3_frame = sample.codec === 'ec-3' ? sample.data : null;
-            let ec3_config = new EAC3Config(ec3_frame);
+            let ec3_config = new EAC3Config(ec3_frame!);
             meta.audioSampleRate = ec3_config.sampling_rate
             meta.channelCount = ec3_config.channel_count;
             meta.codec = ec3_config.codec_mimetype;
@@ -1948,7 +1955,7 @@ class TSDemuxer extends BaseDemuxer {
             Log.v(this.TAG, `Generated first AudioSpecificConfig for mimeType: ${meta.codec}`);
         }
 
-        this.onTrackMetadata('audio', meta);
+        this.onTrackMetadata!('audio', meta);
         this.audio_init_segment_dispatched_ = true;
         this.video_metadata_changed_ = false;
 
@@ -1966,7 +1973,7 @@ class TSDemuxer extends BaseDemuxer {
         }
 
         if (mi.isComplete()) {
-            this.onMediaInfo(mi);
+            this.onMediaInfo!(mi);
         }
     }
 
@@ -1981,7 +1988,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parsePESPrivateDataPayload(data: Uint8Array, pts: number, dts: number, pid: number, stream_id: number) {
+    private parsePESPrivateDataPayload(data: Uint8Array, pts: number | undefined, dts: number | undefined, pid: number, stream_id: number) {
         let private_data = new PESPrivateData();
 
         private_data.pid = pid;
@@ -2006,7 +2013,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseTimedID3MetadataPayload(data: Uint8Array, pts: number, dts: number, pid: number, stream_id: number) {
+    private parseTimedID3MetadataPayload(data: Uint8Array, pts: number | undefined, dts: number | undefined, pid: number, stream_id: number) {
         let timed_id3_metadata = new PESPrivateData();
 
         timed_id3_metadata.pid = pid;
@@ -2029,7 +2036,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parsePGSPayload(data: Uint8Array, pts: number, dts: number, pid: number, stream_id: number, lang: string) {
+    private parsePGSPayload(data: Uint8Array, pts: number | undefined, dts: number | undefined, pid: number, stream_id: number, lang: string) {
         let pgs_data = new PGSData();
 
         pgs_data.pid = pid;
@@ -2053,7 +2060,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseSynchronousKLVMetadataPayload(data: Uint8Array, pts: number, dts: number, pid: number, stream_id: number) {
+    private parseSynchronousKLVMetadataPayload(data: Uint8Array, pts: number | undefined, dts: number | undefined, pid: number, stream_id: number) {
         let synchronous_klv_metadata = new KLVData();
 
         synchronous_klv_metadata.pid = pid;
@@ -2091,7 +2098,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseSMPTE2038MetadataPayload(data: Uint8Array, pts: number, dts: number, pid: number, stream_id: number) {
+    private parseSMPTE2038MetadataPayload(data: Uint8Array, pts: number | undefined, dts: number | undefined, pid: number, stream_id: number) {
         let smpte2038_data = new SMPTE2038Data();
 
         smpte2038_data.pid = pid;
@@ -2116,7 +2123,7 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private parseSEIPayload(data: Uint8Array, pts: number, codec: 'h264' | 'h265') {
+    private parseSEIPayload(data: Uint8Array, pts: number | undefined, codec: 'h264' | 'h265') {
         let timestamp = pts != undefined ? Math.floor(pts / this.timescale_) : undefined;
         let sei_data = parseSEI(data, timestamp, codec);
 

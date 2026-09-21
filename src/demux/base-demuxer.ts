@@ -23,20 +23,20 @@ type OnPESPrivateDataDescriptorCallback = (private_data_descriptor: PESPrivateDa
 
 export default abstract class BaseDemuxer {
 
-    public onError: OnErrorCallback;
-    public onMediaInfo: OnMediaInfoCallback;
-    public onMetaDataArrived: OnMetaDataArrivedCallback;
-    public onTrackMetadata: OnTrackMetadataCallback;
-    public onDataAvailable: OnDataAvailableCallback;
-    public onTimedID3Metadata: OnTimedID3MetadataCallback;
-    public onPGSSubtitleData: onPGSSubitleDataCallback;
-    public onSynchronousKLVMetadata: OnSynchronousKLVMetadataCallback
-    public onAsynchronousKLVMetadata: OnAsynchronousKLVMetadataCallback;
-    public onSMPTE2038Metadata: OnSMPTE2038MetadataCallback;
-    public onSEI: OnSEICallback;
-    public onSCTE35Metadata: OnSCTE35MetadataCallback;
-    public onPESPrivateData: OnPESPrivateDataCallback;
-    public onPESPrivateDataDescriptor: OnPESPrivateDataDescriptorCallback;
+    public onError: OnErrorCallback | null = null;
+    public onMediaInfo: OnMediaInfoCallback | null = null;
+    public onMetaDataArrived: OnMetaDataArrivedCallback | null = null;
+    public onTrackMetadata: OnTrackMetadataCallback | null = null;
+    public onDataAvailable: OnDataAvailableCallback | null = null;
+    public onTimedID3Metadata: OnTimedID3MetadataCallback | null = null;
+    public onPGSSubtitleData: onPGSSubitleDataCallback | null = null;
+    public onSynchronousKLVMetadata: OnSynchronousKLVMetadataCallback | null = null;
+    public onAsynchronousKLVMetadata: OnAsynchronousKLVMetadataCallback | null = null;
+    public onSMPTE2038Metadata: OnSMPTE2038MetadataCallback | null = null;
+    public onSEI: OnSEICallback | null = null;
+    public onSCTE35Metadata: OnSCTE35MetadataCallback | null = null;
+    public onPESPrivateData: OnPESPrivateDataCallback | null = null;
+    public onPESPrivateDataDescriptor: OnPESPrivateDataDescriptorCallback | null = null;
 
     public constructor() {}
 

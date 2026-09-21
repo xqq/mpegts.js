@@ -79,7 +79,7 @@ export class H265AnnexBParser {
 
     public readNextNaluPayload(): H265NaluPayload | null {
         let data = this.data_;
-        let nalu_payload: H265NaluPayload = null;
+        let nalu_payload: H265NaluPayload | null = null;
 
         while (nalu_payload == null) {
             if (this.eof_flag_) {
