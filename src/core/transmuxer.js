@@ -33,6 +33,7 @@ class Transmuxer {
 
         if (config.enableWorker && typeof (Worker) !== 'undefined') {
             try {
+                /** @type {Blob | Worker | null | undefined} */
                 this._worker = work(require.resolve('./transmuxing-worker'));
                 this._workerDestroying = false;
                 this._worker.addEventListener('message', this._onWorkerMessage.bind(this));

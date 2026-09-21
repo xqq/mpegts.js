@@ -651,7 +651,7 @@ export const readSCTE35 = (data: Uint8Array): SCTE35Data => {
         splice_descriptors,
         E_CRC32,
         CRC32
-    };
+    } as SCTE35Detail;
 
     if (splice_command_type === SCTE35CommandType.kSpliceInsert) {
         const spliceInsert = splice_command as SpliceInsert;
@@ -663,13 +663,13 @@ export const readSCTE35 = (data: Uint8Array): SCTE35Data => {
                 data
             }
         } else if (spliceInsert.program_splice_flag && !spliceInsert.splice_immediate_flag) {
-            const auto_return = spliceInsert.duration_flag ? spliceInsert.break_duration.auto_return : undefined;
-            const duraiton = spliceInsert.duration_flag ? spliceInsert.break_duration.duration / 90 : undefined;
+            const auto_return = spliceInsert.duration_flag ? spliceInsert.break_duration!.auto_return : undefined;
+            const duraiton = spliceInsert.duration_flag ? spliceInsert.break_duration!.duration / 90 : undefined;
 
-            if (spliceInsert.splice_time.time_specified_flag) {
+            if (spliceInsert.splice_time!.time_specified_flag) {
                 return {
                     splice_command_type,
-                    pts: (pts_adjustment + spliceInsert.splice_time.pts_time) % (2 ** 33),
+                    pts: (pts_adjustment + spliceInsert.splice_time!.pts_time!) % (2 ** 33),
                     auto_return,
                     duraiton,
                     detail,
@@ -685,8 +685,8 @@ export const readSCTE35 = (data: Uint8Array): SCTE35Data => {
                 }                       
             }
         } else {
-            const auto_return = spliceInsert.duration_flag ? spliceInsert.break_duration.auto_return : undefined;
-            const duraiton = spliceInsert.duration_flag ? spliceInsert.break_duration.duration / 90 : undefined;
+            const auto_return = spliceInsert.duration_flag ? spliceInsert.break_duration!.auto_return : undefined;
+            const duraiton = spliceInsert.duration_flag ? spliceInsert.break_duration!.duration / 90 : undefined;
 
             return {
                 splice_command_type,
@@ -702,7 +702,7 @@ export const readSCTE35 = (data: Uint8Array): SCTE35Data => {
         if (timeSignal.splice_time.time_specified_flag) {
             return {
                 splice_command_type,
-                pts: (pts_adjustment + timeSignal.splice_time.pts_time) % (2 ** 33),
+                pts: (pts_adjustment + timeSignal.splice_time.pts_time!) % (2 ** 33),
                 detail,
                 data
             }

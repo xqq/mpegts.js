@@ -34,5 +34,6 @@ declare class LoggingControl {
     static removeLogListener(listener: any): void;
 }
 declare namespace LoggingControl {
-    let emitter: any;
+    let emitter: EventEmitter<any>;
 }
+import EventEmitter from 'events';

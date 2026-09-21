@@ -2,7 +2,7 @@ export function createDefaultConfig(): {
     enableWorker: boolean;
     enableWorkerForMSE: boolean;
     enableStashBuffer: boolean;
-    stashInitialSize: any;
+    stashInitialSize: undefined;
     isLive: boolean;
     liveBufferLatencyChasing: boolean;
     liveBufferLatencyChasingOnPaused: boolean;
@@ -25,16 +25,16 @@ export function createDefaultConfig(): {
     seekParamStart: string;
     seekParamEnd: string;
     rangeLoadZeroStart: boolean;
-    customSeekHandler: any;
+    customSeekHandler: undefined;
     reuseRedirectedURL: boolean;
-    headers: any;
-    customLoader: any;
+    headers: undefined;
+    customLoader: undefined;
 };
 export namespace defaultConfig {
     let enableWorker: boolean;
     let enableWorkerForMSE: boolean;
     let enableStashBuffer: boolean;
-    let stashInitialSize: any;
+    let stashInitialSize: undefined;
     let isLive: boolean;
     let liveBufferLatencyChasing: boolean;
     let liveBufferLatencyChasingOnPaused: boolean;
@@ -57,8 +57,8 @@ export namespace defaultConfig {
     let seekParamStart: string;
     let seekParamEnd: string;
     let rangeLoadZeroStart: boolean;
-    let customSeekHandler: any;
+    let customSeekHandler: undefined;
     let reuseRedirectedURL: boolean;
-    let headers: any;
-    let customLoader: any;
+    let headers: undefined;
+    let customLoader: undefined;
 }

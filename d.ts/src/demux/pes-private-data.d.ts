@@ -1,4 +1,4 @@
-export declare class PESPrivateData {
+export interface PESPrivateData {
     pid: number;
     stream_id: number;
     pts?: number;
@@ -7,7 +7,7 @@ export declare class PESPrivateData {
     data: Uint8Array;
     len: number;
 }
-export declare class PESPrivateDataDescriptor {
+export interface PESPrivateDataDescriptor {
     pid: number;
     stream_type: number;
     descriptor: Uint8Array;

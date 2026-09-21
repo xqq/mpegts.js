@@ -34,7 +34,7 @@ declare class IOController {
     } | {
         from: any;
         to: number;
-    };
+    } | null;
     _redirectedURL: any;
     _speedNormalized: number;
     _speedSampler: SpeedSampler;
@@ -49,7 +49,7 @@ declare class IOController {
     _onRedirect: any;
     _onRecoveredEarlyEof: any;
     destroy(): void;
-    isWorking(): boolean;
+    isWorking(): any;
     isPaused(): boolean;
     get status(): any;
     set extraData(data: any);
@@ -88,7 +88,7 @@ declare class IOController {
     _internalSeek(bytes: any, dropUnconsumed: any): void;
     updateUrl(url: any): void;
     _expandBuffer(expectedBytes: any): void;
-    _normalizeSpeed(input: any): number;
+    _normalizeSpeed(input: any): number | undefined;
     _adjustStashSize(normalized: any): void;
     _dispatchChunks(chunks: any, byteStart: any): any;
     _onURLRedirect(redirectedURL: any): void;

@@ -1,13 +1,16 @@
 import { MPEG4AudioObjectTypes, MPEG4SamplingFrequencyIndex } from "./mpeg4-audio";
-export declare class AACFrame {
+export interface AACFrame {
     audio_object_type: MPEG4AudioObjectTypes;
     sampling_freq_index: MPEG4SamplingFrequencyIndex;
     sampling_frequency: number;
     channel_config: number;
     data: Uint8Array;
 }
-export declare class LOASAACFrame extends AACFrame {
+export interface LOASAACStreamMuxConfig extends Omit<AACFrame, 'data'> {
     other_data_present: boolean;
+}
+export interface LOASAACFrame extends LOASAACStreamMuxConfig {
+    data: Uint8Array;
 }
 export declare class AACADTSParser {
     private readonly TAG;
@@ -19,7 +22,7 @@ export declare class AACADTSParser {
     private findNextSyncwordOffset;
     readNextAACFrame(): AACFrame | null;
     hasIncompleteData(): boolean;
-    getIncompleteData(): Uint8Array;
+    getIncompleteData(): Uint8Array | null;
 }
 export declare class AACLOASParser {
     private readonly TAG;
@@ -30,9 +33,9 @@ export declare class AACLOASParser {
     constructor(data: Uint8Array);
     private findNextSyncwordOffset;
     private getLATMValue;
-    readNextAACFrame(privious?: LOASAACFrame): LOASAACFrame | null;
+    readNextAACFrame(privious?: LOASAACStreamMuxConfig): LOASAACFrame | null;
     hasIncompleteData(): boolean;
-    getIncompleteData(): Uint8Array;
+    getIncompleteData(): Uint8Array | null;
 }
 export declare class AudioSpecificConfig {
     config: Array<number>;

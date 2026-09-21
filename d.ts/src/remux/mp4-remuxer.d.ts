@@ -9,7 +9,7 @@ declare class MP4Remuxer {
     _audioDtsBase: number;
     _videoDtsBase: number;
     _audioNextDts: any;
-    _videoNextDts: number;
+    _videoNextDts: number | undefined;
     _audioStashedLastSample: any;
     _videoStashedLastSample: any;
     _audioMeta: any;
@@ -19,7 +19,7 @@ declare class MP4Remuxer {
     _onInitSegment: any;
     _onMediaSegment: any;
     _forceFirstIDR: boolean;
-    _fillSilentAfterSeek: any;
+    _fillSilentAfterSeek: boolean | undefined;
     _mp3UseMpegAudio: boolean;
     _fillAudioTimestampGap: any;
     destroy(): void;
@@ -33,7 +33,7 @@ declare class MP4Remuxer {
     remux(audioTrack: any, videoTrack: any): void;
     _onTrackMetadataReceived(type: any, metadata: any): void;
     _calculateDtsBase(audioTrack: any, videoTrack: any): void;
-    getTimestampBase(): number;
+    getTimestampBase(): number | undefined;
     flushStashedSamples(): void;
     _remuxAudio(audioTrack: any, force: any): void;
     _remuxVideo(videoTrack: any, force: any): void;

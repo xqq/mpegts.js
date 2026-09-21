@@ -1,4 +1,4 @@
-export declare class PGSData {
+export interface PGSData {
     pid: number;
     stream_id: number;
     pts?: number;

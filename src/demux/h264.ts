@@ -18,7 +18,7 @@ export enum H264NaluType {
     kReserved0
 }
 
-export class H264NaluPayload {
+export interface H264NaluPayload {
     type: H264NaluType;
     data: Uint8Array;
 }
@@ -85,7 +85,7 @@ export class H264AnnexBParser {
 
     public readNextNaluPayload(): H264NaluPayload | null {
         let data = this.data_;
-        let nalu_payload: H264NaluPayload = null;
+        let nalu_payload: H264NaluPayload | null = null;
 
         while (nalu_payload == null) {
             if (this.eof_flag_) {
@@ -119,9 +119,10 @@ export class H264AnnexBParser {
 
             let payload_data = data.subarray(offset, next_startcode_offset);
 
-            nalu_payload = new H264NaluPayload();
-            nalu_payload.type = nalu_type;
-            nalu_payload.data = payload_data;
+            nalu_payload = {
+                type: nalu_type,
+                data: payload_data,
+            };
         }
 
         return nalu_payload;

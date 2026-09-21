@@ -1,4 +1,4 @@
-export class KLVData {
+export interface KLVData {
     pid: number;
     stream_id: number;
     pts?: number;

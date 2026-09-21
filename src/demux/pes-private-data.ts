@@ -1,5 +1,5 @@
 // ISO/IEC 13818-1 PES packets containing private data (stream_type=0x06)
-export class PESPrivateData {
+export interface PESPrivateData {
     pid: number;
     stream_id: number;
     pts?: number;
@@ -9,7 +9,7 @@ export class PESPrivateData {
     len: number;
 }
 
-export class PESPrivateDataDescriptor {
+export interface PESPrivateDataDescriptor {
     pid: number;
     stream_type: number;
     descriptor: Uint8Array;

@@ -1,13 +1,13 @@
 export default FetchStreamLoader;
 declare class FetchStreamLoader extends BaseLoader {
-    static isSupported(): boolean;
+    static isSupported(): boolean | undefined;
     constructor(seekHandler: any, config: any);
     TAG: string;
     _seekHandler: any;
     _config: any;
     _requestAbort: boolean;
-    _abortController: AbortController;
-    _contentLength: number;
+    _abortController: AbortController | null;
+    _contentLength: number | null;
     _receivedLength: number;
     _dataSource: any;
     _range: any;

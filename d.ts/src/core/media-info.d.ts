@@ -30,6 +30,6 @@ declare class MediaInfo {
         index: number;
         milliseconds: any;
         fileposition: any;
-    };
+    } | null;
     _search(list: any, value: any): number;
 }

@@ -1,6 +1,6 @@
 import ExpGolomb from "./exp-golomb";
 
-export class SMPTE2038Data {
+export interface SMPTE2038Data {
     pid: number;
     stream_id: number;
     pts?: number;
@@ -83,7 +83,7 @@ export const smpte2038parse = (data: Uint8Array) => {
     }
 
     gb.destroy();
-    gb = null;
+    gb = null!;
 
     return ancillaries;
 }

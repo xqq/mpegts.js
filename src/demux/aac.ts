@@ -2,7 +2,7 @@ import Log from "../utils/logger";
 import ExpGolomb from "./exp-golomb";
 import { MPEG4AudioObjectTypes, MPEG4SamplingFrequencies, MPEG4SamplingFrequencyIndex } from "./mpeg4-audio";
 
-export class AACFrame {
+export interface AACFrame {
     audio_object_type: MPEG4AudioObjectTypes;
     sampling_freq_index: MPEG4SamplingFrequencyIndex;
     sampling_frequency: number;
@@ -11,8 +11,14 @@ export class AACFrame {
     data: Uint8Array;
 }
 
-export class LOASAACFrame extends AACFrame {
+// The StreamMuxConfig carries every AAC parameter except the payload; a LOAS frame is
+// that config plus its data. Splitting them lets both be complete by construction.
+export interface LOASAACStreamMuxConfig extends Omit<AACFrame, 'data'> {
     other_data_present: boolean;
+}
+
+export interface LOASAACFrame extends LOASAACStreamMuxConfig {
+    data: Uint8Array;
 }
 
 export class AACADTSParser {
@@ -21,8 +27,8 @@ export class AACADTSParser {
 
     private data_: Uint8Array;
     private current_syncword_offset_: number;
-    private eof_flag_: boolean;
-    private has_last_incomplete_data: boolean;
+    private eof_flag_: boolean = false;
+    private has_last_incomplete_data: boolean = false;
 
     public constructor(data: Uint8Array) {
         this.data_ = data;
@@ -54,7 +60,7 @@ export class AACADTSParser {
 
     public readNextAACFrame(): AACFrame | null {
         let data = this.data_;
-        let aac_frame: AACFrame = null;
+        let aac_frame: AACFrame | null = null;
 
         while (aac_frame == null) {
             if (this.eof_flag_) {
@@ -102,12 +108,13 @@ export class AACADTSParser {
 
             let frame_data = data.subarray(offset, offset + adts_frame_payload_length);
 
-            aac_frame = new AACFrame();
-            aac_frame.audio_object_type = (profile + 1) as MPEG4AudioObjectTypes;
-            aac_frame.sampling_freq_index = sampling_frequency_index as MPEG4SamplingFrequencyIndex;
-            aac_frame.sampling_frequency = MPEG4SamplingFrequencies[sampling_frequency_index];
-            aac_frame.channel_config = channel_configuration;
-            aac_frame.data = frame_data;
+            aac_frame = {
+                audio_object_type: (profile + 1) as MPEG4AudioObjectTypes,
+                sampling_freq_index: sampling_frequency_index as MPEG4SamplingFrequencyIndex,
+                sampling_frequency: MPEG4SamplingFrequencies[sampling_frequency_index],
+                channel_config: channel_configuration,
+                data: frame_data,
+            };
         }
 
         return aac_frame;
@@ -117,7 +124,7 @@ export class AACADTSParser {
         return this.has_last_incomplete_data;
     }
 
-    public getIncompleteData(): Uint8Array {
+    public getIncompleteData(): Uint8Array | null {
         if (!this.has_last_incomplete_data) {
             return null;
         }
@@ -132,8 +139,8 @@ export class AACLOASParser {
 
     private data_: Uint8Array;
     private current_syncword_offset_: number;
-    private eof_flag_: boolean;
-    private has_last_incomplete_data: boolean;
+    private eof_flag_: boolean = false;
+    private has_last_incomplete_data: boolean = false;
 
     public constructor(data: Uint8Array) {
         this.data_ = data;
@@ -173,9 +180,9 @@ export class AACLOASParser {
         return value;
     }
 
-    public readNextAACFrame(privious?: LOASAACFrame): LOASAACFrame | null {
+    public readNextAACFrame(privious?: LOASAACStreamMuxConfig): LOASAACFrame | null {
         let data = this.data_;
-        let aac_frame: LOASAACFrame = null;
+        let aac_frame: LOASAACFrame | null = null;
 
         while (aac_frame == null) {
             if (this.eof_flag_) {
@@ -196,7 +203,7 @@ export class AACLOASParser {
             // AudioMuxElement(1)
             let gb = new ExpGolomb(data.subarray(offset + 3, offset + 3 + audioMuxLengthBytes));
             let useSameStreamMux = gb.readBool();
-            let streamMuxConfig: LOASAACFrame | null = null;
+            let streamMuxConfig: LOASAACStreamMuxConfig | null = null;
             if (!useSameStreamMux) {
                 let audioMuxVersion = gb.readBool();
                 let audioMuxVersionA = audioMuxVersion && gb.readBool();
@@ -271,12 +278,13 @@ export class AACLOASParser {
                     gb.readByte();
                 }
 
-                streamMuxConfig = new LOASAACFrame();
-                streamMuxConfig.audio_object_type = audio_object_type;
-                streamMuxConfig.sampling_freq_index = sampling_freq_index;
-                streamMuxConfig.sampling_frequency = MPEG4SamplingFrequencies[streamMuxConfig.sampling_freq_index];
-                streamMuxConfig.channel_config = channel_config;
-                streamMuxConfig.other_data_present = otherDataPresent;
+                streamMuxConfig = {
+                    audio_object_type: audio_object_type,
+                    sampling_freq_index: sampling_freq_index,
+                    sampling_frequency: MPEG4SamplingFrequencies[sampling_freq_index],
+                    channel_config: channel_config,
+                    other_data_present: otherDataPresent,
+                };
             } else if (privious == null) {
                 Log.w(this.TAG, 'StreamMuxConfig Missing')
                 this.current_syncword_offset_ = this.findNextSyncwordOffset(offset + 3 + audioMuxLengthBytes);
@@ -298,13 +306,14 @@ export class AACLOASParser {
                 aac_data[i] = gb.readByte();
             }
 
-            aac_frame = new LOASAACFrame();
-            aac_frame.audio_object_type = (streamMuxConfig.audio_object_type) as MPEG4AudioObjectTypes;
-            aac_frame.sampling_freq_index = (streamMuxConfig.sampling_freq_index) as MPEG4SamplingFrequencyIndex;
-            aac_frame.sampling_frequency = MPEG4SamplingFrequencies[streamMuxConfig.sampling_freq_index];
-            aac_frame.channel_config = streamMuxConfig.channel_config;
-            aac_frame.other_data_present = streamMuxConfig.other_data_present;
-            aac_frame.data = aac_data;
+            aac_frame = {
+                audio_object_type: (streamMuxConfig.audio_object_type) as MPEG4AudioObjectTypes,
+                sampling_freq_index: (streamMuxConfig.sampling_freq_index) as MPEG4SamplingFrequencyIndex,
+                sampling_frequency: MPEG4SamplingFrequencies[streamMuxConfig.sampling_freq_index],
+                channel_config: streamMuxConfig.channel_config,
+                other_data_present: streamMuxConfig.other_data_present,
+                data: aac_data,
+            };
 
             this.current_syncword_offset_ = this.findNextSyncwordOffset(offset + 3 + audioMuxLengthBytes);
         }
@@ -316,7 +325,7 @@ export class AACLOASParser {
         return this.has_last_incomplete_data;
     }
 
-    public getIncompleteData(): Uint8Array {
+    public getIncompleteData(): Uint8Array | null {
         if (!this.has_last_incomplete_data) {
             return null;
         }
@@ -334,7 +343,7 @@ export class AudioSpecificConfig {
     public original_codec_mimetype: string;
 
     public constructor(frame: AACFrame) {
-        let config: Array<number> = null;
+        let config: Array<number> | null = null;
 
         let original_audio_object_type = frame.audio_object_type;
         let audio_object_type = frame.audio_object_type;

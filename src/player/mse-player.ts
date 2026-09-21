@@ -29,8 +29,8 @@ class MSEPlayer {
 
     private _type: string = 'MSEPlayer';
 
-    private _media_element: HTMLMediaElement = null;
-    private _player_engine: PlayerEngine = null;
+    private _media_element: HTMLMediaElement | null = null;
+    private _player_engine: PlayerEngine;
 
     public constructor(mediaDataSource: any, config?: any) {
         const typeLowerCase: string = mediaDataSource.type.toLowerCase();
@@ -56,7 +56,7 @@ class MSEPlayer {
 
     public destroy(): void {
         this._player_engine.destroy();
-        this._player_engine = null;
+        this._player_engine = null!;
         this._media_element = null;
     }
 
@@ -99,27 +99,27 @@ class MSEPlayer {
     }
 
     public get buffered(): TimeRanges {
-        return this._media_element.buffered;
+        return this._media_element!.buffered;
     }
 
     public get duration(): number {
-        return this._media_element.duration;
+        return this._media_element!.duration;
     }
 
     public get volume(): number {
-        return this._media_element.volume;
+        return this._media_element!.volume;
     }
 
     public set volume(value) {
-        this._media_element.volume = value;
+        this._media_element!.volume = value;
     }
 
     public get muted(): boolean {
-        return this._media_element.muted;
+        return this._media_element!.muted;
     }
 
     public set muted(muted) {
-        this._media_element.muted = muted;
+        this._media_element!.muted = muted;
     }
 
     public get currentTime(): number {
@@ -134,7 +134,10 @@ class MSEPlayer {
     }
 
     public get mediaInfo(): MediaInfo {
-        return this._player_engine.mediaInfo;
+        // PlayerEngine.mediaInfo is `MediaInfo | undefined` (nothing is known until the
+        // engine reports it), but the public Player interface declares mediaInfo as
+        // always-present. Assert rather than change that published contract.
+        return this._player_engine.mediaInfo!;
     }
 
     public get statisticsInfo(): any {

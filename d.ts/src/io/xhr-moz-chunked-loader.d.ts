@@ -5,7 +5,7 @@ declare class MozChunkedLoader extends BaseLoader {
     TAG: string;
     _seekHandler: any;
     _config: any;
-    _xhr: XMLHttpRequest;
+    _xhr: XMLHttpRequest | null;
     _requestAbort: boolean;
     _contentLength: any;
     _receivedLength: number;

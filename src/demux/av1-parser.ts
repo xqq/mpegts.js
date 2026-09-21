@@ -117,7 +117,6 @@ class AV1OBUParser {
                     if ((value & 0x80) === 0) { break; }
                 }
             }
-            console.log(type);
 
             if (type === 1) { // OBU_SEQUENCE_HEADER
                 meta = {
@@ -209,8 +208,8 @@ class AV1OBUParser {
                     operating_points[operating_points.length - 1].decoder_model_present_for_this_op = decoder_model_present_for_this_op;
                     if (decoder_model_present_for_this_op) {
                         // operating_parameters_info
-                        let decoder_buffer_delay = gb.readBits(buffer_delay_length_minus_1 + 1);
-                        let encoder_buffer_delay = gb.readBits(buffer_delay_length_minus_1 + 1);
+                        let decoder_buffer_delay = gb.readBits(buffer_delay_length_minus_1! + 1);
+                        let encoder_buffer_delay = gb.readBits(buffer_delay_length_minus_1! + 1);
                         let low_delay_mode_flag = gb.readBool();
                     }
                 }
@@ -369,7 +368,7 @@ class AV1OBUParser {
         let film_grain_params_present = gb.readBool();
 
         gb.destroy();
-        gb = null;
+        gb = null!;
 
         let codec_mimetype = `av01.${seq_profile}.${AV1OBUParser.getLevelString(level, tier)}.${bitDepth.toString(10).padStart(2, '0')}`;
         let sar_width = 1, sar_height = 1, sar_scale = 1;
@@ -393,7 +392,7 @@ class AV1OBUParser {
                 reduced_still_picture_header,
                 decoder_model_info_present_flag,
                 operating_points,
-                buffer_removal_time_length_minus_1,
+                buffer_removal_time_length_minus_1: buffer_removal_time_length_minus_1!,
                 equal_picture_interval: fps_fixed,
                 seq_force_screen_content_tools,
                 seq_force_integer_mv,
@@ -506,8 +505,8 @@ class AV1OBUParser {
         if (sequence_header.decoder_model_info_present_flag) {
             let buffer_removal_time_present_flag = gb.readBool();
             if (buffer_removal_time_present_flag) {
-                for (let opNum = 0; opNum <= sequence_header.operating_points_cnt_minus_1; opNum++) {
-                    if (sequence_header.operating_points[opNum].decoder_model_present_for_this_op[opNum]) {
+                for (let opNum = 0; opNum <= sequence_header.operating_points_cnt_minus_1!; opNum++) {
+                    if (sequence_header.operating_points[opNum].decoder_model_present_for_this_op) {
                         let opPtIdc = sequence_header.operating_points[opNum].operating_point_idc;
                         let inTemporalLayer = (opPtIdc >> temporal_id ) & 1
                         let inSpatialLayer = (opPtIdc >> (spatial_id + 8)) & 1
@@ -550,7 +549,7 @@ class AV1OBUParser {
         // fmp4 can't support reference frame resolution change, so ignored
 
         gb.destroy();
-        gb = null;
+        gb = null!;
         return meta;
     }
 

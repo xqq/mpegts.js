@@ -15,5 +15,6 @@ declare namespace Log {
     let ENABLE_DEBUG: boolean;
     let ENABLE_VERBOSE: boolean;
     let ENABLE_CALLBACK: boolean;
-    let emitter: any;
+    let emitter: EventEmitter<any>;
 }
+import EventEmitter from 'events';

@@ -22,8 +22,8 @@ class StartupStallJumper {
 
     private readonly TAG: string = 'StartupStallJumper';
 
-    private _media_element: HTMLMediaElement = null;
-    private _on_direct_seek: (target: number) => void = null;
+    private _media_element: HTMLMediaElement;
+    private _on_direct_seek: (target: number) => void;
     private _canplay_received: boolean = false;
 
     private e: any = null;
@@ -47,8 +47,8 @@ class StartupStallJumper {
         this._media_element.removeEventListener('canplay', this.e.onMediaCanPlay);
         this._media_element.removeEventListener('stalled', this.e.onMediaStalled);
         this._media_element.removeEventListener('progress', this.e.onMediaProgress);
-        this._media_element = null;
-        this._on_direct_seek = null;
+        this._media_element = null!;
+        this._on_direct_seek = null!;
     }
 
     private _onMediaCanPlay(e: Event): void {

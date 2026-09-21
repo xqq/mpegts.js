@@ -20,8 +20,8 @@
 class LiveLatencyChaser {
 
     private _config: any = null;
-    private _media_element: HTMLMediaElement = null;
-    private _on_direct_seek: (target: number) => void = null;
+    private _media_element: HTMLMediaElement;
+    private _on_direct_seek: (target: number) => void;
 
     public constructor(config: any, media_element: HTMLMediaElement, on_direct_seek: (target: number) => void) {
         this._config = config;
@@ -30,8 +30,8 @@ class LiveLatencyChaser {
     }
 
     public destroy(): void {
-        this._on_direct_seek = null;
-        this._media_element = null;
+        this._on_direct_seek = null!;
+        this._media_element = null!;
         this._config = null;
     }
 
