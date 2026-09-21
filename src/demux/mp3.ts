@@ -1,4 +1,4 @@
-export class MP3Data {
+export interface MP3Data {
     object_type: number;
     sample_rate: number;
     channel_count: number;

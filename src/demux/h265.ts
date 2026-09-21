@@ -12,7 +12,7 @@ export enum H265NaluType {
     kSliceSEISuffix = 40,
 }
 
-export class H265NaluPayload {
+export interface H265NaluPayload {
     type: H265NaluType;
     data: Uint8Array;
 }
@@ -110,9 +110,10 @@ export class H265AnnexBParser {
 
             let payload_data = data.subarray(offset, next_startcode_offset);
 
-            nalu_payload = new H265NaluPayload();
-            nalu_payload.type = nalu_type;
-            nalu_payload.data = payload_data;
+            nalu_payload = {
+                type: nalu_type,
+                data: payload_data,
+            };
         }
 
         return nalu_payload;

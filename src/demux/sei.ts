@@ -1,9 +1,10 @@
 
-export class SEIData {
+export interface SEIData {
     type: number;
     size: number;
-    uuid: Uint8Array;
-    user_data: Uint8Array;
+    // Only present for payload type 5 (user_data_unregistered).
+    uuid?: Uint8Array;
+    user_data?: Uint8Array;
     pts?: number;
 }
 
@@ -74,9 +75,10 @@ export function parseSEI(data: Uint8Array, pts?: number, codec?: 'h264' | 'h265'
         return null;
     }
 
-    let sei_data = new SEIData();
-    sei_data.type = payloadType;
-    sei_data.size = payloadSize;
+    let sei_data: SEIData = {
+        type: payloadType,
+        size: payloadSize,
+    };
 
     // Extract payload
     let payload = rbsp_data.subarray(offset, offset + payloadSize);

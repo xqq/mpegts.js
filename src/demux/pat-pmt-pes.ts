@@ -3,8 +3,8 @@ interface ProgramToPMTPIDMap {
 }
 
 export class PAT {
-    version_number: number;
-    network_pid: number;
+    version_number!: number;
+    network_pid!: number;
     // program_number -> pmt_pid
     program_pmt_pid: ProgramToPMTPIDMap = {};
 }
@@ -29,9 +29,9 @@ interface PIDToStreamTypeMap {
 }
 
 export class PMT {
-    program_number: number;
-    version_number: number;
-    pcr_pid: number;
+    program_number!: number;
+    version_number!: number;
+    pcr_pid!: number;
     // pid -> stream_type
     pid_stream_type: PIDToStreamTypeMap = {};
 
@@ -93,7 +93,7 @@ export interface ProgramToPMTMap {
     [program: number]: PMT;
 }
 
-export class PESData {
+export interface PESData {
     pid: number;
     data: Uint8Array;
     stream_type: StreamType;
@@ -101,7 +101,7 @@ export class PESData {
     random_access_indicator: number;
 }
 
-export class SectionData {
+export interface SectionData {
     pid: number;
     data: Uint8Array;
     file_position: number;
@@ -113,7 +113,7 @@ export class SliceQueue {
     total_length: number = 0;
     expected_length: number = 0;
     file_position: number = 0;
-    random_access_indicator: 0;
+    random_access_indicator!: 0;
 }
 
 export interface PIDToSliceQueues {

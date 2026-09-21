@@ -2,7 +2,7 @@ import Log from "../utils/logger";
 import ExpGolomb from "./exp-golomb";
 import { MPEG4AudioObjectTypes, MPEG4SamplingFrequencies, MPEG4SamplingFrequencyIndex } from "./mpeg4-audio";
 
-export class AC3Frame {
+export interface AC3Frame {
     sampling_frequency: number;
     sampling_rate_code: number;
     bit_stream_identification: number;
@@ -42,8 +42,8 @@ export class AC3Parser {
 
     private data_: Uint8Array;
     private current_syncword_offset_: number;
-    private eof_flag_: boolean;
-    private has_last_incomplete_data: boolean;
+    private eof_flag_: boolean = false;
+    private has_last_incomplete_data: boolean = false;
 
     public constructor(data: Uint8Array) {
         this.data_ = data;
@@ -115,15 +115,17 @@ export class AC3Parser {
 
             let channel_count = [2, 1, 2, 3, 3, 4, 4, 5][channel_mode] + low_frequency_effects_channel_on;
 
-            ac3_frame = new AC3Frame();
-            ac3_frame.sampling_frequency = sampling_frequency;
-            ac3_frame.channel_count = channel_count;
-            ac3_frame.channel_mode = channel_mode;
-            ac3_frame.bit_stream_identification = bit_stream_identification;
-            ac3_frame.low_frequency_effects_channel_on = low_frequency_effects_channel_on;
-            ac3_frame.bit_stream_mode = bit_stream_mode;
-            ac3_frame.frame_size_code = frame_size_code;
-            ac3_frame.data = data.subarray(offset, offset + frame_size);
+            ac3_frame = {
+                sampling_frequency: sampling_frequency,
+                sampling_rate_code: sampling_rate_code,
+                channel_count: channel_count,
+                channel_mode: channel_mode,
+                bit_stream_identification: bit_stream_identification,
+                low_frequency_effects_channel_on: low_frequency_effects_channel_on,
+                bit_stream_mode: bit_stream_mode,
+                frame_size_code: frame_size_code,
+                data: data.subarray(offset, offset + frame_size),
+            };
         }
 
         return ac3_frame;
@@ -174,7 +176,7 @@ export class AC3Config {
     }
 }
 
-export class EAC3Frame {
+export interface EAC3Frame {
     sampling_frequency: number;
     sampling_rate_code: number;
     bit_stream_identification: number;
@@ -192,8 +194,8 @@ export class EAC3Parser {
 
     private data_: Uint8Array;
     private current_syncword_offset_: number;
-    private eof_flag_: boolean;
-    private has_last_incomplete_data: boolean;
+    private eof_flag_: boolean = false;
+    private has_last_incomplete_data: boolean = false;
 
     public constructor(data: Uint8Array) {
         this.data_ = data;
@@ -270,15 +272,17 @@ export class EAC3Parser {
 
             gb.destroy();
 
-            eac3_frame = new EAC3Frame();
-            eac3_frame.sampling_frequency = sampling_frequency;
-            eac3_frame.channel_count = channel_count;
-            eac3_frame.channel_mode = channel_mode;
-            eac3_frame.bit_stream_identification = bit_stream_identification;
-            eac3_frame.low_frequency_effects_channel_on = low_frequency_effects_channel_on;
-            eac3_frame.frame_size = frame_size;
-            eac3_frame.num_blks = [1, 2, 3, 6][num_blocks_code];
-            eac3_frame.data = data.subarray(offset, offset + frame_size);
+            eac3_frame = {
+                sampling_frequency: sampling_frequency,
+                sampling_rate_code: sampling_rate_code,
+                channel_count: channel_count,
+                channel_mode: channel_mode,
+                bit_stream_identification: bit_stream_identification,
+                low_frequency_effects_channel_on: low_frequency_effects_channel_on,
+                frame_size: frame_size,
+                num_blks: [1, 2, 3, 6][num_blocks_code],
+                data: data.subarray(offset, offset + frame_size),
+            };
         }
 
         return eac3_frame;

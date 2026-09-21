@@ -117,10 +117,10 @@ class TSDemuxer extends BaseDemuxer {
     private timescale_ = 90;
     private duration_ = 0;
 
-    private pat_: PAT;
-    private current_program_: number;
+    private pat_: PAT | undefined;
+    private current_program_: number | undefined;
     private current_pmt_pid_: number = -1;
-    private pmt_: PMT;
+    private pmt_: PMT | undefined;
     private program_pmt_map_: ProgramToPMTMap = {};
 
     private pes_slice_queues_: PIDToSliceQueues = {};
@@ -513,11 +513,12 @@ class TSDemuxer extends BaseDemuxer {
         slice_queue.expected_length = -1;
         slice_queue.total_length = 0;
 
-        let section_data = new SectionData();
-        section_data.pid = misc.pid;
-        section_data.data = data;
-        section_data.file_position = slice_queue.file_position;
-        section_data.random_access_indicator = slice_queue.random_access_indicator;
+        let section_data: SectionData = {
+            pid: misc.pid,
+            data: data,
+            file_position: slice_queue.file_position,
+            random_access_indicator: slice_queue.random_access_indicator,
+        };
         this.parseSection(section_data);
     }
 
@@ -532,12 +533,13 @@ class TSDemuxer extends BaseDemuxer {
         slice_queue.expected_length = -1;
         slice_queue.total_length = 0;
 
-        let pes_data = new PESData();
-        pes_data.pid = misc.pid;
-        pes_data.data = data;
-        pes_data.stream_type = misc.stream_type;
-        pes_data.file_position = slice_queue.file_position;
-        pes_data.random_access_indicator = slice_queue.random_access_indicator;
+        let pes_data: PESData = {
+            pid: misc.pid,
+            data: data,
+            stream_type: misc.stream_type,
+            file_position: slice_queue.file_position,
+            random_access_indicator: slice_queue.random_access_indicator,
+        };
         this.parsePES(pes_data);
     }
 
@@ -606,23 +608,25 @@ class TSDemuxer extends BaseDemuxer {
 
             let payload = data.subarray(payload_start_index, payload_start_index + payload_length);
 
+            const pmt = this.pmt_!;
+
             switch (pes_data.stream_type) {
                 case StreamType.kMPEG1Audio:
                 case StreamType.kMPEG2Audio:
                     this.parseMP3Payload(payload, pts);
                     break;
                 case StreamType.kPESPrivateData:
-                    if (this.pmt_.common_pids.av1 === pes_data.pid) {
+                    if (pmt.common_pids.av1 === pes_data.pid) {
                         this.parseAV1Payload(payload, pts, dts, pes_data.file_position, pes_data.random_access_indicator);
-                    } else if (this.pmt_.common_pids.opus === pes_data.pid) {
+                    } else if (pmt.common_pids.opus === pes_data.pid) {
                         this.parseOpusPayload(payload, pts);
-                    } else if (this.pmt_.common_pids.ac3 === pes_data.pid) {
+                    } else if (pmt.common_pids.ac3 === pes_data.pid) {
                         this.parseAC3Payload(payload, pts);
-                    } else if (this.pmt_.common_pids.eac3 === pes_data.pid) {
+                    } else if (pmt.common_pids.eac3 === pes_data.pid) {
                         this.parseEAC3Payload(payload, pts);
-                    } else if (this.pmt_.asynchronous_klv_pids[pes_data.pid]) {
+                    } else if (pmt.asynchronous_klv_pids[pes_data.pid]) {
                         this.parseAsynchronousKLVMetadataPayload(payload, pes_data.pid, stream_id);
-                    } else if (this.pmt_.smpte2038_pids[pes_data.pid]) {
+                    } else if (pmt.smpte2038_pids[pes_data.pid]) {
                         this.parseSMPTE2038MetadataPayload(payload, pts, dts, pes_data.pid, stream_id);
                     } else {
                         this.parsePESPrivateDataPayload(payload, pts, dts, pes_data.pid, stream_id);
@@ -641,14 +645,14 @@ class TSDemuxer extends BaseDemuxer {
                     this.parseEAC3Payload(payload, pts);
                     break;
                 case StreamType.kMetadata:
-                    if (this.pmt_.timed_id3_pids[pes_data.pid]) {
+                    if (pmt.timed_id3_pids[pes_data.pid]) {
                         this.parseTimedID3MetadataPayload(payload, pts, dts, pes_data.pid, stream_id);
-                    } else if (this.pmt_.synchronous_klv_pids[pes_data.pid]) {
+                    } else if (pmt.synchronous_klv_pids[pes_data.pid]) {
                         this.parseSynchronousKLVMetadataPayload(payload, pts, dts, pes_data.pid, stream_id);
                     }
                     break;
                 case StreamType.kPGS:
-                    this.parsePGSPayload(payload, pts, dts, pes_data.pid, stream_id, this.pmt_.pgs_langs[pes_data.pid]);
+                    this.parsePGSPayload(payload, pts, dts, pes_data.pid, stream_id, pmt.pgs_langs[pes_data.pid]);
                     break;
                 case StreamType.kH264:
                     this.parseH264Payload(payload, pts, dts, pes_data.file_position, pes_data.random_access_indicator);
@@ -697,7 +701,7 @@ class TSDemuxer extends BaseDemuxer {
         let section_number = data[6];
         let last_section_number = data[7];
 
-        let pat: PAT | null = null;
+        let pat: PAT | undefined = undefined;
 
         if (current_next_indicator === 1 && section_number === 0) {
             pat = new PAT();
@@ -1769,11 +1773,12 @@ class TSDemuxer extends BaseDemuxer {
                 break;
         }
 
-        const sample = new MP3Data();
-        sample.object_type = object_type;
-        sample.sample_rate = sample_rate;
-        sample.channel_count = channel_count;
-        sample.data = data;
+        const sample: MP3Data = {
+            object_type: object_type,
+            sample_rate: sample_rate,
+            channel_count: channel_count,
+            data: data,
+        };
         const audio_sample = {
             codec: 'mp3',
             data: sample
@@ -1978,10 +1983,11 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     private dispatchPESPrivateDataDescriptor(pid: number, stream_type: number, descriptor: Uint8Array) {
-        let desc = new PESPrivateDataDescriptor();
-        desc.pid = pid;
-        desc.stream_type = stream_type;
-        desc.descriptor = descriptor;
+        let desc: PESPrivateDataDescriptor = {
+            pid: pid,
+            stream_type: stream_type,
+            descriptor: descriptor,
+        };
 
         if (this.onPESPrivateDataDescriptor) {
             this.onPESPrivateDataDescriptor(desc);
@@ -1989,12 +1995,13 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     private parsePESPrivateDataPayload(data: Uint8Array, pts: number | undefined, dts: number | undefined, pid: number, stream_id: number) {
-        let private_data = new PESPrivateData();
+        let private_data: PESPrivateData = {
+            pid: pid,
+            stream_id: stream_id,
+            len: data.byteLength,
+            data: data,
+        };
 
-        private_data.pid = pid;
-        private_data.stream_id = stream_id;
-        private_data.len = data.byteLength;
-        private_data.data = data;
 
         if (pts != undefined) {
             let pts_ms = Math.floor(pts / this.timescale_);
@@ -2014,12 +2021,13 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     private parseTimedID3MetadataPayload(data: Uint8Array, pts: number | undefined, dts: number | undefined, pid: number, stream_id: number) {
-        let timed_id3_metadata = new PESPrivateData();
+        let timed_id3_metadata: PESPrivateData = {
+            pid: pid,
+            stream_id: stream_id,
+            len: data.byteLength,
+            data: data,
+        };
 
-        timed_id3_metadata.pid = pid;
-        timed_id3_metadata.stream_id = stream_id;
-        timed_id3_metadata.len = data.byteLength;
-        timed_id3_metadata.data = data;
 
         if (pts != undefined) {
             let pts_ms = Math.floor(pts / this.timescale_);
@@ -2037,13 +2045,14 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     private parsePGSPayload(data: Uint8Array, pts: number | undefined, dts: number | undefined, pid: number, stream_id: number, lang: string) {
-        let pgs_data = new PGSData();
+        let pgs_data: PGSData = {
+            pid: pid,
+            lang: lang,
+            stream_id: stream_id,
+            len: data.byteLength,
+            data: data,
+        };
 
-        pgs_data.pid = pid;
-        pgs_data.lang = lang;
-        pgs_data.stream_id = stream_id;
-        pgs_data.len = data.byteLength;
-        pgs_data.data = data;
 
         if (pts != undefined) {
             let pts_ms = Math.floor(pts / this.timescale_);
@@ -2061,12 +2070,14 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     private parseSynchronousKLVMetadataPayload(data: Uint8Array, pts: number | undefined, dts: number | undefined, pid: number, stream_id: number) {
-        let synchronous_klv_metadata = new KLVData();
+        let synchronous_klv_metadata: KLVData = {
+            pid: pid,
+            stream_id: stream_id,
+            len: data.byteLength,
+            data: data,
+            access_units: klv_parse(data),
+        };
 
-        synchronous_klv_metadata.pid = pid;
-        synchronous_klv_metadata.stream_id = stream_id;
-        synchronous_klv_metadata.len = data.byteLength;
-        synchronous_klv_metadata.data = data;
 
         if (pts != undefined) {
             let pts_ms = Math.floor(pts / this.timescale_);
@@ -2078,7 +2089,6 @@ class TSDemuxer extends BaseDemuxer {
             synchronous_klv_metadata.dts = dts_ms;
         }
 
-        synchronous_klv_metadata.access_units = klv_parse(data);
 
         if (this.onSynchronousKLVMetadata) {
             this.onSynchronousKLVMetadata(synchronous_klv_metadata);
@@ -2086,12 +2096,13 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     private parseAsynchronousKLVMetadataPayload(data: Uint8Array, pid: number, stream_id: number) {
-        let asynchronous_klv_metadata = new PESPrivateData();
+        let asynchronous_klv_metadata: PESPrivateData = {
+            pid: pid,
+            stream_id: stream_id,
+            len: data.byteLength,
+            data: data,
+        };
 
-        asynchronous_klv_metadata.pid = pid;
-        asynchronous_klv_metadata.stream_id = stream_id;
-        asynchronous_klv_metadata.len = data.byteLength;
-        asynchronous_klv_metadata.data = data;
 
         if (this.onAsynchronousKLVMetadata) {
             this.onAsynchronousKLVMetadata(asynchronous_klv_metadata);
@@ -2099,12 +2110,14 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     private parseSMPTE2038MetadataPayload(data: Uint8Array, pts: number | undefined, dts: number | undefined, pid: number, stream_id: number) {
-        let smpte2038_data = new SMPTE2038Data();
+        let smpte2038_data: SMPTE2038Data = {
+            pid: pid,
+            stream_id: stream_id,
+            len: data.byteLength,
+            data: data,
+            ancillaries: smpte2038parse(data),
+        };
 
-        smpte2038_data.pid = pid;
-        smpte2038_data.stream_id = stream_id;
-        smpte2038_data.len = data.byteLength;
-        smpte2038_data.data = data;
 
         if (pts != undefined) {
             let pts_ms = Math.floor(pts / this.timescale_);
@@ -2117,7 +2130,6 @@ class TSDemuxer extends BaseDemuxer {
             smpte2038_data.dts = dts_ms;
         }
 
-        smpte2038_data.ancillaries = smpte2038parse(data);
         if (this.onSMPTE2038Metadata) {
             this.onSMPTE2038Metadata(smpte2038_data);
         }
