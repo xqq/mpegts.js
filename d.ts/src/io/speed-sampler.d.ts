@@ -5,7 +5,10 @@ declare class SpeedSampler {
     _intervalBytes: number;
     _totalBytes: number;
     _lastSecondBytes: number;
-    _now: any;
+    _now: {
+        (): DOMHighResTimeStamp;
+        (): DOMHighResTimeStamp;
+    };
     reset(): void;
     addBytes(bytes: any): void;
     get currentKBps(): number;

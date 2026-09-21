@@ -4,6 +4,18 @@ declare class FLVDemuxer {
         match: boolean;
     } | {
         needMoreData: boolean;
+        match?: undefined;
+        consumed?: undefined;
+        dataOffset?: undefined;
+        hasAudioTrack?: undefined;
+        hasVideoTrack?: undefined;
+    } | {
+        match: boolean;
+        consumed: number;
+        dataOffset: number;
+        hasAudioTrack: boolean;
+        hasVideoTrack: boolean;
+        needMoreData?: undefined;
     };
     constructor(probeData: any, config: any);
     TAG: string;
@@ -25,9 +37,9 @@ declare class FLVDemuxer {
     _audioInitialMetadataDispatched: boolean;
     _videoInitialMetadataDispatched: boolean;
     _mediaInfo: MediaInfo;
-    _metadata: {};
-    _audioMetadata: {};
-    _videoMetadata: {};
+    _metadata: {} | null;
+    _audioMetadata: {} | null;
+    _videoMetadata: {} | null;
     _naluLengthSize: number;
     _timestampBase: number;
     _timescale: number;
@@ -51,14 +63,14 @@ declare class FLVDemuxer {
         type: string;
         id: number;
         sequenceNumber: number;
-        samples: any[];
+        samples: never[];
         length: number;
     };
     _audioTrack: {
         type: string;
         id: number;
         sequenceNumber: number;
-        samples: any[];
+        samples: never[];
         length: number;
     };
     _littleEndian: boolean;
@@ -102,22 +114,22 @@ declare class FLVDemuxer {
             channelCount: number;
             codec: string;
             originalCodec: string;
-        };
-    };
+        } | undefined;
+    } | undefined;
     _parseAACAudioSpecificConfig(arrayBuffer: any, dataOffset: any, dataSize: any): {
         config: any[];
         samplingRate: number;
         channelCount: number;
         codec: string;
         originalCodec: string;
-    };
+    } | undefined;
     _parseMP3AudioData(arrayBuffer: any, dataOffset: any, dataSize: any, requestHeader: any): Uint8Array<any> | {
         bitRate: number;
         samplingRate: number;
         channelCount: number;
         codec: string;
         originalCodec: string;
-    };
+    } | undefined;
     _parseOpusAudioPacket(arrayBuffer: any, dataOffset: any, dataSize: any, tagTimestamp: any, packetType: any): void;
     _parseOpusSequenceHeader(arrayBuffer: any, dataOffset: any, dataSize: any): void;
     _parseOpusAudioData(arrayBuffer: any, dataOffset: any, dataSize: any, tagTimestamp: any): void;

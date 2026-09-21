@@ -9,7 +9,7 @@ declare class RangeLoader extends BaseLoader {
     _currentChunkSizeKB: number;
     _currentSpeedNormalized: number;
     _zeroSpeedChunkCount: number;
-    _xhr: XMLHttpRequest;
+    _xhr: XMLHttpRequest | null;
     _speedSampler: SpeedSampler;
     _requestAbort: boolean;
     _waitForTotalLength: boolean;
@@ -19,9 +19,9 @@ declare class RangeLoader extends BaseLoader {
     _currentRequestRange: {
         from: any;
         to: any;
-    };
+    } | null;
     _totalLength: any;
-    _contentLength: number;
+    _contentLength: number | null;
     _receivedLength: number;
     _lastTimeLoaded: number;
     get currentSpeed(): number;
@@ -32,7 +32,7 @@ declare class RangeLoader extends BaseLoader {
     _internalAbort(): void;
     _onReadyStateChange(e: any): void;
     _onProgress(e: any): void;
-    _normalizeSpeed(input: any): number;
+    _normalizeSpeed(input: any): number | undefined;
     _onLoad(e: any): void;
     _onXhrError(e: any): void;
 }

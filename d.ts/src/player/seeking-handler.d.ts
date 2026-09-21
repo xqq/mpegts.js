@@ -5,7 +5,7 @@ declare class SeekingHandler {
     private _always_seek_keyframe;
     private _on_unbuffered_seek;
     private _request_set_current_time;
-    private _seek_request_record_clocktime?;
+    private _seek_request_record_clocktime;
     private _idr_sample_list;
     private e?;
     constructor(config: any, media_element: HTMLMediaElement, on_unbuffered_seek: (milliseconds: number) => void);

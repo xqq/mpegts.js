@@ -9,7 +9,7 @@ export declare enum H265NaluType {
     kSliceSEI = 39,
     kSliceSEISuffix = 40
 }
-export declare class H265NaluPayload {
+export interface H265NaluPayload {
     type: H265NaluType;
     data: Uint8Array;
 }

@@ -8,7 +8,7 @@ declare class NativePlayer {
         enableWorker: boolean;
         enableWorkerForMSE: boolean;
         enableStashBuffer: boolean;
-        stashInitialSize: any;
+        stashInitialSize: undefined;
         isLive: boolean;
         liveBufferLatencyChasing: boolean;
         liveBufferLatencyChasingOnPaused: boolean;
@@ -31,16 +31,16 @@ declare class NativePlayer {
         seekParamStart: string;
         seekParamEnd: string;
         rangeLoadZeroStart: boolean;
-        customSeekHandler: any;
+        customSeekHandler: undefined;
         reuseRedirectedURL: boolean;
-        headers: any;
-        customLoader: any;
+        headers: undefined;
+        customLoader: undefined;
     };
     e: {
-        onvLoadedMetadata: any;
+        onvLoadedMetadata: (e: any) => void;
     };
     _pendingSeekTime: any;
-    _statisticsReporter: number;
+    _statisticsReporter: number | null;
     _mediaDataSource: any;
     _mediaElement: any;
     destroy(): void;

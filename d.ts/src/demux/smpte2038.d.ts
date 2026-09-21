@@ -1,4 +1,4 @@
-export declare class SMPTE2038Data {
+export interface SMPTE2038Data {
     pid: number;
     stream_id: number;
     pts?: number;

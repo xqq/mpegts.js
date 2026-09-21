@@ -9,11 +9,11 @@ declare class TransmuxingController {
     _mediaInfo: any;
     /** @type {FLVDemuxer | TSDemuxer} */
     _demuxer: FLVDemuxer | TSDemuxer;
-    _remuxer: MP4Remuxer;
-    _ioctl: IOController;
+    _remuxer: MP4Remuxer | null;
+    _ioctl: IOController | null;
     _pendingSeekTime: any;
     _pendingResolveSeekPoint: any;
-    _statisticsReporter: number;
+    _statisticsReporter: number | null;
     destroy(): void;
     on(event: any, listener: any): void;
     off(event: any, listener: any): void;

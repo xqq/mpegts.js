@@ -3,12 +3,12 @@ declare class Transmuxer {
     constructor(mediaDataSource: any, config: any);
     TAG: string;
     _emitter: EventEmitter<any>;
-    _worker: Worker | Blob;
-    _workerDestroying: boolean;
+    _worker: Worker | Blob | null | undefined;
+    _workerDestroying: boolean | undefined;
     e: {
-        onLoggingConfigChanged: any;
-    };
-    _controller: TransmuxingController;
+        onLoggingConfigChanged: (config: any) => void;
+    } | undefined;
+    _controller: TransmuxingController | undefined;
     destroy(): void;
     on(event: any, listener: any): void;
     off(event: any, listener: any): void;

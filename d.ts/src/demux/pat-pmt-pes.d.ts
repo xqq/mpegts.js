@@ -67,14 +67,14 @@ export declare class PMT {
 export interface ProgramToPMTMap {
     [program: number]: PMT;
 }
-export declare class PESData {
+export interface PESData {
     pid: number;
     data: Uint8Array;
     stream_type: StreamType;
     file_position: number;
     random_access_indicator: number;
 }
-export declare class SectionData {
+export interface SectionData {
     pid: number;
     data: Uint8Array;
     file_position: number;

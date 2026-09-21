@@ -5,18 +5,18 @@ declare class MSEController {
     _config: any;
     _emitter: EventEmitter<any>;
     e: {
-        onSourceOpen: any;
-        onSourceEnded: any;
-        onSourceClose: any;
-        onStartStreaming: any;
-        onEndStreaming: any;
-        onQualityChange: any;
-        onSourceBufferError: any;
-        onSourceBufferUpdateEnd: any;
+        onSourceOpen: () => void;
+        onSourceEnded: () => void;
+        onSourceClose: () => void;
+        onStartStreaming: () => void;
+        onEndStreaming: () => void;
+        onQualityChange: () => void;
+        onSourceBufferError: (e: any) => void;
+        onSourceBufferUpdateEnd: () => void;
     };
     _useManagedMediaSource: boolean;
     _mediaSource: any;
-    _mediaSourceObjectURL: string;
+    _mediaSourceObjectURL: string | null;
     _mediaElementProxy: any;
     _isBufferFull: boolean;
     _hasPendingEos: boolean;
@@ -24,24 +24,24 @@ declare class MSEController {
     _pendingMediaDuration: number;
     _pendingSourceBufferInit: any[];
     _mimeTypes: {
-        video: any;
-        audio: any;
+        video: null;
+        audio: null;
     };
     _sourceBuffers: {
-        video: any;
-        audio: any;
+        video: null;
+        audio: null;
     };
     _lastInitSegments: {
-        video: any;
-        audio: any;
+        video: null;
+        audio: null;
     };
     _pendingSegments: {
-        video: any[];
-        audio: any[];
+        video: never[];
+        audio: never[];
     };
     _pendingRemoveRanges: {
-        video: any[];
-        audio: any[];
+        video: never[];
+        audio: never[];
     };
     destroy(): void;
     on(event: any, listener: any): void;
@@ -53,7 +53,7 @@ declare class MSEController {
     getHandle(): any;
     getObjectURL(): string;
     revokeObjectURL(): void;
-    appendInitSegment(initSegment: any, deferred?: any): void;
+    appendInitSegment(initSegment: any, deferred?: undefined): void;
     appendMediaSegment(mediaSegment: any): void;
     flush(): void;
     endOfStream(): void;

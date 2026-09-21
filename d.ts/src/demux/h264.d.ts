@@ -15,7 +15,7 @@ export declare enum H264NaluType {
     kSPSExt = 13,
     kReserved0 = 14
 }
-export declare class H264NaluPayload {
+export interface H264NaluPayload {
     type: H264NaluType;
     data: Uint8Array;
 }
