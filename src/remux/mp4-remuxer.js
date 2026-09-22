@@ -587,7 +587,6 @@ class MP4Remuxer {
             if (!force || this._videoStashedLastSample == null) {
                 return;
             }
-            return;
         }
         if (samples.length === 1 && !force) {
             // If [sample count in current batch] === 1 && (force != true)
