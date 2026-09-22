@@ -18,7 +18,7 @@
  */
 
 function checkContinuation(uint8array, start, checkLength) {
-    let array = uint8array;
+    const array = uint8array;
     if (start + checkLength < array.length) {
         while (checkLength--) {
             if ((array[++start] & 0xC0) !== 0x80)
@@ -31,10 +31,10 @@ function checkContinuation(uint8array, start, checkLength) {
 }
 
 function decodeUTF8(uint8array) {
-    let out = [];
-    let input = uint8array;
+    const out = [];
+    const input = uint8array;
     let i = 0;
-    let length = uint8array.length;
+    const length = uint8array.length;
 
     while (i < length) {
         if (input[i] < 0x80) {
@@ -45,7 +45,7 @@ function decodeUTF8(uint8array) {
             // fallthrough
         } else if (input[i] < 0xE0) {
             if (checkContinuation(input, i, 1)) {
-                let ucs4 = (input[i] & 0x1F) << 6 | (input[i + 1] & 0x3F);
+                const ucs4 = (input[i] & 0x1F) << 6 | (input[i + 1] & 0x3F);
                 if (ucs4 >= 0x80) {
                     out.push(String.fromCharCode(ucs4 & 0xFFFF));
                     i += 2;
@@ -54,7 +54,7 @@ function decodeUTF8(uint8array) {
             }
         } else if (input[i] < 0xF0) {
             if (checkContinuation(input, i, 2)) {
-                let ucs4 = (input[i] & 0xF) << 12 | (input[i + 1] & 0x3F) << 6 | input[i + 2] & 0x3F;
+                const ucs4 = (input[i] & 0xF) << 12 | (input[i + 1] & 0x3F) << 6 | input[i + 2] & 0x3F;
                 if (ucs4 >= 0x800 && (ucs4 & 0xF800) !== 0xD800) {
                     out.push(String.fromCharCode(ucs4 & 0xFFFF));
                     i += 3;

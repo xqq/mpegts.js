@@ -34,7 +34,7 @@ Polyfill.install();
 
 /** @returns {MSEPlayer | NativePlayer} */
 function createPlayer(mediaDataSource, optionalConfig) {
-    let mds = mediaDataSource;
+    const mds = mediaDataSource;
     if (mds == null || typeof mds !== 'object') {
         throw new InvalidArgumentException('MediaDataSource must be an javascript object!');
     }
@@ -66,7 +66,7 @@ function getFeatureList() {
 
 
 // interfaces
-let mpegts = {};
+const mpegts = {};
 
 mpegts.createPlayer = createPlayer;
 mpegts.isSupported = isSupported;

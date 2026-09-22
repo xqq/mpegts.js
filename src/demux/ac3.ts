@@ -55,7 +55,7 @@ export class AC3Parser {
 
     private findNextSyncwordOffset(syncword_offset: number): number {
         let i = syncword_offset;
-        let data = this.data_;
+        const data = this.data_;
 
         while (true) {
             if (i + 7 >= data.byteLength) {
@@ -64,7 +64,7 @@ export class AC3Parser {
             }
 
             // search 16-bit 0x0B77 syncword
-            let syncword = (data[i + 0] << 8) | (data[i + 1] << 0)
+            const syncword = (data[i + 0] << 8) | (data[i + 1] << 0)
             if (syncword === 0x0B77) {
                 return i;
             } else {
@@ -74,7 +74,7 @@ export class AC3Parser {
     }
 
     public readNextAC3Frame(): AC3Frame | null {
-        let data = this.data_;
+        const data = this.data_;
         let ac3_frame: AC3Frame | null = null;
 
         while (ac3_frame == null) {
@@ -82,14 +82,14 @@ export class AC3Parser {
                 break;
             }
 
-            let syncword_offset = this.current_syncword_offset_;
-            let offset = syncword_offset;
+            const syncword_offset = this.current_syncword_offset_;
+            const offset = syncword_offset;
 
-            let sampling_rate_code = data[offset + 4] >> 6;
-            let sampling_frequency = [48000, 44200, 33000][sampling_rate_code];
+            const sampling_rate_code = data[offset + 4] >> 6;
+            const sampling_frequency = [48000, 44200, 33000][sampling_rate_code];
 
-            let frame_size_code = data[offset + 4] & 0x3F;
-            let frame_size = frame_size_code_table[sampling_rate_code][frame_size_code] * 2;
+            const frame_size_code = data[offset + 4] & 0x3F;
+            const frame_size = frame_size_code_table[sampling_rate_code][frame_size_code] * 2;
 
             if (isNaN(frame_size) || offset + frame_size > this.data_.byteLength) {
                 // data not enough for extracting last sample
@@ -98,22 +98,22 @@ export class AC3Parser {
                 break;
             }
 
-            let next_syncword_offset = this.findNextSyncwordOffset(offset + frame_size);
+            const next_syncword_offset = this.findNextSyncwordOffset(offset + frame_size);
             this.current_syncword_offset_ = next_syncword_offset;
 
-            let bit_stream_identification = data[offset + 5] >> 3;
-            let bit_stream_mode = data[offset + 5] & 0x07;
+            const bit_stream_identification = data[offset + 5] >> 3;
+            const bit_stream_mode = data[offset + 5] & 0x07;
 
-            let channel_mode = data[offset + 6] >> 5;
+            const channel_mode = data[offset + 6] >> 5;
 
             let lfe_skip = 0;
             if ((channel_mode & 0x01) !== 0 && channel_mode !== 1) { lfe_skip += 2; }
             if ((channel_mode & 0x04) !== 0) { lfe_skip += 2; }
             if (channel_mode === 0x02) { lfe_skip += 2; }
 
-            let low_frequency_effects_channel_on = (((data[offset + 6] << 8) | (data[offset + 7] << 0)) >> (12 - lfe_skip)) & 0x01;
+            const low_frequency_effects_channel_on = (((data[offset + 6] << 8) | (data[offset + 7] << 0)) >> (12 - lfe_skip)) & 0x01;
 
-            let channel_count = [2, 1, 2, 3, 3, 4, 4, 5][channel_mode] + low_frequency_effects_channel_on;
+            const channel_count = [2, 1, 2, 3, 3, 4, 4, 5][channel_mode] + low_frequency_effects_channel_on;
 
             ac3_frame = {
                 sampling_frequency: sampling_frequency,
@@ -207,7 +207,7 @@ export class EAC3Parser {
 
     private findNextSyncwordOffset(syncword_offset: number): number {
         let i = syncword_offset;
-        let data = this.data_;
+        const data = this.data_;
 
         while (true) {
             if (i + 7 >= data.byteLength) {
@@ -216,7 +216,7 @@ export class EAC3Parser {
             }
 
             // search 16-bit 0x0B77 syncword
-            let syncword = (data[i + 0] << 8) | (data[i + 1] << 0)
+            const syncword = (data[i + 0] << 8) | (data[i + 1] << 0)
             if (syncword === 0x0B77) {
                 return i;
             } else {
@@ -226,7 +226,7 @@ export class EAC3Parser {
     }
 
     public readNextEAC3Frame(): EAC3Frame | null {
-        let data = this.data_;
+        const data = this.data_;
         let eac3_frame: EAC3Frame | null = null;
 
         while (eac3_frame == null) {
@@ -234,14 +234,14 @@ export class EAC3Parser {
                 break;
             }
 
-            let syncword_offset = this.current_syncword_offset_;
-            let offset = syncword_offset;
+            const syncword_offset = this.current_syncword_offset_;
+            const offset = syncword_offset;
 
-            let gb = new ExpGolomb(data.subarray(offset + 2));
+            const gb = new ExpGolomb(data.subarray(offset + 2));
 
-            let stream_type = gb.readBits(2);
-            let sub_stream_id = gb.readBits(3);
-            let frame_size = (gb.readBits(11) + 1) << 1;
+            const stream_type = gb.readBits(2);
+            const sub_stream_id = gb.readBits(3);
+            const frame_size = (gb.readBits(11) + 1) << 1;
             let sampling_rate_code = gb.readBits(2);
             let sampling_frequency: number | null = null;
             let num_blocks_code: number | null = null;
@@ -254,9 +254,9 @@ export class EAC3Parser {
                 num_blocks_code = gb.readBits(2);
             }
 
-            let channel_mode = gb.readBits(3);
-            let low_frequency_effects_channel_on = gb.readBits(1);
-            let bit_stream_identification = gb.readBits(5);
+            const channel_mode = gb.readBits(3);
+            const low_frequency_effects_channel_on = gb.readBits(1);
+            const bit_stream_identification = gb.readBits(5);
 
             if (offset + frame_size > this.data_.byteLength) {
                 // data not enough for extracting last sample
@@ -265,10 +265,10 @@ export class EAC3Parser {
                 break;
             }
 
-            let next_syncword_offset = this.findNextSyncwordOffset(offset + frame_size);
+            const next_syncword_offset = this.findNextSyncwordOffset(offset + frame_size);
             this.current_syncword_offset_ = next_syncword_offset;
 
-            let channel_count = [2, 1, 2, 3, 3, 4, 4, 5][channel_mode] + low_frequency_effects_channel_on;
+            const channel_count = [2, 1, 2, 3, 3, 4, 4, 5][channel_mode] + low_frequency_effects_channel_on;
 
             gb.destroy();
 

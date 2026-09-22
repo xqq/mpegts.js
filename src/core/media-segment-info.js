@@ -65,7 +65,7 @@ export class IDRSampleList {
     }
 
     appendArray(syncPoints) {
-        let list = this._list;
+        const list = this._list;
 
         if (syncPoints.length === 0) {
             return;
@@ -83,9 +83,9 @@ export class IDRSampleList {
             return null;
         }
 
-        let list = this._list;
+        const list = this._list;
         let idx = 0;
-        let last = list.length - 1;
+        const last = list.length - 1;
         let mid = 0;
         let lbound = 0;
         let ubound = last;
@@ -138,11 +138,11 @@ export class MediaSegmentInfoList {
     }
 
     _searchNearestSegmentBefore(originalBeginDts) {
-        let list = this._list;
+        const list = this._list;
         if (list.length === 0) {
             return -2;
         }
-        let last = list.length - 1;
+        const last = list.length - 1;
         let mid = 0;
         let lbound = 0;
         let ubound = last;
@@ -174,9 +174,9 @@ export class MediaSegmentInfoList {
     }
 
     append(mediaSegmentInfo) {
-        let list = this._list;
-        let msi = mediaSegmentInfo;
-        let lastAppendIdx = this._lastAppendLocation;
+        const list = this._list;
+        const msi = mediaSegmentInfo;
+        const lastAppendIdx = this._lastAppendLocation;
         let insertIdx = 0;
 
         if (lastAppendIdx !== -1 && lastAppendIdx < list.length &&
@@ -196,7 +196,7 @@ export class MediaSegmentInfoList {
     }
 
     getLastSegmentBefore(originalBeginDts) {
-        let idx = this._searchNearestSegmentBefore(originalBeginDts);
+        const idx = this._searchNearestSegmentBefore(originalBeginDts);
         if (idx >= 0) {
             return this._list[idx];
         } else {  // -1
@@ -205,7 +205,7 @@ export class MediaSegmentInfoList {
     }
 
     getLastSampleBefore(originalBeginDts) {
-        let segment = this.getLastSegmentBefore(originalBeginDts);
+        const segment = this.getLastSegmentBefore(originalBeginDts);
         if (segment != null) {
             return segment.lastSample;
         } else {

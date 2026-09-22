@@ -97,22 +97,22 @@ class AV1OBUParser {
 
     static parseOBUs(uint8array: Uint8Array, meta?: AV1Metadata | null) {
         for (let i = 0; i < uint8array.byteLength; ) {
-            let first = i;
-            let forbidden_bit = (uint8array[i] & 0x80) >> 7;
-            let type = (uint8array[i] & 0x78) >> 3;
-            let extension_flag = (uint8array[i] & 0x04) !== 0;
-            let has_size_field = (uint8array[i] & 0x02) !== 0;
-            let reserved_1bit = (uint8array[i] & 0x01) !== 0;
+            const first = i;
+            const forbidden_bit = (uint8array[i] & 0x80) >> 7;
+            const type = (uint8array[i] & 0x78) >> 3;
+            const extension_flag = (uint8array[i] & 0x04) !== 0;
+            const has_size_field = (uint8array[i] & 0x02) !== 0;
+            const reserved_1bit = (uint8array[i] & 0x01) !== 0;
 
             i += 1;
-            let temporal_id = 0, spatial_id = 0;
+            const temporal_id = 0, spatial_id = 0;
             if (extension_flag) { i += 1; }
 
             let size = Number.POSITIVE_INFINITY;
             if (has_size_field) {
                 size = 0;
                 for (let j = 0; ; j++) {
-                    let value = uint8array[i++]
+                    const value = uint8array[i++]
                     size |= (value & 0x7F) << (j * 7);
                     if ((value & 0x80) === 0) { break; }
                 }
@@ -138,16 +138,16 @@ class AV1OBUParser {
     static parseSeuqneceHeader(uint8array: Uint8Array): Omit<AV1Metadata, 'sequence_header_data'> {
         let gb = new ExpGolomb(uint8array);
 
-        let seq_profile = gb.readBits(3);
-        let still_picture = gb.readBool();
-        let reduced_still_picture_header = gb.readBool();
+        const seq_profile = gb.readBits(3);
+        const still_picture = gb.readBool();
+        const reduced_still_picture_header = gb.readBool();
 
         let fps = 0, fps_fixed = true, fps_num = 0, fps_den = 1;
-        let decoder_model_info_present_flag = false;
-        let decoder_model_present_for_this_op = false;
+        const decoder_model_info_present_flag = false;
+        const decoder_model_present_for_this_op = false;
         let buffer_delay_length_minus_1: number | undefined = undefined;
         let buffer_removal_time_length_minus_1: number | undefined = undefined;
-        let operating_points: OperatingPoint[] = [];
+        const operating_points: OperatingPoint[] = [];
         if (reduced_still_picture_header) {
             operating_points.push({
                 operating_point_idc: 0,
@@ -155,17 +155,17 @@ class AV1OBUParser {
                 tier: 0,
             });
         } else {
-            let timing_info_present_flag = gb.readBool();
+            const timing_info_present_flag = gb.readBool();
             if (timing_info_present_flag) {
                 // timing_info
-                let num_units_in_display_tick = gb.readBits(32);
-                let time_scale = gb.readBits(32);
-                let equal_picture_interval = gb.readBool();
+                const num_units_in_display_tick = gb.readBits(32);
+                const time_scale = gb.readBits(32);
+                const equal_picture_interval = gb.readBool();
                 let num_ticks_per_picture_minus_1 = 0;
                 if (equal_picture_interval) {
                     let leading = 0;
                     while (true) {
-                        let value = gb.readBits(1);
+                        const value = gb.readBits(1);
                         if (value !== 0) { break; }
                         leading += 1;
                     }
@@ -180,22 +180,22 @@ class AV1OBUParser {
                 fps = fps_num / fps_den;
                 fps_fixed = equal_picture_interval;
 
-                let decoder_model_info_present_flag = gb.readBool();
+                const decoder_model_info_present_flag = gb.readBool();
                 if (decoder_model_info_present_flag) {
                     // decoder_model_info
                     buffer_delay_length_minus_1 = gb.readBits(5);
-                    let num_units_in_decoding_tick = gb.readBits(32);
+                    const num_units_in_decoding_tick = gb.readBits(32);
                     buffer_removal_time_length_minus_1 = gb.readBits(5);
-                    let frame_presentation_time_length_minus_1 = gb.readBits(5);
+                    const frame_presentation_time_length_minus_1 = gb.readBits(5);
                 }
             }
 
-            let initial_display_delay_present_flag = gb.readBool();
-            let operating_points_cnt_minus_1 = gb.readBits(5);
+            const initial_display_delay_present_flag = gb.readBool();
+            const operating_points_cnt_minus_1 = gb.readBits(5);
             for (let i = 0; i <= operating_points_cnt_minus_1; i++) {
-                let operating_point_idc = gb.readBits(12);
-                let level = gb.readBits(5);
-                let tier = level > 7 ? gb.readBits(1) : 0;
+                const operating_point_idc = gb.readBits(12);
+                const level = gb.readBits(5);
+                const tier = level > 7 ? gb.readBits(1) : 0;
 
                 operating_points.push({
                     operating_point_idc,
@@ -204,58 +204,58 @@ class AV1OBUParser {
                 });
 
                 if (decoder_model_info_present_flag) {
-                    let decoder_model_present_for_this_op = gb.readBool();
+                    const decoder_model_present_for_this_op = gb.readBool();
                     operating_points[operating_points.length - 1].decoder_model_present_for_this_op = decoder_model_present_for_this_op;
                     if (decoder_model_present_for_this_op) {
                         // operating_parameters_info
-                        let decoder_buffer_delay = gb.readBits(buffer_delay_length_minus_1! + 1);
-                        let encoder_buffer_delay = gb.readBits(buffer_delay_length_minus_1! + 1);
-                        let low_delay_mode_flag = gb.readBool();
+                        const decoder_buffer_delay = gb.readBits(buffer_delay_length_minus_1! + 1);
+                        const encoder_buffer_delay = gb.readBits(buffer_delay_length_minus_1! + 1);
+                        const low_delay_mode_flag = gb.readBool();
                     }
                 }
 
                 if (initial_display_delay_present_flag) {
-                    let initial_display_delay_present_for_this_op = gb.readBool();
+                    const initial_display_delay_present_for_this_op = gb.readBool();
                     if (initial_display_delay_present_for_this_op) {
-                        let initial_display_delay_minus_1 = gb.readBits(4);
+                        const initial_display_delay_minus_1 = gb.readBits(4);
                     }
                 }
             }
         }
 
-        let operating_point = 0;
-        let { level, tier } = operating_points[operating_point];
+        const operating_point = 0;
+        const { level, tier } = operating_points[operating_point];
 
-        let frame_width_bits_minus_1 = gb.readBits(4);
-        let frame_height_bits_minus_1 = gb.readBits(4);
+        const frame_width_bits_minus_1 = gb.readBits(4);
+        const frame_height_bits_minus_1 = gb.readBits(4);
 
-        let max_frame_width = gb.readBits(frame_width_bits_minus_1 + 1) + 1;
-        let max_frame_height = gb.readBits(frame_height_bits_minus_1 + 1) + 1;
+        const max_frame_width = gb.readBits(frame_width_bits_minus_1 + 1) + 1;
+        const max_frame_height = gb.readBits(frame_height_bits_minus_1 + 1) + 1;
 
         let frame_id_numbers_present_flag = false;
         if (!reduced_still_picture_header) {
             frame_id_numbers_present_flag = gb.readBool();
         }
-        let delta_frame_id_length_minus_2: number | undefined = undefined;
-        let additional_frame_id_length_minus_1: number | undefined = undefined;
+        const delta_frame_id_length_minus_2: number | undefined = undefined;
+        const additional_frame_id_length_minus_1: number | undefined = undefined;
         if (frame_id_numbers_present_flag) {
-            let delta_frame_id_length_minus_2 = gb.readBits(4);
-            let additional_frame_id_length_minus_1 = gb.readBits(4);
+            const delta_frame_id_length_minus_2 = gb.readBits(4);
+            const additional_frame_id_length_minus_1 = gb.readBits(4);
         }
 
-        let SELECT_SCREEN_CONTENT_TOOLS = 2;
-        let SELECT_INTEGER_MV = 2;
+        const SELECT_SCREEN_CONTENT_TOOLS = 2;
+        const SELECT_INTEGER_MV = 2;
 
-        let use_128x128_superblock = gb.readBool();
-        let enable_filter_intra = gb.readBool();
-        let enable_intra_edge_filter = gb.readBool();
+        const use_128x128_superblock = gb.readBool();
+        const enable_filter_intra = gb.readBool();
+        const enable_intra_edge_filter = gb.readBool();
         let enable_interintra_compound = false;
         let enable_masked_compound = false;
         let enable_warped_motion = false;
         let enable_dual_filter = false;
         let enable_order_hint = false;
-        let enable_jnt_comp = false;
-        let enable_ref_frame_mvs = false;
+        const enable_jnt_comp = false;
+        const enable_ref_frame_mvs = false;
         let seq_force_screen_content_tools = SELECT_SCREEN_CONTENT_TOOLS;
         let seq_force_integer_mv = SELECT_INTEGER_MV;
         let OrderHintBits = 0;
@@ -266,17 +266,17 @@ class AV1OBUParser {
             enable_dual_filter = gb.readBool();
             enable_order_hint = gb.readBool();
             if (enable_order_hint) {
-                let enable_jnt_comp = gb.readBool();
-                let enable_ref_frame_mvs = gb.readBool();
+                const enable_jnt_comp = gb.readBool();
+                const enable_ref_frame_mvs = gb.readBool();
             }
-            let seq_choose_screen_content_tools = gb.readBool();
+            const seq_choose_screen_content_tools = gb.readBool();
             if (seq_choose_screen_content_tools) {
                 seq_force_screen_content_tools = SELECT_SCREEN_CONTENT_TOOLS;
             } else {
                 seq_force_screen_content_tools = gb.readBits(1);
             }
             if (seq_force_screen_content_tools) {
-                let seq_choose_integer_mv = gb.readBool();
+                const seq_choose_integer_mv = gb.readBool();
                 if (seq_choose_integer_mv) {
                     seq_force_integer_mv = SELECT_INTEGER_MV;
                 } else {
@@ -286,21 +286,21 @@ class AV1OBUParser {
                 seq_force_integer_mv = SELECT_INTEGER_MV;
             }
             if (enable_order_hint) {
-                let order_hint_bits_minus_1 = gb.readBits(3);
+                const order_hint_bits_minus_1 = gb.readBits(3);
                 OrderHintBits = order_hint_bits_minus_1 + 1;
             } else {
                 OrderHintBits = 0;
             }
         }
 
-        let enable_superres = gb.readBool();
-        let enable_cdef = gb.readBool();
-        let enable_restoration = gb.readBool();
+        const enable_superres = gb.readBool();
+        const enable_cdef = gb.readBool();
+        const enable_restoration = gb.readBool();
         // color_config
-        let high_bitdepth = gb.readBool();
+        const high_bitdepth = gb.readBool();
         let bitDepth = 8;
         if (seq_profile === 2 && high_bitdepth) {
-            let twelve_bit = gb.readBool();
+            const twelve_bit = gb.readBool();
             bitDepth = twelve_bit ? 12 : 10;
         } else {
             bitDepth = high_bitdepth ? 10 : 8;
@@ -309,18 +309,18 @@ class AV1OBUParser {
         if (seq_profile !== 1) {
             mono_chrome = gb.readBool();
         }
-        let numPlanes = mono_chrome ? 1 : 3;
-        let color_description_present_flag = gb.readBool();
-        let CP_BT_709 = 1, CP_UNSPECIFIED = 2;
-        let TC_UNSPECIFIED = 2, TC_SRGB = 13;
-        let MC_UNSPECIFIED = 2, MC_IDENTITY = 0;
+        const numPlanes = mono_chrome ? 1 : 3;
+        const color_description_present_flag = gb.readBool();
+        const CP_BT_709 = 1, CP_UNSPECIFIED = 2;
+        const TC_UNSPECIFIED = 2, TC_SRGB = 13;
+        const MC_UNSPECIFIED = 2, MC_IDENTITY = 0;
         let color_primaries = CP_UNSPECIFIED;
         let transfer_characteristics = TC_UNSPECIFIED;
         let matrix_coefficients = MC_UNSPECIFIED;
         if (color_description_present_flag) {
-            let color_primaries = gb.readBits(8);
-            let transfer_characteristics = gb.readBits(8);
-            let matrix_coefficients = gb.readBits(8);
+            const color_primaries = gb.readBits(8);
+            const transfer_characteristics = gb.readBits(8);
+            const matrix_coefficients = gb.readBits(8);
         }
         let color_range = 1;
         let subsampling_x = 1
@@ -329,8 +329,8 @@ class AV1OBUParser {
             color_range = gb.readBits(1);
             subsampling_x = 1
             subsampling_y = 1;
-            let chroma_sample_position = 0; /* CSP_UNKNOWN */
-            let separate_uv_delta_q = 0
+            const chroma_sample_position = 0; /* CSP_UNKNOWN */
+            const separate_uv_delta_q = 0
         } else {
             let color_range = 1;
             if (color_primaries === CP_BT_709 && transfer_characteristics === TC_SRGB && matrix_coefficients === MC_IDENTITY) {
@@ -347,11 +347,11 @@ class AV1OBUParser {
                     subsampling_y = 0
                 } else {
                     if (bitDepth == 12) {
-                        let subsampling_x = gb.readBits(1);
+                        const subsampling_x = gb.readBits(1);
                         if (subsampling_x) {
-                            let subsampling_y = gb.readBits(1);
+                            const subsampling_y = gb.readBits(1);
                         } else {
-                            let subsampling_y = 0;
+                            const subsampling_y = 0;
                         }
                     } else {
                         subsampling_x = 1
@@ -359,19 +359,19 @@ class AV1OBUParser {
                     }
                 }
                 if (subsampling_x && subsampling_y) {
-                    let chroma_sample_position = gb.readBits(2)
+                    const chroma_sample_position = gb.readBits(2)
                 }
-                let separate_uv_delta_q = gb.readBits(1);
+                const separate_uv_delta_q = gb.readBits(1);
             }
         }
         //
-        let film_grain_params_present = gb.readBool();
+        const film_grain_params_present = gb.readBool();
 
         gb.destroy();
         gb = null!;
 
-        let codec_mimetype = `av01.${seq_profile}.${AV1OBUParser.getLevelString(level, tier)}.${bitDepth.toString(10).padStart(2, '0')}`;
-        let sar_width = 1, sar_height = 1, sar_scale = 1;
+        const codec_mimetype = `av01.${seq_profile}.${AV1OBUParser.getLevelString(level, tier)}.${bitDepth.toString(10).padStart(2, '0')}`;
+        const sar_width = 1, sar_height = 1, sar_scale = 1;
 
         return {
             codec_mimetype,
@@ -417,29 +417,29 @@ class AV1OBUParser {
     }
 
     static parseOBUFrameHeader(uint8array: Uint8Array, temporal_id: number, spatial_id: number, meta: AV1Metadata) {
-        let { sequence_header } = meta;
+        const { sequence_header } = meta;
 
         let gb = new ExpGolomb(uint8array);
         // obu_type is OBU_FRAME_HEADER, SeenFrameHeader = 0, OBU_REDUNDANT_FRAME_HEADER 1
-        let NUM_REF_FRAMES = 8;
-        let KEY_FRAME = 0;
-        let INTER_FRAME = 1;
-        let INTRA_ONLY_FRAME = 2;
-        let SWITCH_FRAME = 3;
-        let SELECT_SCREEN_CONTENT_TOOLS = 2;
-        let SELECT_INTEGER_MV = 2;
-        let PRIMARY_REF_NONE = 7;
+        const NUM_REF_FRAMES = 8;
+        const KEY_FRAME = 0;
+        const INTER_FRAME = 1;
+        const INTRA_ONLY_FRAME = 2;
+        const SWITCH_FRAME = 3;
+        const SELECT_SCREEN_CONTENT_TOOLS = 2;
+        const SELECT_INTEGER_MV = 2;
+        const PRIMARY_REF_NONE = 7;
 
-        let FrameWidth = sequence_header.max_frame_width;
-        let FrameHeight = sequence_header.max_frame_height;
-        let RenderWidth = FrameWidth; // Stub
-        let RenderHeight = FrameHeight; // Stub
+        const FrameWidth = sequence_header.max_frame_width;
+        const FrameHeight = sequence_header.max_frame_height;
+        const RenderWidth = FrameWidth; // Stub
+        const RenderHeight = FrameHeight; // Stub
 
         let idLen = 0;
         if (sequence_header.frame_id_numbers_present_flag) {
             idLen = sequence_header.additional_frame_id_length_minus_1! + sequence_header.delta_frame_id_length_minus_2! + 3;
         }
-        let allFrames = (1 << NUM_REF_FRAMES) - 1;
+        const allFrames = (1 << NUM_REF_FRAMES) - 1;
 
         let show_existing_frame = false;
         let frame_type = 0;
@@ -473,7 +473,7 @@ class AV1OBUParser {
         }
         meta.keyframe = keyframe;
 
-        let disable_cdf_update = gb.readBool();
+        const disable_cdf_update = gb.readBool();
         let allow_screen_content_tools = sequence_header.seq_force_screen_content_tools;
         if (sequence_header.seq_force_screen_content_tools === SELECT_SCREEN_CONTENT_TOOLS) {
             allow_screen_content_tools = gb.readBits(1);
@@ -497,19 +497,19 @@ class AV1OBUParser {
         } else {
             frame_size_override_flag = gb.readBool();
         }
-        let order_hint = gb.readBits(sequence_header.order_hint_bits);
+        const order_hint = gb.readBits(sequence_header.order_hint_bits);
         let primary_ref_frame = PRIMARY_REF_NONE;
         if (!(keyframe || error_resilient_mode)) {
             primary_ref_frame = gb.readBits(3);
         }
         if (sequence_header.decoder_model_info_present_flag) {
-            let buffer_removal_time_present_flag = gb.readBool();
+            const buffer_removal_time_present_flag = gb.readBool();
             if (buffer_removal_time_present_flag) {
                 for (let opNum = 0; opNum <= sequence_header.operating_points_cnt_minus_1!; opNum++) {
                     if (sequence_header.operating_points[opNum].decoder_model_present_for_this_op) {
-                        let opPtIdc = sequence_header.operating_points[opNum].operating_point_idc;
-                        let inTemporalLayer = (opPtIdc >> temporal_id ) & 1
-                        let inSpatialLayer = (opPtIdc >> (spatial_id + 8)) & 1
+                        const opPtIdc = sequence_header.operating_points[opNum].operating_point_idc;
+                        const inTemporalLayer = (opPtIdc >> temporal_id ) & 1
+                        const inSpatialLayer = (opPtIdc >> (spatial_id + 8)) & 1
                         if (opPtIdc === 0 || (inTemporalLayer && inSpatialLayer)) {
                             gb.readBits(sequence_header.buffer_removal_time_length_minus_1 + 1);
                         }
@@ -517,9 +517,9 @@ class AV1OBUParser {
                 }
             }
         }
-        let allow_high_precision_mv = 0;
-        let use_ref_frame_mvs = 0;
-        let allow_intrabc = 0;
+        const allow_high_precision_mv = 0;
+        const use_ref_frame_mvs = 0;
+        const allow_intrabc = 0;
         let refresh_frame_flags = allFrames;
         if (!(frame_type === SWITCH_FRAME || (frame_type == KEY_FRAME && show_frame))) {
             refresh_frame_flags = gb.readBits(8);
@@ -567,18 +567,18 @@ class AV1OBUParser {
         }
         let SuperresDenom = 8 /* SUPERRES_NUM */;
         if (use_superress) {
-            let coded_denom = gb.readBits(3 /* SUPERRES_DENOM_BITS */);
+            const coded_denom = gb.readBits(3 /* SUPERRES_DENOM_BITS */);
             SuperresDenom = coded_denom + 9; /* SUPERRES_DENOM_MIN */
         }
-        let UpscaledWidth = FrameWidth;
+        const UpscaledWidth = FrameWidth;
         FrameWidth = Math.floor((UpscaledWidth * 8 /* SUPERRES_NUM */ + (SuperresDenom / 2)) / SuperresDenom)
 
-        let render_and_frame_size_different = gb.readBool();
+        const render_and_frame_size_different = gb.readBool();
         let RenderWidth = UpscaledWidth;
         let RenderHeight = FrameHeight;
         if (render_and_frame_size_different) {
-            let render_width_bits = gb.readBits(16) + 1;
-            let render_height_bits = gb.readBits(16) + 1;
+            const render_width_bits = gb.readBits(16) + 1;
+            const render_height_bits = gb.readBits(16) + 1;
             RenderWidth = gb.readBits(render_width_bits) + 1;
             RenderHeight = gb.readBits(render_height_bits) + 1;
         }

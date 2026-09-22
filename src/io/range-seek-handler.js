@@ -23,7 +23,7 @@ class RangeSeekHandler {
     }
 
     getConfig(url, range) {
-        let headers = {};
+        const headers = {};
 
         if (range.from !== 0 || range.to !== -1) {
             let param;

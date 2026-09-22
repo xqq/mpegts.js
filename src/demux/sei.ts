@@ -9,9 +9,9 @@ export interface SEIData {
 }
 
 function ebsp2rbsp(uint8array: Uint8Array): Uint8Array {
-    let src = uint8array;
-    let src_length = src.byteLength;
-    let dst = new Uint8Array(src_length);
+    const src = uint8array;
+    const src_length = src.byteLength;
+    const dst = new Uint8Array(src_length);
     let dst_idx = 0;
 
     for (let i = 0; i < src_length; i++) {
@@ -40,7 +40,7 @@ export function parseSEI(data: Uint8Array, pts?: number, codec?: 'h264' | 'h265'
     }
 
     // Convert EBSP to RBSP (skip NALU header)
-    let rbsp_data = ebsp2rbsp(data.subarray(naluHeaderSize));
+    const rbsp_data = ebsp2rbsp(data.subarray(naluHeaderSize));
     let offset = 0;
 
     // Check for trailing bits (0x80)
@@ -75,13 +75,13 @@ export function parseSEI(data: Uint8Array, pts?: number, codec?: 'h264' | 'h265'
         return null;
     }
 
-    let sei_data: SEIData = {
+    const sei_data: SEIData = {
         type: payloadType,
         size: payloadSize,
     };
 
     // Extract payload
-    let payload = rbsp_data.subarray(offset, offset + payloadSize);
+    const payload = rbsp_data.subarray(offset, offset + payloadSize);
 
     // SEI payload type 5 is user_data_unregistered (with UUID)
     // This is the same for both H.264 and H.265

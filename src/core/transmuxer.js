@@ -53,7 +53,7 @@ class Transmuxer {
         }
 
         if (this._controller) {
-            let ctl = this._controller;
+            const ctl = this._controller;
             ctl.on(TransmuxingEvents.IO_ERROR, this._onIOError.bind(this));
             ctl.on(TransmuxingEvents.DEMUX_ERROR, this._onDemuxError.bind(this));
             ctl.on(TransmuxingEvents.INIT_SEGMENT, this._onInitSegment.bind(this));
@@ -272,8 +272,8 @@ class Transmuxer {
     }
 
     _onWorkerMessage(e) {
-        let message = e.data;
-        let data = message.data;
+        const message = e.data;
+        const data = message.data;
 
         if (message.msg === 'destroyed' || this._workerDestroying) {
             this._workerDestroying = false;

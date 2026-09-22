@@ -126,10 +126,10 @@ class LoggingControl {
     }
 
     static _notifyChange() {
-        let emitter = LoggingControl.emitter;
+        const emitter = LoggingControl.emitter;
 
         if (emitter.listenerCount('change') > 0) {
-            let config = LoggingControl.getConfig();
+            const config = LoggingControl.getConfig();
             emitter.emit('change', config);
         }
     }

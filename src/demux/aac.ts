@@ -41,7 +41,7 @@ export class AACADTSParser {
 
     private findNextSyncwordOffset(syncword_offset: number): number {
         let i = syncword_offset;
-        let data = this.data_;
+        const data = this.data_;
 
         while (true) {
             if (i + 7 >= data.byteLength) {
@@ -50,7 +50,7 @@ export class AACADTSParser {
             }
 
             // search 12-bit 0xFFF syncword
-            let syncword = ((data[i + 0] << 8) | data[i + 1]) >>> 4;
+            const syncword = ((data[i + 0] << 8) | data[i + 1]) >>> 4;
             if (syncword === 0xFFF) {
                 return i;
             } else {
@@ -60,7 +60,7 @@ export class AACADTSParser {
     }
 
     public readNextAACFrame(): AACFrame | null {
-        let data = this.data_;
+        const data = this.data_;
         let aac_frame: AACFrame | null = null;
 
         while (aac_frame == null) {
@@ -68,24 +68,24 @@ export class AACADTSParser {
                 break;
             }
 
-            let syncword_offset = this.current_syncword_offset_;
+            const syncword_offset = this.current_syncword_offset_;
             let offset = syncword_offset;
 
             // adts_fixed_header()
             // syncword 0xFFF: 12-bit
-            let ID = (data[offset + 1] & 0x08) >>> 3;
-            let layer = (data[offset + 1] & 0x06) >>> 1;
-            let protection_absent = data[offset + 1] & 0x01;
-            let profile = (data[offset + 2] & 0xC0) >>> 6;
-            let sampling_frequency_index = (data[offset + 2] & 0x3C) >>> 2;
-            let channel_configuration = ((data[offset + 2] & 0x01) << 2)
+            const ID = (data[offset + 1] & 0x08) >>> 3;
+            const layer = (data[offset + 1] & 0x06) >>> 1;
+            const protection_absent = data[offset + 1] & 0x01;
+            const profile = (data[offset + 2] & 0xC0) >>> 6;
+            const sampling_frequency_index = (data[offset + 2] & 0x3C) >>> 2;
+            const channel_configuration = ((data[offset + 2] & 0x01) << 2)
                                         | ((data[offset + 3] & 0xC0) >>> 6);
 
             // adts_variable_header()
-            let aac_frame_length = ((data[offset + 3] & 0x03) << 11)
+            const aac_frame_length = ((data[offset + 3] & 0x03) << 11)
                                     | (data[offset + 4] << 3)
                                     | ((data[offset + 5] & 0xE0) >>> 5);
-            let number_of_raw_data_blocks_in_frame = data[offset + 6] & 0x03;
+            const number_of_raw_data_blocks_in_frame = data[offset + 6] & 0x03;
 
             if (offset + aac_frame_length > this.data_.byteLength) {
                 // data not enough for extracting last sample
@@ -94,12 +94,12 @@ export class AACADTSParser {
                 break;
             }
 
-            let adts_header_length = (protection_absent === 1) ? 7 : 9;
-            let adts_frame_payload_length = aac_frame_length - adts_header_length;
+            const adts_header_length = (protection_absent === 1) ? 7 : 9;
+            const adts_frame_payload_length = aac_frame_length - adts_header_length;
 
             offset += adts_header_length;
 
-            let next_syncword_offset = this.findNextSyncwordOffset(offset + adts_frame_payload_length);
+            const next_syncword_offset = this.findNextSyncwordOffset(offset + adts_frame_payload_length);
             this.current_syncword_offset_ = next_syncword_offset;
 
             if ((ID !== 0 && ID !== 1) || layer !== 0) {
@@ -107,7 +107,7 @@ export class AACADTSParser {
                 continue;
             }
 
-            let frame_data = data.subarray(offset, offset + adts_frame_payload_length);
+            const frame_data = data.subarray(offset, offset + adts_frame_payload_length);
 
             aac_frame = {
                 audio_object_type: (profile + 1) as MPEG4AudioObjectTypes,
@@ -153,7 +153,7 @@ export class AACLOASParser {
 
     private findNextSyncwordOffset(syncword_offset: number): number {
         let i = syncword_offset;
-        let data = this.data_;
+        const data = this.data_;
 
         while (true) {
             if (i + 1 >= data.byteLength) {
@@ -162,7 +162,7 @@ export class AACLOASParser {
             }
 
             // search 12-bit 0xFFF syncword
-            let syncword = (data[i + 0] << 3) | (data[i + 1] >>> 5);
+            const syncword = (data[i + 0] << 3) | (data[i + 1] >>> 5);
             if (syncword === 0x2B7) {
                 return i;
             } else {
@@ -172,7 +172,7 @@ export class AACLOASParser {
     }
 
     private getLATMValue(gb: ExpGolomb) {
-        let bytesForValue = gb.readBits(2);
+        const bytesForValue = gb.readBits(2);
         let value = 0;
         for (let i = 0; i <= bytesForValue; i++) {
             value = value << 8;
@@ -182,7 +182,7 @@ export class AACLOASParser {
     }
 
     public readNextAACFrame(privious?: LOASAACStreamMuxConfig): LOASAACFrame | null {
-        let data = this.data_;
+        const data = this.data_;
         let aac_frame: LOASAACFrame | null = null;
 
         while (aac_frame == null) {
@@ -190,10 +190,10 @@ export class AACLOASParser {
                 break;
             }
 
-            let syncword_offset = this.current_syncword_offset_;
-            let offset = syncword_offset;
+            const syncword_offset = this.current_syncword_offset_;
+            const offset = syncword_offset;
 
-            let audioMuxLengthBytes = ((data[offset + 1] & 0x1F) << 8) | data[offset + 2];
+            const audioMuxLengthBytes = ((data[offset + 1] & 0x1F) << 8) | data[offset + 2];
             if (offset + 3 + audioMuxLengthBytes >= this.data_.byteLength) {
                 // data not enough for extracting last sample
                 this.eof_flag_ = true;
@@ -202,12 +202,12 @@ export class AACLOASParser {
             }
 
             // AudioMuxElement(1)
-            let gb = new ExpGolomb(data.subarray(offset + 3, offset + 3 + audioMuxLengthBytes));
-            let useSameStreamMux = gb.readBool();
+            const gb = new ExpGolomb(data.subarray(offset + 3, offset + 3 + audioMuxLengthBytes));
+            const useSameStreamMux = gb.readBool();
             let streamMuxConfig: LOASAACStreamMuxConfig | null = null;
             if (!useSameStreamMux) {
-                let audioMuxVersion = gb.readBool();
-                let audioMuxVersionA = audioMuxVersion && gb.readBool();
+                const audioMuxVersion = gb.readBool();
+                const audioMuxVersionA = audioMuxVersion && gb.readBool();
                 if (audioMuxVersionA) {
                     Log.e(this.TAG, 'audioMuxVersionA is Not Supported');
                     gb.destroy();
@@ -216,25 +216,25 @@ export class AACLOASParser {
                 if (audioMuxVersion) {
                     this.getLATMValue(gb);
                 }
-                let allStreamsSameTimeFraming = gb.readBool();
+                const allStreamsSameTimeFraming = gb.readBool();
                 if (!allStreamsSameTimeFraming) {
                     Log.e(this.TAG, 'allStreamsSameTimeFraming zero is Not Supported');
                     gb.destroy();
                     break;
                 }
-                let numSubFrames = gb.readBits(6);
+                const numSubFrames = gb.readBits(6);
                 if (numSubFrames !== 0) {
                     Log.e(this.TAG, 'more than 2 numSubFrames Not Supported');
                     gb.destroy();
                     break;
                 }
-                let numProgram = gb.readBits(4);
+                const numProgram = gb.readBits(4);
                 if (numProgram !== 0) {
                     Log.e(this.TAG, 'more than 2 numProgram Not Supported');
                     gb.destroy();
                     break;
                 }
-                let numLayer = gb.readBits(3);
+                const numLayer = gb.readBits(3);
                 if (numLayer !== 0) {
                     Log.e(this.TAG, 'more than 2 numLayer Not Supported');
                     gb.destroy();
@@ -242,13 +242,13 @@ export class AACLOASParser {
                 }
 
                 let fillBits = audioMuxVersion ? this.getLATMValue(gb) : 0;
-                let audio_object_type = gb.readBits(5); fillBits -= 5;
-                let sampling_freq_index = gb.readBits(4);fillBits -= 4;
-                let channel_config = gb.readBits(4); fillBits -= 4;
+                const audio_object_type = gb.readBits(5); fillBits -= 5;
+                const sampling_freq_index = gb.readBits(4);fillBits -= 4;
+                const channel_config = gb.readBits(4); fillBits -= 4;
                 gb.readBits(3); fillBits -= 3; // GA Specfic Config
                 if (fillBits > 0) { gb.readBits(fillBits); }
 
-                let frameLengthType = gb.readBits(3);
+                const frameLengthType = gb.readBits(3);
                 if (frameLengthType === 0) {
                     gb.readByte();
                 } else {
@@ -257,7 +257,7 @@ export class AACLOASParser {
                     break;
                 }
 
-                let otherDataPresent = gb.readBool();
+                const otherDataPresent = gb.readBool();
                 if (otherDataPresent) {
                     if (audioMuxVersion) {
                         this.getLATMValue(gb);
@@ -265,8 +265,8 @@ export class AACLOASParser {
                         let otherDataLenBits = 0;
                         while (true) {
                             otherDataLenBits = otherDataLenBits << 8;
-                            let otherDataLenEsc = gb.readBool();
-                            let otherDataLenTmp = gb.readByte();
+                            const otherDataLenEsc = gb.readBool();
+                            const otherDataLenTmp = gb.readByte();
                             otherDataLenBits += otherDataLenTmp
                             if (!otherDataLenEsc) { break; }
                         }
@@ -274,7 +274,7 @@ export class AACLOASParser {
                     }
                 }
 
-                let crcCheckPresent = gb.readBool();
+                const crcCheckPresent = gb.readBool();
                 if (crcCheckPresent) {
                     gb.readByte();
                 }
@@ -297,12 +297,12 @@ export class AACLOASParser {
 
             let length = 0;
             while (true) {
-                let tmp = gb.readByte();
+                const tmp = gb.readByte();
                 length += tmp;
                 if (tmp !== 0xFF) { break; }
             }
 
-            let aac_data = new Uint8Array(length);
+            const aac_data = new Uint8Array(length);
             for (let i = 0; i < length; i++) {
                 aac_data[i] = gb.readByte();
             }
@@ -346,10 +346,10 @@ export class AudioSpecificConfig {
     public constructor(frame: AACFrame) {
         let config: Array<number> | null = null;
 
-        let original_audio_object_type = frame.audio_object_type;
+        const original_audio_object_type = frame.audio_object_type;
         let audio_object_type = frame.audio_object_type;
-        let sampling_index = frame.sampling_freq_index;
-        let channel_config = frame.channel_config;
+        const sampling_index = frame.sampling_freq_index;
+        const channel_config = frame.channel_config;
         let extension_sampling_index = 0;
 
         if (Browser.name === 'firefox' && Browser.engine === 'gecko') {

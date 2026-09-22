@@ -51,7 +51,7 @@ class WebSocketLoader extends BaseLoader {
 
     open(dataSource) {
         try {
-            let ws = this._ws = new self.WebSocket(dataSource.url);
+            const ws = this._ws = new self.WebSocket(dataSource.url);
             ws.binaryType = 'arraybuffer';
             ws.onopen = this._onWebSocketOpen.bind(this);
             ws.onclose = this._onWebSocketClose.bind(this);
@@ -62,7 +62,7 @@ class WebSocketLoader extends BaseLoader {
         } catch (e) {
             this._status = LoaderStatus.kError;
 
-            let info = {code: e.code, msg: e.message};
+            const info = {code: e.code, msg: e.message};
 
             if (this._onError) {
                 this._onError(LoaderErrors.EXCEPTION, info);
@@ -73,7 +73,7 @@ class WebSocketLoader extends BaseLoader {
     }
 
     abort() {
-        let ws = this._ws;
+        const ws = this._ws;
         if (ws && (ws.readyState === 0 || ws.readyState === 1)) {  // CONNECTING || OPEN
             this._requestAbort = true;
             ws.close();
@@ -104,14 +104,14 @@ class WebSocketLoader extends BaseLoader {
         if (e.data instanceof ArrayBuffer) {
             this._dispatchArrayBuffer(e.data);
         } else if (e.data instanceof Blob) {
-            let reader = new FileReader();
+            const reader = new FileReader();
             reader.onload = () => {
                 this._dispatchArrayBuffer(reader.result);
             };
             reader.readAsArrayBuffer(e.data);
         } else {
             this._status = LoaderStatus.kError;
-            let info = {code: -1, msg: 'Unsupported WebSocket message type: ' + e.data.constructor.name};
+            const info = {code: -1, msg: 'Unsupported WebSocket message type: ' + e.data.constructor.name};
 
             if (this._onError) {
                 this._onError(LoaderErrors.EXCEPTION, info);
@@ -122,8 +122,8 @@ class WebSocketLoader extends BaseLoader {
     }
 
     _dispatchArrayBuffer(arraybuffer) {
-        let chunk = arraybuffer;
-        let byteStart = this._receivedLength;
+        const chunk = arraybuffer;
+        const byteStart = this._receivedLength;
         this._receivedLength += chunk.byteLength;
 
         if (this._onDataArrival) {
@@ -134,7 +134,7 @@ class WebSocketLoader extends BaseLoader {
     _onWebSocketError(e) {
         this._status = LoaderStatus.kError;
 
-        let info = {
+        const info = {
             code: e.code,
             msg: e.message
         };

@@ -24,7 +24,7 @@ class Log {
         if (!tag || Log.FORCE_GLOBAL_TAG)
             tag = Log.GLOBAL_TAG;
 
-        let str = `[${tag}] > ${msg}`;
+        const str = `[${tag}] > ${msg}`;
 
         if (Log.ENABLE_CALLBACK) {
             Log.emitter.emit('log', 'error', str);
@@ -47,7 +47,7 @@ class Log {
         if (!tag || Log.FORCE_GLOBAL_TAG)
             tag = Log.GLOBAL_TAG;
 
-        let str = `[${tag}] > ${msg}`;
+        const str = `[${tag}] > ${msg}`;
 
         if (Log.ENABLE_CALLBACK) {
             Log.emitter.emit('log', 'info', str);
@@ -68,7 +68,7 @@ class Log {
         if (!tag || Log.FORCE_GLOBAL_TAG)
             tag = Log.GLOBAL_TAG;
 
-        let str = `[${tag}] > ${msg}`;
+        const str = `[${tag}] > ${msg}`;
 
         if (Log.ENABLE_CALLBACK) {
             Log.emitter.emit('log', 'warn', str);
@@ -89,7 +89,7 @@ class Log {
         if (!tag || Log.FORCE_GLOBAL_TAG)
             tag = Log.GLOBAL_TAG;
 
-        let str = `[${tag}] > ${msg}`;
+        const str = `[${tag}] > ${msg}`;
 
         if (Log.ENABLE_CALLBACK) {
             Log.emitter.emit('log', 'debug', str);
@@ -110,7 +110,7 @@ class Log {
         if (!tag || Log.FORCE_GLOBAL_TAG)
             tag = Log.GLOBAL_TAG;
 
-        let str = `[${tag}] > ${msg}`;
+        const str = `[${tag}] > ${msg}`;
 
         if (Log.ENABLE_CALLBACK) {
             Log.emitter.emit('log', 'verbose', str);

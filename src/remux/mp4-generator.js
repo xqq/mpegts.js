@@ -38,7 +38,7 @@ class MP4 {
             'ac-3': [], dac3: [], 'ec-3': [], dec3: [],
         };
 
-        for (let name in MP4.types) {
+        for (const name in MP4.types) {
             if (MP4.types.hasOwnProperty(name)) {
                 MP4.types[name] = [
                     name.charCodeAt(0),
@@ -49,7 +49,7 @@ class MP4 {
             }
         }
 
-        let constants = MP4.constants = {};
+        const constants = MP4.constants = {};
 
         constants.FTYP = new Uint8Array([
             0x69, 0x73, 0x6F, 0x6D,  // major_brand: isom
@@ -127,8 +127,8 @@ class MP4 {
     static box(type) {
         let size = 8;
         let result = null;
-        let datas = Array.prototype.slice.call(arguments, 1);
-        let arrayCount = datas.length;
+        const datas = Array.prototype.slice.call(arguments, 1);
+        const arrayCount = datas.length;
 
         for (let i = 0; i < arrayCount; i++) {
             size += datas[i].byteLength;
@@ -153,10 +153,10 @@ class MP4 {
 
     // emit ftyp & moov
     static generateInitSegment(meta) {
-        let ftyp = MP4.box(MP4.types.ftyp, MP4.constants.FTYP);
-        let moov = MP4.moov(meta);
+        const ftyp = MP4.box(MP4.types.ftyp, MP4.constants.FTYP);
+        const moov = MP4.moov(meta);
 
-        let result = new Uint8Array(ftyp.byteLength + moov.byteLength);
+        const result = new Uint8Array(ftyp.byteLength + moov.byteLength);
         result.set(ftyp, 0);
         result.set(moov, ftyp.byteLength);
         return result;
@@ -164,9 +164,9 @@ class MP4 {
 
     // Movie metadata box
     static moov(meta) {
-        let mvhd = MP4.mvhd(meta.timescale, meta.duration);
-        let trak = MP4.trak(meta);
-        let mvex = MP4.mvex(meta);
+        const mvhd = MP4.mvhd(meta.timescale, meta.duration);
+        const trak = MP4.trak(meta);
+        const mvex = MP4.mvex(meta);
         return MP4.box(MP4.types.moov, mvhd, trak, mvex);
     }
 
@@ -214,8 +214,8 @@ class MP4 {
 
     // Track header box
     static tkhd(meta) {
-        let trackId = meta.id, duration = meta.duration;
-        let width = meta.presentWidth, height = meta.presentHeight;
+        const trackId = meta.id, duration = meta.duration;
+        const width = meta.presentWidth, height = meta.presentHeight;
 
         return MP4.box(MP4.types.tkhd, new Uint8Array([
             0x00, 0x00, 0x00, 0x07,  // version(0) + flags
@@ -259,8 +259,8 @@ class MP4 {
 
     // Media header box
     static mdhd(meta) {
-        let timescale = meta.timescale;
-        let duration = meta.duration;
+        const timescale = meta.timescale;
+        const duration = meta.duration;
         return MP4.box(MP4.types.mdhd, new Uint8Array([
             0x00, 0x00, 0x00, 0x00,  // version(0) + flags
             0x00, 0x00, 0x00, 0x00,  // creation_time
@@ -302,7 +302,7 @@ class MP4 {
 
     // Data infomation box
     static dinf() {
-        let result = MP4.box(MP4.types.dinf,
+        const result = MP4.box(MP4.types.dinf,
             MP4.box(MP4.types.dref, MP4.constants.DREF)
         );
         return result;
@@ -310,7 +310,7 @@ class MP4 {
 
     // Sample table box
     static stbl(meta) {
-        let result = MP4.box(MP4.types.stbl,  // type: stbl
+        const result = MP4.box(MP4.types.stbl,  // type: stbl
             MP4.stsd(meta),  // Sample Description Table
             MP4.box(MP4.types.stts, MP4.constants.STTS),  // Time-To-Sample
             MP4.box(MP4.types.stsc, MP4.constants.STSC),  // Sample-To-Chunk
@@ -348,10 +348,10 @@ class MP4 {
     }
 
     static mp3(meta) {
-        let channelCount = meta.channelCount;
-        let sampleRate = meta.audioSampleRate;
+        const channelCount = meta.channelCount;
+        const sampleRate = meta.audioSampleRate;
 
-        let data = new Uint8Array([
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00,  // reserved(4)
             0x00, 0x00, 0x00, 0x01,  // reserved(2) + data_reference_index(2)
             0x00, 0x00, 0x00, 0x00,  // reserved: 2 * 4 bytes
@@ -368,10 +368,10 @@ class MP4 {
     }
 
     static mp4a(meta) {
-        let channelCount = meta.channelCount;
-        let sampleRate = meta.audioSampleRate;
+        const channelCount = meta.channelCount;
+        const sampleRate = meta.audioSampleRate;
 
-        let data = new Uint8Array([
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00,  // reserved(4)
             0x00, 0x00, 0x00, 0x01,  // reserved(2) + data_reference_index(2)
             0x00, 0x00, 0x00, 0x00,  // reserved: 2 * 4 bytes
@@ -388,10 +388,10 @@ class MP4 {
     }
 
     static ac3(meta) {
-        let channelCount = meta.channelCount;
-        let sampleRate = meta.audioSampleRate;
+        const channelCount = meta.channelCount;
+        const sampleRate = meta.audioSampleRate;
 
-        let data = new Uint8Array([
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00,  // reserved(4)
             0x00, 0x00, 0x00, 0x01,  // reserved(2) + data_reference_index(2)
             0x00, 0x00, 0x00, 0x00,  // reserved: 2 * 4 bytes
@@ -408,10 +408,10 @@ class MP4 {
     }
 
     static ec3(meta) {
-        let channelCount = meta.channelCount;
-        let sampleRate = meta.audioSampleRate;
+        const channelCount = meta.channelCount;
+        const sampleRate = meta.audioSampleRate;
 
-        let data = new Uint8Array([
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00,  // reserved(4)
             0x00, 0x00, 0x00, 0x01,  // reserved(2) + data_reference_index(2)
             0x00, 0x00, 0x00, 0x00,  // reserved: 2 * 4 bytes
@@ -428,9 +428,9 @@ class MP4 {
     }
 
     static esds(meta) {
-        let config = meta.config || [];
-        let configSize = config.length;
-        let data = new Uint8Array([
+        const config = meta.config || [];
+        const configSize = config.length;
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00,  // version 0 + flags
 
             0x03,                    // descriptor_type
@@ -458,10 +458,10 @@ class MP4 {
     }
 
     static Opus(meta) {
-        let channelCount = meta.channelCount;
-        let sampleRate = meta.audioSampleRate;
+        const channelCount = meta.channelCount;
+        const sampleRate = meta.audioSampleRate;
 
-        let data = new Uint8Array([
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00,  // reserved(4)
             0x00, 0x00, 0x00, 0x01,  // reserved(2) + data_reference_index(2)
             0x00, 0x00, 0x00, 0x00,  // reserved: 2 * 4 bytes
@@ -478,9 +478,9 @@ class MP4 {
     }
 
     static dOps(meta) {
-        let channelCount = meta.channelCount;
-        let channelConfigCode = meta.channelConfigCode;
-        let sampleRate = meta.audioSampleRate;
+        const channelCount = meta.channelCount;
+        const channelConfigCode = meta.channelConfigCode;
+        const sampleRate = meta.audioSampleRate;
 
         if (meta.config) {
             return MP4.box(MP4.types.dOps, meta.config);
@@ -539,7 +539,7 @@ class MP4 {
                 break;
         }
 
-        let data = new Uint8Array([
+        const data = new Uint8Array([
             0x00,         // Version (1)
             channelCount, // OutputChannelCount: 2
             0x00, 0x00,   // PreSkip: 2
@@ -554,11 +554,11 @@ class MP4 {
     }
 
     static fLaC(meta) {
-        let channelCount = meta.channelCount;
-        let sampleRate = Math.min(meta.audioSampleRate, 65535);
-        let sampleSize = meta.sampleSize;
+        const channelCount = meta.channelCount;
+        const sampleRate = Math.min(meta.audioSampleRate, 65535);
+        const sampleSize = meta.sampleSize;
 
-        let data = new Uint8Array([
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00,  // reserved(4)
             0x00, 0x00, 0x00, 0x01,  // reserved(2) + data_reference_index(2)
             0x00, 0x00, 0x00, 0x00,  // reserved: 2 * 4 bytes
@@ -575,7 +575,7 @@ class MP4 {
     }
 
     static dfLa(meta) {
-        let data = new Uint8Array([
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00, // version, flag
             ... meta.config
         ]);
@@ -583,11 +583,11 @@ class MP4 {
     }
 
     static ipcm(meta) {
-        let channelCount = meta.channelCount;
-        let sampleRate = Math.min(meta.audioSampleRate, 65535);
-        let sampleSize = meta.sampleSize;
+        const channelCount = meta.channelCount;
+        const sampleRate = Math.min(meta.audioSampleRate, 65535);
+        const sampleSize = meta.sampleSize;
 
-        let data = new Uint8Array([
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00,  // reserved(4)
             0x00, 0x00, 0x00, 0x01,  // reserved(2) + data_reference_index(2)
             0x00, 0x00, 0x00, 0x00,  // reserved: 2 * 4 bytes
@@ -608,7 +608,7 @@ class MP4 {
     }
 
     static chnl(meta) {
-        let data = new Uint8Array([
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00, // version, flag
             0x01, // Channel Based Layout
             meta.channelCount, // AudioConfiguration
@@ -618,9 +618,9 @@ class MP4 {
     }
 
     static pcmC(meta) {
-        let littleEndian = meta.littleEndian ? 0x01 : 0x00
-        let sampleSize = meta.sampleSize;
-        let data = new Uint8Array([
+        const littleEndian = meta.littleEndian ? 0x01 : 0x00
+        const sampleSize = meta.sampleSize;
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00, // version, flag
             littleEndian, sampleSize
         ]);
@@ -628,10 +628,10 @@ class MP4 {
     }
 
     static avc1(meta) {
-        let avcc = meta.avcc;
-        let width = meta.codecWidth, height = meta.codecHeight;
+        const avcc = meta.avcc;
+        const width = meta.codecWidth, height = meta.codecHeight;
 
-        let data = new Uint8Array([
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00,  // reserved(4)
             0x00, 0x00, 0x00, 0x01,  // reserved(2) + data_reference_index(2)
             0x00, 0x00, 0x00, 0x00,  // pre_defined(2) + reserved(2)
@@ -662,10 +662,10 @@ class MP4 {
     }
 
     static hvc1(meta) {
-        let hvcc = meta.hvcc;
-        let width = meta.codecWidth, height = meta.codecHeight;
+        const hvcc = meta.hvcc;
+        const width = meta.codecWidth, height = meta.codecHeight;
 
-        let data = new Uint8Array([
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00,  // reserved(4)
             0x00, 0x00, 0x00, 0x01,  // reserved(2) + data_reference_index(2)
             0x00, 0x00, 0x00, 0x00,  // pre_defined(2) + reserved(2)
@@ -696,10 +696,10 @@ class MP4 {
     }
 
     static av01(meta) {
-        let av1c = meta.av1c;
-        let width = meta.codecWidth || 192, height = meta.codecHeight || 108;
+        const av1c = meta.av1c;
+        const width = meta.codecWidth || 192, height = meta.codecHeight || 108;
 
-        let data = new Uint8Array([
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00,  // reserved(4)
             0x00, 0x00, 0x00, 0x01,  // reserved(2) + data_reference_index(2)
             0x00, 0x00, 0x00, 0x00,  // pre_defined(2) + reserved(2)
@@ -736,8 +736,8 @@ class MP4 {
 
     // Track Extends box
     static trex(meta) {
-        let trackId = meta.id;
-        let data = new Uint8Array([
+        const trackId = meta.id;
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00,  // version(0) + flags
             (trackId >>> 24) & 0xFF, // track_ID
             (trackId >>> 16) & 0xFF,
@@ -757,7 +757,7 @@ class MP4 {
     }
 
     static mfhd(sequenceNumber) {
-        let data = new Uint8Array([
+        const data = new Uint8Array([
             0x00, 0x00, 0x00, 0x00,
             (sequenceNumber >>> 24) & 0xFF,  // sequence_number: int32
             (sequenceNumber >>> 16) & 0xFF,
@@ -769,10 +769,10 @@ class MP4 {
 
     // Track fragment box
     static traf(track, baseMediaDecodeTime) {
-        let trackId = track.id;
+        const trackId = track.id;
 
         // Track fragment header box
-        let tfhd = MP4.box(MP4.types.tfhd, new Uint8Array([
+        const tfhd = MP4.box(MP4.types.tfhd, new Uint8Array([
             0x00, 0x00, 0x00, 0x00,  // version(0) & flags
             (trackId >>> 24) & 0xFF, // track_ID
             (trackId >>> 16) & 0xFF,
@@ -780,27 +780,27 @@ class MP4 {
             (trackId) & 0xFF
         ]));
         // Track Fragment Decode Time
-        let tfdt = MP4.box(MP4.types.tfdt, new Uint8Array([
+        const tfdt = MP4.box(MP4.types.tfdt, new Uint8Array([
             0x00, 0x00, 0x00, 0x00,  // version(0) & flags
             (baseMediaDecodeTime >>> 24) & 0xFF,  // baseMediaDecodeTime: int32
             (baseMediaDecodeTime >>> 16) & 0xFF,
             (baseMediaDecodeTime >>>  8) & 0xFF,
             (baseMediaDecodeTime) & 0xFF
         ]));
-        let sdtp = MP4.sdtp(track);
-        let trun = MP4.trun(track, sdtp.byteLength + 16 + 16 + 8 + 16 + 8 + 8);
+        const sdtp = MP4.sdtp(track);
+        const trun = MP4.trun(track, sdtp.byteLength + 16 + 16 + 8 + 16 + 8 + 8);
 
         return MP4.box(MP4.types.traf, tfhd, tfdt, trun, sdtp);
     }
 
     // Sample Dependency Type box
     static sdtp(track) {
-        let samples = track.samples || [];
-        let sampleCount = samples.length;
-        let data = new Uint8Array(4 + sampleCount);
+        const samples = track.samples || [];
+        const sampleCount = samples.length;
+        const data = new Uint8Array(4 + sampleCount);
         // 0~4 bytes: version(0) & flags
         for (let i = 0; i < sampleCount; i++) {
-            let flags = samples[i].flags;
+            const flags = samples[i].flags;
             data[i + 4] = (flags.isLeading << 6)    // is_leading: 2 (bit)
                         | (flags.dependsOn << 4)    // sample_depends_on
                         | (flags.isDependedOn << 2) // sample_is_depended_on
@@ -811,10 +811,10 @@ class MP4 {
 
     // Track fragment run box
     static trun(track, offset) {
-        let samples = track.samples || [];
-        let sampleCount = samples.length;
-        let dataSize = 12 + 16 * sampleCount;
-        let data = new Uint8Array(dataSize);
+        const samples = track.samples || [];
+        const sampleCount = samples.length;
+        const dataSize = 12 + 16 * sampleCount;
+        const data = new Uint8Array(dataSize);
         offset += 8 + dataSize;
 
         data.set([
@@ -830,10 +830,10 @@ class MP4 {
         ], 0);
 
         for (let i = 0; i < sampleCount; i++) {
-            let duration = samples[i].duration;
-            let size = samples[i].size;
-            let flags = samples[i].flags;
-            let cts = samples[i].cts;
+            const duration = samples[i].duration;
+            const size = samples[i].size;
+            const flags = samples[i].flags;
+            const cts = samples[i].cts;
             data.set([
                 (duration >>> 24) & 0xFF,  // sample_duration
                 (duration >>> 16) & 0xFF,

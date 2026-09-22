@@ -123,10 +123,10 @@ class SeekingHandler {
 
         // Handle seeking to video begin (near 0.0s)
         if (target < 1.0 && buffered.length > 0) {
-            let video_begin_time = buffered.start(0);
+            const video_begin_time = buffered.start(0);
             if ((video_begin_time < 1.0 && target < video_begin_time) || Browser.name === 'safari') {
                 // Safari may get stuck if currentTime set to 0, use 0.1 to avoid
-                let target: number = Browser.name === 'safari' ? 0.1 : video_begin_time;
+                const target: number = Browser.name === 'safari' ? 0.1 : video_begin_time;
                 this.directSeek(target);
                 return;
             }

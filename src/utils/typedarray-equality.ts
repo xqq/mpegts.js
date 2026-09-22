@@ -39,14 +39,14 @@ function equal8(a: Uint8Array, b: Uint8Array) : boolean {
 }
 
 function equal16(a: Uint8Array, b: Uint8Array) : boolean {
-    let a16 = new Uint16Array(a.buffer, a.byteOffset, a.byteLength / 2);
-    let b16 = new Uint16Array(b.buffer, b.byteOffset, b.byteLength / 2);
+    const a16 = new Uint16Array(a.buffer, a.byteOffset, a.byteLength / 2);
+    const b16 = new Uint16Array(b.buffer, b.byteOffset, b.byteLength / 2);
     return compareArray(a16, b16);
 }
 
 function equal32(a: Uint8Array, b: Uint8Array) : boolean {
-    let a32 = new Uint32Array(a.buffer, a.byteOffset, a.byteLength / 4);
-    let b32 = new Uint32Array(b.buffer, b.byteOffset, b.byteLength / 4);
+    const a32 = new Uint32Array(a.buffer, a.byteOffset, a.byteLength / 4);
+    const b32 = new Uint32Array(b.buffer, b.byteOffset, b.byteLength / 4);
     return compareArray(a32, b32);
 }
 

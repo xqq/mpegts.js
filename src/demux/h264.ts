@@ -28,12 +28,12 @@ export class H264NaluAVC1 {
     data: Uint8Array;
 
     constructor(nalu: H264NaluPayload) {
-        let nalu_size = nalu.data.byteLength;
+        const nalu_size = nalu.data.byteLength;
 
         this.type = nalu.type;
         this.data = new Uint8Array(4 + nalu_size);  // 4 byte length-header + nalu payload
 
-        let v = new DataView(this.data.buffer);
+        const v = new DataView(this.data.buffer);
         // Fill 4 byte length-header
         v.setUint32(0, nalu_size);
         // Copy payload
@@ -59,7 +59,7 @@ export class H264AnnexBParser {
 
     private findNextStartCodeOffset(start_offset: number) {
         let i = start_offset;
-        let data = this.data_;
+        const data = this.data_;
 
         while (true) {
             if (i + 3 >= data.byteLength) {
@@ -68,11 +68,11 @@ export class H264AnnexBParser {
             }
 
             // search 00 00 00 01 or 00 00 01
-            let uint32 = (data[i + 0] << 24)
+            const uint32 = (data[i + 0] << 24)
                         | (data[i + 1] << 16)
                         | (data[i + 2] << 8)
                         | (data[i + 3]);
-            let uint24 = (data[i + 0] << 16)
+            const uint24 = (data[i + 0] << 16)
                         | (data[i + 1] << 8)
                         | (data[i + 2]);
             if (uint32 === 0x00000001 || uint24 === 0x000001) {
@@ -84,7 +84,7 @@ export class H264AnnexBParser {
     }
 
     public readNextNaluPayload(): H264NaluPayload | null {
-        let data = this.data_;
+        const data = this.data_;
         let nalu_payload: H264NaluPayload | null = null;
 
         while (nalu_payload == null) {
@@ -92,21 +92,21 @@ export class H264AnnexBParser {
                 break;
             }
             // offset pointed to start code
-            let startcode_offset = this.current_startcode_offset_;
+            const startcode_offset = this.current_startcode_offset_;
 
             // nalu payload start offset
             let offset = startcode_offset;
-            let u32 = (data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | (data[offset + 3]);
+            const u32 = (data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | (data[offset + 3]);
             if (u32 === 0x00000001) {
                 offset += 4;
             } else {
                 offset += 3;
             }
 
-            let nalu_type: H264NaluType = data[offset] & 0x1F;
-            let forbidden_bit = (data[offset] & 0x80) >>> 7;
+            const nalu_type: H264NaluType = data[offset] & 0x1F;
+            const forbidden_bit = (data[offset] & 0x80) >>> 7;
 
-            let next_startcode_offset = this.findNextStartCodeOffset(offset);
+            const next_startcode_offset = this.findNextStartCodeOffset(offset);
             this.current_startcode_offset_ = next_startcode_offset;
 
             if (nalu_type >= H264NaluType.kReserved0) {
@@ -117,7 +117,7 @@ export class H264AnnexBParser {
                 continue;
             }
 
-            let payload_data = data.subarray(offset, next_startcode_offset);
+            const payload_data = data.subarray(offset, next_startcode_offset);
 
             nalu_payload = {
                 type: nalu_type,
@@ -145,7 +145,7 @@ export class AVCDecoderConfigurationRecord {
             length += 4;
         }
 
-        let data = this.data = new Uint8Array(length);
+        const data = this.data = new Uint8Array(length);
 
         data[0] = 0x01;    // configurationVersion
         data[1] = sps[1];  // AVCProfileIndication
@@ -155,7 +155,7 @@ export class AVCDecoderConfigurationRecord {
 
         data[5] = 0xE0 | 0x01  // 111 + numOfSequenceParameterSets
 
-        let sps_length = sps.byteLength;
+        const sps_length = sps.byteLength;
         data[6] = sps_length >>> 8;  // sequenceParameterSetLength
         data[7] = sps_length & 0xFF;
 
@@ -165,7 +165,7 @@ export class AVCDecoderConfigurationRecord {
 
         data[offset] = 1;  // numOfPictureParameterSets
 
-        let pps_length = pps.byteLength;
+        const pps_length = pps.byteLength;
         data[offset + 1] = pps_length >>> 8;  // pictureParameterSetLength
         data[offset + 2] = pps_length & 0xFF;
 

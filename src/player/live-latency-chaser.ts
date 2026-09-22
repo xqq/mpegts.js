@@ -55,7 +55,7 @@ class LiveLatencyChaser {
         const buffered_end = buffered.end(buffered.length - 1);
         if (buffered_end > this._config.liveBufferLatencyMaxLatency) {
             if (buffered_end - current_time > this._config.liveBufferLatencyMaxLatency) {
-                let target_time = buffered_end - this._config.liveBufferLatencyMinRemain;
+                const target_time = buffered_end - this._config.liveBufferLatencyMinRemain;
                 this._on_direct_seek(target_time);
             }
         }

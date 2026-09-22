@@ -36,15 +36,15 @@ class Features {
     }
 
     static supportNetworkStreamIO() {
-        let ioctl = new IOController({}, createDefaultConfig());
-        let loaderType = ioctl.loaderType;
+        const ioctl = new IOController({}, createDefaultConfig());
+        const loaderType = ioctl.loaderType;
         ioctl.destroy();
         return loaderType == 'fetch-stream-loader' || loaderType == 'xhr-moz-chunked-loader';
     }
 
     static getNetworkLoaderTypeName() {
-        let ioctl = new IOController({}, createDefaultConfig());
-        let loaderType = ioctl.loaderType;
+        const ioctl = new IOController({}, createDefaultConfig());
+        const loaderType = ioctl.loaderType;
         ioctl.destroy();
         return loaderType;
     }
@@ -53,12 +53,12 @@ class Features {
         if (Features.videoElement == undefined) {
             Features.videoElement = window.document.createElement('video');
         }
-        let canPlay = Features.videoElement.canPlayType(mimeType);
+        const canPlay = Features.videoElement.canPlayType(mimeType);
         return canPlay === 'probably' || canPlay == 'maybe';
     }
 
     static getFeatureList() {
-        let features = {
+        const features = {
             msePlayback: false,
             mseLivePlayback: false,
             mseH265Playback: false,

@@ -50,13 +50,13 @@ class MediaInfo {
     }
 
     isComplete() {
-        let audioInfoComplete = (this.hasAudio === false) ||
+        const audioInfoComplete = (this.hasAudio === false) ||
                                 (this.hasAudio === true &&
                                  this.audioCodec != null &&
                                  this.audioSampleRate != null &&
                                  this.audioChannelCount != null);
 
-        let videoInfoComplete = (this.hasVideo === false) ||
+        const videoInfoComplete = (this.hasVideo === false) ||
                                 (this.hasVideo === true &&
                                  this.videoCodec != null &&
                                  this.width != null &&
@@ -84,8 +84,8 @@ class MediaInfo {
             return null;
         }
 
-        let table = this.keyframesIndex;
-        let keyframeIdx = this._search(table.times, milliseconds);
+        const table = this.keyframesIndex;
+        const keyframeIdx = this._search(table.times, milliseconds);
 
         return {
             index: keyframeIdx,
@@ -97,7 +97,7 @@ class MediaInfo {
     _search(list, value) {
         let idx = 0;
 
-        let last = list.length - 1;
+        const last = list.length - 1;
         let mid = 0;
         let lbound = 0;
         let ubound = last;

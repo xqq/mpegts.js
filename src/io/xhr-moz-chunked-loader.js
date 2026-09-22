@@ -25,7 +25,7 @@ class MozChunkedLoader extends BaseLoader {
 
     static isSupported() {
         try {
-            let xhr = new XMLHttpRequest();
+            const xhr = new XMLHttpRequest();
             // Firefox 37- requires .open() to be called before setting responseType
             xhr.open('GET', 'https://example.com', true);
             xhr.responseType = 'moz-chunked-arraybuffer';
@@ -73,10 +73,10 @@ class MozChunkedLoader extends BaseLoader {
             sourceURL = dataSource.redirectedURL;
         }
 
-        let seekConfig = this._seekHandler.getConfig(sourceURL, range);
+        const seekConfig = this._seekHandler.getConfig(sourceURL, range);
         this._requestURL = seekConfig.url;
 
-        let xhr = this._xhr = new XMLHttpRequest();
+        const xhr = this._xhr = new XMLHttpRequest();
         xhr.open('GET', seekConfig.url, true);
         xhr.responseType = 'moz-chunked-arraybuffer';
         xhr.onreadystatechange = this._onReadyStateChange.bind(this);
@@ -92,9 +92,9 @@ class MozChunkedLoader extends BaseLoader {
         }
 
         if (typeof seekConfig.headers === 'object') {
-            let headers = seekConfig.headers;
+            const headers = seekConfig.headers;
 
-            for (let key in headers) {
+            for (const key in headers) {
                 if (headers.hasOwnProperty(key)) {
                     xhr.setRequestHeader(key, headers[key]);
                 }
@@ -103,9 +103,9 @@ class MozChunkedLoader extends BaseLoader {
 
         // add additional headers
         if (typeof this._config.headers === 'object') {
-            let headers = this._config.headers;
+            const headers = this._config.headers;
 
-            for (let key in headers) {
+            for (const key in headers) {
                 if (headers.hasOwnProperty(key)) {
                     xhr.setRequestHeader(key, headers[key]);
                 }
@@ -125,12 +125,12 @@ class MozChunkedLoader extends BaseLoader {
     }
 
     _onReadyStateChange(e) {
-        let xhr = e.target;
+        const xhr = e.target;
 
         if (xhr.readyState === 2) {  // HEADERS_RECEIVED
             if (xhr.responseURL != undefined && xhr.responseURL !== this._requestURL) {
                 if (this._onURLRedirect) {
-                    let redirectedURL = this._seekHandler.removeURLParameters(xhr.responseURL);
+                    const redirectedURL = this._seekHandler.removeURLParameters(xhr.responseURL);
                     this._onURLRedirect(redirectedURL);
                 }
             }
@@ -163,8 +163,8 @@ class MozChunkedLoader extends BaseLoader {
             }
         }
 
-        let chunk = e.target.response;
-        let byteStart = this._range.from + this._receivedLength;
+        const chunk = e.target.response;
+        const byteStart = this._range.from + this._receivedLength;
         this._receivedLength += chunk.byteLength;
 
         if (this._onDataArrival) {

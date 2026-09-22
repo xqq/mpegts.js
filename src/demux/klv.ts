@@ -16,15 +16,15 @@ type AccessUnit = {
 }
 
 export const klv_parse = (data: Uint8Array) => {
-    let result: AccessUnit[] = [];
+    const result: AccessUnit[] = [];
 
     let offset = 0;
     while (offset + 5 < data.byteLength) {
-        let service_id = data[offset + 0];
-        let sequence_number = data[offset + 1];
-        let flags = data[offset + 2];
-        let au_size = (data[offset + 3] << 8) | (data[offset + 4] << 0);
-        let au_data = data.slice(offset + 5, offset + 5 + au_size);
+        const service_id = data[offset + 0];
+        const sequence_number = data[offset + 1];
+        const flags = data[offset + 2];
+        const au_size = (data[offset + 3] << 8) | (data[offset + 4] << 0);
+        const au_data = data.slice(offset + 5, offset + 5 + au_size);
 
         result.push({
             service_id,

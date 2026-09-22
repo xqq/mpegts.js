@@ -31,11 +31,11 @@ class Polyfill {
                 throw new TypeError('Cannot convert undefined or null to object');
             }
 
-            let output = Object(target);
+            const output = Object(target);
             for (let i = 1; i < arguments.length; i++) {
-                let source = arguments[i];
+                const source = arguments[i];
                 if (source !== undefined && source !== null) {
-                    for (let key in source) {
+                    for (const key in source) {
                         if (source.hasOwnProperty(key)) {
                             output[key] = source[key];
                         }
@@ -49,7 +49,7 @@ class Polyfill {
         if (!String.prototype.startsWith) {
             Object.defineProperty(String.prototype, 'startsWith', {
                 value: function (search, rawPos) {
-                    let pos = rawPos > 0 ? rawPos | 0 : 0;
+                    const pos = rawPos > 0 ? rawPos | 0 : 0;
                     return this.substring(pos, pos + search.length) === search;
                 }
             });

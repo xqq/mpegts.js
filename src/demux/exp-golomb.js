@@ -37,12 +37,12 @@ class ExpGolomb {
     }
 
     _fillCurrentWord() {
-        let buffer_bytes_left = this._total_bytes - this._buffer_index;
+        const buffer_bytes_left = this._total_bytes - this._buffer_index;
         if (buffer_bytes_left <= 0)
             throw new IllegalStateException('ExpGolomb: _fillCurrentWord() but no bytes available');
 
-        let bytes_read = Math.min(4, buffer_bytes_left);
-        let word = new Uint8Array(4);
+        const bytes_read = Math.min(4, buffer_bytes_left);
+        const word = new Uint8Array(4);
         word.set(this._buffer.subarray(this._buffer_index, this._buffer_index + bytes_read));
         this._current_word = new DataView(word.buffer).getUint32(0, false);
 
@@ -55,7 +55,7 @@ class ExpGolomb {
             throw new InvalidArgumentException('ExpGolomb: readBits() bits exceeded max 32bits!');
 
         if (bits <= this._current_word_bits_left) {
-            let result = this._current_word >>> (32 - bits);
+            const result = this._current_word >>> (32 - bits);
             this._current_word <<= bits;
             this._current_word_bits_left -= bits;
             return result;
@@ -63,12 +63,12 @@ class ExpGolomb {
 
         let result = this._current_word_bits_left ? this._current_word : 0;
         result = result >>> (32 - this._current_word_bits_left);
-        let bits_need_left = bits - this._current_word_bits_left;
+        const bits_need_left = bits - this._current_word_bits_left;
 
         this._fillCurrentWord();
-        let bits_read_next = Math.min(bits_need_left, this._current_word_bits_left);
+        const bits_read_next = Math.min(bits_need_left, this._current_word_bits_left);
 
-        let result2 = this._current_word >>> (32 - bits_read_next);
+        const result2 = this._current_word >>> (32 - bits_read_next);
         this._current_word <<= bits_read_next;
         this._current_word_bits_left -= bits_read_next;
 
@@ -98,12 +98,12 @@ class ExpGolomb {
     }
 
     readUEG() {  // unsigned exponential golomb
-        let leading_zeros = this._skipLeadingZero();
+        const leading_zeros = this._skipLeadingZero();
         return this.readBits(leading_zeros + 1) - 1;
     }
 
     readSEG() {  // signed exponential golomb
-        let value = this.readUEG();
+        const value = this.readUEG();
         if (value & 0x01) {
             return (value + 1) >>> 1;
         } else {

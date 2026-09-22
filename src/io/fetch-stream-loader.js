@@ -74,20 +74,20 @@ class FetchStreamLoader extends BaseLoader {
             sourceURL = dataSource.redirectedURL;
         }
 
-        let seekConfig = this._seekHandler.getConfig(sourceURL, range);
+        const seekConfig = this._seekHandler.getConfig(sourceURL, range);
 
-        let headers = new self.Headers();
+        const headers = new self.Headers();
 
         if (typeof seekConfig.headers === 'object') {
-            let configHeaders = seekConfig.headers;
-            for (let key in configHeaders) {
+            const configHeaders = seekConfig.headers;
+            for (const key in configHeaders) {
                 if (configHeaders.hasOwnProperty(key)) {
                     headers.append(key, configHeaders[key]);
                 }
             }
         }
 
-        let params = {
+        const params = {
             method: 'GET',
             headers: headers,
             mode: 'cors',
@@ -99,7 +99,7 @@ class FetchStreamLoader extends BaseLoader {
 
         // add additional headers
         if (typeof this._config.headers === 'object') {
-            for (let key in this._config.headers) {
+            for (const key in this._config.headers) {
                 headers.append(key, this._config.headers[key]);
             }
         }
@@ -135,12 +135,12 @@ class FetchStreamLoader extends BaseLoader {
             if (res.ok && (res.status >= 200 && res.status <= 299)) {
                 if (res.url !== seekConfig.url) {
                     if (this._onURLRedirect) {
-                        let redirectedURL = this._seekHandler.removeURLParameters(res.url);
+                        const redirectedURL = this._seekHandler.removeURLParameters(res.url);
                         this._onURLRedirect(redirectedURL);
                     }
                 }
 
-                let lengthHeader = res.headers.get('Content-Length');
+                const lengthHeader = res.headers.get('Content-Length');
                 if (lengthHeader != null) {
                     this._contentLength = parseInt(lengthHeader);
                     if (this._contentLength !== 0) {
@@ -193,8 +193,8 @@ class FetchStreamLoader extends BaseLoader {
                 if (this._contentLength !== null && this._receivedLength < this._contentLength) {
                     // Report Early-EOF
                     this._status = LoaderStatus.kError;
-                    let type = LoaderErrors.EARLY_EOF;
-                    let info = {code: -1, msg: 'Fetch stream meet Early-EOF'};
+                    const type = LoaderErrors.EARLY_EOF;
+                    const info = {code: -1, msg: 'Fetch stream meet Early-EOF'};
                     if (this._onError) {
                         this._onError(type, info);
                     } else {
@@ -218,8 +218,8 @@ class FetchStreamLoader extends BaseLoader {
 
                 this._status = LoaderStatus.kBuffering;
 
-                let chunk = result.value.buffer;
-                let byteStart = this._range.from + this._receivedLength;
+                const chunk = result.value.buffer;
+                const byteStart = this._range.from + this._receivedLength;
                 this._receivedLength += chunk.byteLength;
 
                 if (this._onDataArrival) {

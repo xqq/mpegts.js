@@ -204,10 +204,10 @@ class MP4Remuxer {
     }
 
     flushStashedSamples() {
-        let videoSample = this._videoStashedLastSample;
-        let audioSample = this._audioStashedLastSample;
+        const videoSample = this._videoStashedLastSample;
+        const audioSample = this._audioStashedLastSample;
 
-        let videoTrack = {
+        const videoTrack = {
             type: 'video',
             id: 1,
             sequenceNumber: 0,
@@ -220,7 +220,7 @@ class MP4Remuxer {
             videoTrack.length = videoSample.length;
         }
 
-        let audioTrack = {
+        const audioTrack = {
             type: 'audio',
             id: 2,
             sequenceNumber: 0,
@@ -245,14 +245,15 @@ class MP4Remuxer {
             return;
         }
 
-        let track = audioTrack;
-        let samples = track.samples;
+        const track = audioTrack;
+        const samples = track.samples;
         let dtsCorrection = undefined;
-        let firstDts = -1, lastDts = -1, lastPts = -1;
-        let refSampleDuration = this._audioMeta.refSampleDuration;
+        let firstDts = -1, lastDts = -1;
+        const lastPts = -1;
+        const refSampleDuration = this._audioMeta.refSampleDuration;
 
-        let mpegRawTrack = this._audioMeta.codec === 'mp3' && this._mp3UseMpegAudio;
-        let firstSegmentAfterSeek = this._dtsBaseInited && this._audioNextDts === undefined;
+        const mpegRawTrack = this._audioMeta.codec === 'mp3' && this._mp3UseMpegAudio;
+        const firstSegmentAfterSeek = this._dtsBaseInited && this._audioNextDts === undefined;
 
         let insertPrefixSilentFrame = false;
 
@@ -291,7 +292,7 @@ class MP4Remuxer {
 
         // Insert [stashed lastSample in the previous batch] to the front
         if (this._audioStashedLastSample != null) {
-            let sample = this._audioStashedLastSample;
+            const sample = this._audioStashedLastSample;
             this._audioStashedLastSample = null;
             samples.unshift(sample);
             mdatBytes += sample.length;
@@ -303,7 +304,7 @@ class MP4Remuxer {
         }
 
 
-        let firstSampleOriginalDts = samples[0].dts - this._dtsBase;
+        const firstSampleOriginalDts = samples[0].dts - this._dtsBase;
 
         // calculate dtsCorrection
         if (this._audioNextDts) {
@@ -317,13 +318,13 @@ class MP4Remuxer {
                     }
                 }
             } else {
-                let lastSample = this._audioSegmentInfoList.getLastSampleBefore(firstSampleOriginalDts);
+                const lastSample = this._audioSegmentInfoList.getLastSampleBefore(firstSampleOriginalDts);
                 if (lastSample != null) {
                     let distance = (firstSampleOriginalDts - (lastSample.originalDts + lastSample.duration));
                     if (distance <= 3) {
                         distance = 0;
                     }
-                    let expectedDts = lastSample.dts + lastSample.duration + distance;
+                    const expectedDts = lastSample.dts + lastSample.duration + distance;
                     dtsCorrection = firstSampleOriginalDts - expectedDts;
                 } else { // lastSample == null, cannot found
                     dtsCorrection = 0;
@@ -333,13 +334,13 @@ class MP4Remuxer {
 
         if (insertPrefixSilentFrame) {
             // align audio segment beginDts to match with current video segment's beginDts
-            let firstSampleDts = firstSampleOriginalDts - dtsCorrection;
-            let videoSegment = this._videoSegmentInfoList.getLastSegmentBefore(firstSampleOriginalDts);
+            const firstSampleDts = firstSampleOriginalDts - dtsCorrection;
+            const videoSegment = this._videoSegmentInfoList.getLastSegmentBefore(firstSampleOriginalDts);
             if (videoSegment != null && videoSegment.beginDts < firstSampleDts) {
-                let silentUnit = AAC.getSilentFrame(this._audioMeta.originalCodec, this._audioMeta.channelCount);
+                const silentUnit = AAC.getSilentFrame(this._audioMeta.originalCodec, this._audioMeta.channelCount);
                 if (silentUnit) {
-                    let dts = videoSegment.beginDts;
-                    let silentFrameDuration = firstSampleDts - videoSegment.beginDts;
+                    const dts = videoSegment.beginDts;
+                    const silentFrameDuration = firstSampleDts - videoSegment.beginDts;
                     Log.v(this.TAG, `InsertPrefixSilentAudio: dts: ${dts}, duration: ${silentFrameDuration}`);
                     samples.unshift({ unit: silentUnit, dts: dts, pts: dts });
                     mdatBytes += silentUnit.byteLength;
@@ -349,13 +350,13 @@ class MP4Remuxer {
             }
         }
 
-        let mp4Samples = [];
+        const mp4Samples = [];
 
         // Correct dts for each sample, and calculate sample duration. Then output to mp4Samples
         for (let i = 0; i < samples.length; i++) {
-            let sample = samples[i];
-            let unit = sample.unit;
-            let originalDts = sample.dts - this._dtsBase;
+            const sample = samples[i];
+            const unit = sample.unit;
+            const originalDts = sample.dts - this._dtsBase;
             let dts = originalDts;
             let needFillSilentFrames = false;
             let silentFrames = null;
@@ -383,7 +384,7 @@ class MP4Remuxer {
                     // Silent frame generation, if large timestamp gap detected && config.fixAudioTimestampGap
                     needFillSilentFrames = true;
                     // We need to insert silent frames to fill timestamp gap
-                    let frameCount = Math.floor(dtsCorrection / refSampleDuration);
+                    const frameCount = Math.floor(dtsCorrection / refSampleDuration);
                     Log.w(this.TAG, 'Large audio timestamp gap detected, may cause AV sync to drift. ' +
                         'Silent frames will be generated to avoid unsync.\n' +
                         `originalDts: ${originalDts} ms, curRefDts: ${curRefDts} ms, ` +
@@ -404,9 +405,9 @@ class MP4Remuxer {
 
                     for (let j = 0; j < frameCount; j++) {
                         curRefDts = curRefDts + refSampleDuration;
-                        let intDts = Math.floor(curRefDts);  // change to integer
-                        let intDuration = Math.floor(curRefDts + refSampleDuration) - intDts;
-                        let frame = {
+                        const intDts = Math.floor(curRefDts);  // change to integer
+                        const intDuration = Math.floor(curRefDts + refSampleDuration) - intDts;
+                        const frame = {
                             dts: intDts,
                             pts: intDts,
                             cts: 0,
@@ -441,11 +442,11 @@ class MP4Remuxer {
 
 
                 if (i !== samples.length - 1) {
-                    let nextDts = samples[i + 1].dts - this._dtsBase - dtsCorrection;
+                    const nextDts = samples[i + 1].dts - this._dtsBase - dtsCorrection;
                     sampleDuration = nextDts - dts;
                 } else {  // the last sample
                     if (lastSample != null) {  // use stashed sample's dts to calculate sample duration
-                        let nextDts = lastSample.dts - this._dtsBase - dtsCorrection;
+                        const nextDts = lastSample.dts - this._dtsBase - dtsCorrection;
                         sampleDuration = nextDts - dts;
                     } else if (mp4Samples.length >= 1) {  // use second last sample duration
                         sampleDuration = mp4Samples[mp4Samples.length - 1].duration;
@@ -506,17 +507,17 @@ class MP4Remuxer {
 
         // Write samples into mdatbox
         for (let i = 0; i < mp4Samples.length; i++) {
-            let unit = mp4Samples[i].unit;
+            const unit = mp4Samples[i].unit;
             mdatbox.set(unit, offset);
             offset += unit.byteLength;
         }
 
-        let latest = mp4Samples[mp4Samples.length - 1];
+        const latest = mp4Samples[mp4Samples.length - 1];
         lastDts = latest.dts + latest.duration;
         //this._audioNextDts = lastDts;
 
         // fill media segment info & add to info list
-        let info = new MediaSegmentInfo();
+        const info = new MediaSegmentInfo();
         info.beginDts = firstDts;
         info.endDts = lastDts;
         info.beginPts = firstDts;
@@ -553,7 +554,7 @@ class MP4Remuxer {
         track.samples = [];
         track.length = 0;
 
-        let segment = {
+        const segment = {
             type: 'audio',
             data: this._mergeBoxes(moofbox, mdatbox).buffer,
             sampleCount: mp4Samples.length,
@@ -574,8 +575,8 @@ class MP4Remuxer {
             return;
         }
 
-        let track = videoTrack;
-        let samples = track.samples;
+        const track = videoTrack;
+        const samples = track.samples;
         let dtsCorrection = undefined;
         let firstDts = -1, lastDts = -1;
         let firstPts = -1, lastPts = -1;
@@ -604,7 +605,7 @@ class MP4Remuxer {
 
         // Insert [stashed lastSample in the previous batch] to the front
         if (this._videoStashedLastSample != null) {
-            let sample = this._videoStashedLastSample;
+            const sample = this._videoStashedLastSample;
             this._videoStashedLastSample = null;
             samples.unshift(sample);
             mdatBytes += sample.length;
@@ -616,7 +617,7 @@ class MP4Remuxer {
         }
 
 
-        let firstSampleOriginalDts = samples[0].dts - this._dtsBase;
+        const firstSampleOriginalDts = samples[0].dts - this._dtsBase;
 
         // calculate dtsCorrection
         if (this._videoNextDts) {
@@ -625,13 +626,13 @@ class MP4Remuxer {
             if (this._videoSegmentInfoList.isEmpty()) {
                 dtsCorrection = 0;
             } else {
-                let lastSample = this._videoSegmentInfoList.getLastSampleBefore(firstSampleOriginalDts);
+                const lastSample = this._videoSegmentInfoList.getLastSampleBefore(firstSampleOriginalDts);
                 if (lastSample != null) {
                     let distance = (firstSampleOriginalDts - (lastSample.originalDts + lastSample.duration));
                     if (distance <= 3) {
                         distance = 0;
                     }
-                    let expectedDts = lastSample.dts + lastSample.duration + distance;
+                    const expectedDts = lastSample.dts + lastSample.duration + distance;
                     dtsCorrection = firstSampleOriginalDts - expectedDts;
                 } else { // lastSample == null, cannot found
                     dtsCorrection = 0;
@@ -639,17 +640,17 @@ class MP4Remuxer {
             }
         }
 
-        let info = new MediaSegmentInfo();
-        let mp4Samples = [];
+        const info = new MediaSegmentInfo();
+        const mp4Samples = [];
 
         // Correct dts for each sample, and calculate sample duration. Then output to mp4Samples
         for (let i = 0; i < samples.length; i++) {
-            let sample = samples[i];
-            let originalDts = sample.dts - this._dtsBase;
-            let isKeyframe = sample.isKeyframe;
-            let dts = originalDts - dtsCorrection;
-            let cts = sample.cts;
-            let pts = dts + cts;
+            const sample = samples[i];
+            const originalDts = sample.dts - this._dtsBase;
+            const isKeyframe = sample.isKeyframe;
+            const dts = originalDts - dtsCorrection;
+            const cts = sample.cts;
+            const pts = dts + cts;
 
             if (firstDts === -1) {
                 firstDts = dts;
@@ -659,11 +660,11 @@ class MP4Remuxer {
             let sampleDuration = 0;
 
             if (i !== samples.length - 1) {
-                let nextDts = samples[i + 1].dts - this._dtsBase - dtsCorrection;
+                const nextDts = samples[i + 1].dts - this._dtsBase - dtsCorrection;
                 sampleDuration = nextDts - dts;
             } else {  // the last sample
                 if (lastSample != null) {  // use stashed sample's dts to calculate sample duration
-                    let nextDts = lastSample.dts - this._dtsBase - dtsCorrection;
+                    const nextDts = lastSample.dts - this._dtsBase - dtsCorrection;
                     sampleDuration = nextDts - dts;
                 } else if (mp4Samples.length >= 1) {  // use second last sample duration
                     sampleDuration = mp4Samples[mp4Samples.length - 1].duration;
@@ -673,7 +674,7 @@ class MP4Remuxer {
             }
 
             if (isKeyframe) {
-                let syncPoint = new SampleInfo(dts, pts, sampleDuration, sample.dts, true);
+                const syncPoint = new SampleInfo(dts, pts, sampleDuration, sample.dts, true);
                 syncPoint.fileposition = sample.fileposition;
                 info.appendSyncPoint(syncPoint);
             }
@@ -707,16 +708,16 @@ class MP4Remuxer {
 
         // Write samples into mdatbox
         for (let i = 0; i < mp4Samples.length; i++) {
-            let units = mp4Samples[i].units;
+            const units = mp4Samples[i].units;
             while (units.length) {
-                let unit = units.shift();
-                let data = unit.data;
+                const unit = units.shift();
+                const data = unit.data;
                 mdatbox.set(data, offset);
                 offset += data.byteLength;
             }
         }
 
-        let latest = mp4Samples[mp4Samples.length - 1];
+        const latest = mp4Samples[mp4Samples.length - 1];
         lastDts = latest.dts + latest.duration;
         lastPts = latest.pts + latest.duration;
         this._videoNextDts = lastDts;
@@ -748,12 +749,12 @@ class MP4Remuxer {
         // workaround for chrome < 50: force first sample as a random access point
         // see https://bugs.chromium.org/p/chromium/issues/detail?id=229412
         if (this._forceFirstIDR) {
-            let flags = mp4Samples[0].flags;
+            const flags = mp4Samples[0].flags;
             flags.dependsOn = 2;
             flags.isNonSync = 0;
         }
 
-        let moofbox = MP4.moof(track, firstDts);
+        const moofbox = MP4.moof(track, firstDts);
         track.samples = [];
         track.length = 0;
 
@@ -766,7 +767,7 @@ class MP4Remuxer {
     }
 
     _mergeBoxes(moof, mdat) {
-        let result = new Uint8Array(moof.byteLength + mdat.byteLength);
+        const result = new Uint8Array(moof.byteLength + mdat.byteLength);
         result.set(moof, 0);
         result.set(mdat, moof.byteLength);
         return result;

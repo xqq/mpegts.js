@@ -34,7 +34,7 @@ class NativePlayer {
             Object.assign(this._config, config);
         }
 
-        let typeLowerCase = mediaDataSource.type.toLowerCase();
+        const typeLowerCase = mediaDataSource.type.toLowerCase();
 
         if (typeLowerCase === 'mse'
                 || typeLowerCase === 'mpegts'
@@ -198,8 +198,8 @@ class NativePlayer {
     }
 
     get mediaInfo() {
-        let mediaPrefix = (this._mediaElement instanceof HTMLAudioElement) ? 'audio/' : 'video/';
-        let info = {
+        const mediaPrefix = (this._mediaElement instanceof HTMLAudioElement) ? 'audio/' : 'video/';
+        const info = {
             mimeType: mediaPrefix + this._mediaDataSource.type
         };
         if (this._mediaElement) {
@@ -213,7 +213,7 @@ class NativePlayer {
     }
 
     get statisticsInfo() {
-        let info = {
+        const info = {
             playerType: this._type,
             url: this._mediaDataSource.url
         };
@@ -227,7 +227,7 @@ class NativePlayer {
         let dropped = 0;
 
         if (this._mediaElement.getVideoPlaybackQuality) {
-            let quality = this._mediaElement.getVideoPlaybackQuality();
+            const quality = this._mediaElement.getVideoPlaybackQuality();
             decoded = quality.totalVideoFrames;
             dropped = quality.droppedVideoFrames;
         } else if (this._mediaElement.webkitDecodedFrameCount != undefined) {

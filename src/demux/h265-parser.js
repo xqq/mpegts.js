@@ -21,9 +21,9 @@ import ExpGolomb from './exp-golomb.js';
 class H265NaluParser {
 
     static _ebsp2rbsp(uint8array) {
-        let src = uint8array;
-        let src_length = src.byteLength;
-        let dst = new Uint8Array(src_length);
+        const src = uint8array;
+        const src_length = src.byteLength;
+        const dst = new Uint8Array(src_length);
         let dst_idx = 0;
 
         for (let i = 0; i < src_length; i++) {
@@ -41,19 +41,19 @@ class H265NaluParser {
     }
 
     static parseVPS(uint8array) {
-        let rbsp = H265NaluParser._ebsp2rbsp(uint8array);
-        let gb = new ExpGolomb(rbsp);
+        const rbsp = H265NaluParser._ebsp2rbsp(uint8array);
+        const gb = new ExpGolomb(rbsp);
 
         /* remove NALu Header */
         gb.readByte();
         gb.readByte();
 
         // VPS
-        let video_parameter_set_id = gb.readBits(4);
+        const video_parameter_set_id = gb.readBits(4);
         gb.readBits(2);
-        let max_layers_minus1 = gb.readBits(6);
-        let max_sub_layers_minus1 = gb.readBits(3);
-        let temporal_id_nesting_flag = gb.readBool();
+        const max_layers_minus1 = gb.readBits(6);
+        const max_sub_layers_minus1 = gb.readBits(3);
+        const temporal_id_nesting_flag = gb.readBool();
         // and more ...
 
         return {
@@ -63,7 +63,7 @@ class H265NaluParser {
     }
 
     static parseSPS(uint8array) {
-        let rbsp = H265NaluParser._ebsp2rbsp(uint8array);
+        const rbsp = H265NaluParser._ebsp2rbsp(uint8array);
         let gb = new ExpGolomb(rbsp);
 
         /* remove NALu Header */
@@ -73,27 +73,27 @@ class H265NaluParser {
         let left_offset = 0, right_offset = 0, top_offset = 0, bottom_offset = 0;
 
         // SPS
-        let video_paramter_set_id = gb.readBits(4);
-        let max_sub_layers_minus1 = gb.readBits(3);
-        let temporal_id_nesting_flag = gb.readBool();
+        const video_paramter_set_id = gb.readBits(4);
+        const max_sub_layers_minus1 = gb.readBits(3);
+        const temporal_id_nesting_flag = gb.readBool();
 
         // profile_tier_level begin
-        let general_profile_space = gb.readBits(2);
-        let general_tier_flag = gb.readBool();
-        let general_profile_idc = gb.readBits(5);
-        let general_profile_compatibility_flags_1 = gb.readByte();
-        let general_profile_compatibility_flags_2 = gb.readByte();
-        let general_profile_compatibility_flags_3 = gb.readByte();
-        let general_profile_compatibility_flags_4 = gb.readByte();
-        let general_constraint_indicator_flags_1 = gb.readByte();
-        let general_constraint_indicator_flags_2 = gb.readByte();
-        let general_constraint_indicator_flags_3 = gb.readByte();
-        let general_constraint_indicator_flags_4 = gb.readByte();
-        let general_constraint_indicator_flags_5 = gb.readByte();
-        let general_constraint_indicator_flags_6 = gb.readByte();
-        let general_level_idc = gb.readByte();
-        let sub_layer_profile_present_flag = [];
-        let sub_layer_level_present_flag = [];
+        const general_profile_space = gb.readBits(2);
+        const general_tier_flag = gb.readBool();
+        const general_profile_idc = gb.readBits(5);
+        const general_profile_compatibility_flags_1 = gb.readByte();
+        const general_profile_compatibility_flags_2 = gb.readByte();
+        const general_profile_compatibility_flags_3 = gb.readByte();
+        const general_profile_compatibility_flags_4 = gb.readByte();
+        const general_constraint_indicator_flags_1 = gb.readByte();
+        const general_constraint_indicator_flags_2 = gb.readByte();
+        const general_constraint_indicator_flags_3 = gb.readByte();
+        const general_constraint_indicator_flags_4 = gb.readByte();
+        const general_constraint_indicator_flags_5 = gb.readByte();
+        const general_constraint_indicator_flags_6 = gb.readByte();
+        const general_level_idc = gb.readByte();
+        const sub_layer_profile_present_flag = [];
+        const sub_layer_level_present_flag = [];
         for (let i = 0; i < max_sub_layers_minus1; i++) {
             sub_layer_profile_present_flag.push(gb.readBool());
             sub_layer_level_present_flag.push(gb.readBool());
@@ -113,46 +113,46 @@ class H265NaluParser {
         }
         // profile_tier_level end
 
-        let seq_parameter_set_id = gb.readUEG();
-        let chroma_format_idc = gb.readUEG();
+        const seq_parameter_set_id = gb.readUEG();
+        const chroma_format_idc = gb.readUEG();
         if (chroma_format_idc == 3) {
             gb.readBits(1);  // separate_colour_plane_flag
         }
-        let pic_width_in_luma_samples = gb.readUEG();
-        let pic_height_in_luma_samples = gb.readUEG();
-        let conformance_window_flag = gb.readBool();
+        const pic_width_in_luma_samples = gb.readUEG();
+        const pic_height_in_luma_samples = gb.readUEG();
+        const conformance_window_flag = gb.readBool();
         if (conformance_window_flag) {
             left_offset += gb.readUEG();
             right_offset += gb.readUEG();
             top_offset += gb.readUEG();
             bottom_offset += gb.readUEG();
         }
-        let bit_depth_luma_minus8 = gb.readUEG();
-        let bit_depth_chroma_minus8 = gb.readUEG();
-        let log2_max_pic_order_cnt_lsb_minus4 = gb.readUEG();
-        let sub_layer_ordering_info_present_flag = gb.readBool();
+        const bit_depth_luma_minus8 = gb.readUEG();
+        const bit_depth_chroma_minus8 = gb.readUEG();
+        const log2_max_pic_order_cnt_lsb_minus4 = gb.readUEG();
+        const sub_layer_ordering_info_present_flag = gb.readBool();
         for (let i = sub_layer_ordering_info_present_flag ? 0 : max_sub_layers_minus1; i <= max_sub_layers_minus1; i++) {
             gb.readUEG(); // max_dec_pic_buffering_minus1[i]
             gb.readUEG(); // max_num_reorder_pics[i]
             gb.readUEG(); // max_latency_increase_plus1[i]
         }
-        let log2_min_luma_coding_block_size_minus3 = gb.readUEG();
-        let log2_diff_max_min_luma_coding_block_size = gb.readUEG();
-        let log2_min_transform_block_size_minus2 = gb.readUEG();
-        let log2_diff_max_min_transform_block_size = gb.readUEG();
-        let max_transform_hierarchy_depth_inter = gb.readUEG();
-        let max_transform_hierarchy_depth_intra = gb.readUEG();
-        let scaling_list_enabled_flag = gb.readBool();
+        const log2_min_luma_coding_block_size_minus3 = gb.readUEG();
+        const log2_diff_max_min_luma_coding_block_size = gb.readUEG();
+        const log2_min_transform_block_size_minus2 = gb.readUEG();
+        const log2_diff_max_min_transform_block_size = gb.readUEG();
+        const max_transform_hierarchy_depth_inter = gb.readUEG();
+        const max_transform_hierarchy_depth_intra = gb.readUEG();
+        const scaling_list_enabled_flag = gb.readBool();
         if (scaling_list_enabled_flag) {
-            let sps_scaling_list_data_present_flag = gb.readBool();
+            const sps_scaling_list_data_present_flag = gb.readBool();
             if (sps_scaling_list_data_present_flag) {
                 for (let sizeId = 0; sizeId < 4; sizeId++) {
                     for(let matrixId = 0; matrixId < ((sizeId === 3) ? 2 : 6); matrixId++){
-                        let scaling_list_pred_mode_flag = gb.readBool();
+                        const scaling_list_pred_mode_flag = gb.readBool();
                         if (!scaling_list_pred_mode_flag) {
                             gb.readUEG(); // scaling_list_pred_matrix_id_delta
                         } else {
-                            let coefNum = Math.min(64, (1 << (4 + (sizeId << 1))));
+                            const coefNum = Math.min(64, (1 << (4 + (sizeId << 1))));
                             if (sizeId > 1) { gb.readSEG() }
                             for (let i = 0; i < coefNum; i++) { gb.readSEG(); }
                         }
@@ -160,16 +160,16 @@ class H265NaluParser {
                 }
             }
         }
-        let amp_enabled_flag = gb.readBool();
-        let sample_adaptive_offset_enabled_flag = gb.readBool();
-        let pcm_enabled_flag = gb.readBool();
+        const amp_enabled_flag = gb.readBool();
+        const sample_adaptive_offset_enabled_flag = gb.readBool();
+        const pcm_enabled_flag = gb.readBool();
         if (pcm_enabled_flag) {
             gb.readByte();
             gb.readUEG();
             gb.readUEG();
             gb.readBool();
         }
-        let num_short_term_ref_pic_sets = gb.readUEG();
+        const num_short_term_ref_pic_sets = gb.readUEG();
         let num_delta_pocs = 0;
         for (let i = 0; i < num_short_term_ref_pic_sets; i++) {
             let inter_ref_pic_set_prediction_flag = false;
@@ -180,7 +180,7 @@ class H265NaluParser {
                 gb.readUEG();
                 let next_num_delta_pocs = 0;
                 for (let j = 0; j <= num_delta_pocs; j++) {
-                    let used_by_curr_pic_flag = gb.readBool();
+                    const used_by_curr_pic_flag = gb.readBool();
                     let use_delta_flag = false;
                     if (!used_by_curr_pic_flag) {
                         use_delta_flag = gb.readBool();
@@ -191,8 +191,8 @@ class H265NaluParser {
                 }
                 num_delta_pocs = next_num_delta_pocs;
             } else {
-                let num_negative_pics = gb.readUEG();
-                let num_positive_pics = gb.readUEG();
+                const num_negative_pics = gb.readUEG();
+                const num_positive_pics = gb.readUEG();
                 num_delta_pocs = num_negative_pics + num_positive_pics;
                 for (let j = 0; j < num_negative_pics; j++) {
                     gb.readUEG();
@@ -204,9 +204,9 @@ class H265NaluParser {
                 }
             }
         }
-        let long_term_ref_pics_present_flag = gb.readBool();
+        const long_term_ref_pics_present_flag = gb.readBool();
         if (long_term_ref_pics_present_flag) {
-            let num_long_term_ref_pics_sps = gb.readUEG();
+            const num_long_term_ref_pics_sps = gb.readUEG();
             for (let i = 0; i < num_long_term_ref_pics_sps; i++) {
                 for (let j = 0; j < (log2_max_pic_order_cnt_lsb_minus4 + 4); j++) { gb.readBits(1); }
                 gb.readBits(1);
@@ -218,16 +218,16 @@ class H265NaluParser {
         let sar_width = 1, sar_height = 1;
         let fps_fixed = false, fps_den = 1, fps_num = 1;
         //*/
-        let sps_temporal_mvp_enabled_flag = gb.readBool();
-        let strong_intra_smoothing_enabled_flag = gb.readBool();
-        let vui_parameters_present_flag = gb.readBool();
+        const sps_temporal_mvp_enabled_flag = gb.readBool();
+        const strong_intra_smoothing_enabled_flag = gb.readBool();
+        const vui_parameters_present_flag = gb.readBool();
         if (vui_parameters_present_flag) {
-            let aspect_ratio_info_present_flag = gb.readBool();
+            const aspect_ratio_info_present_flag = gb.readBool();
             if (aspect_ratio_info_present_flag) {
-                let aspect_ratio_idc = gb.readByte();
+                const aspect_ratio_idc = gb.readByte();
 
-                let sar_w_table = [1, 12, 10, 16, 40, 24, 20, 32, 80, 18, 15, 64, 160, 4, 3, 2];
-                let sar_h_table = [1, 11, 11, 11, 33, 11, 11, 11, 33, 11, 11, 33,  99, 3, 2, 1];
+                const sar_w_table = [1, 12, 10, 16, 40, 24, 20, 32, 80, 18, 15, 64, 160, 4, 3, 2];
+                const sar_h_table = [1, 11, 11, 11, 33, 11, 11, 11, 33, 11, 11, 33,  99, 3, 2, 1];
 
                 if (aspect_ratio_idc > 0 && aspect_ratio_idc <= 16) {
                     sar_width = sar_w_table[aspect_ratio_idc - 1];
@@ -237,29 +237,29 @@ class H265NaluParser {
                     sar_height = gb.readBits(16);
                 }
             }
-            let overscan_info_present_flag = gb.readBool();
+            const overscan_info_present_flag = gb.readBool();
             if (overscan_info_present_flag) {
                 gb.readBool();
             }
-            let video_signal_type_present_flag = gb.readBool();
+            const video_signal_type_present_flag = gb.readBool();
             if (video_signal_type_present_flag) {
                 gb.readBits(3);
                 gb.readBool();
-                let colour_description_present_flag = gb.readBool();
+                const colour_description_present_flag = gb.readBool();
                 if (colour_description_present_flag) {
                     gb.readByte();
                     gb.readByte();
                     gb.readByte();
                 }
             }
-            let chroma_loc_info_present_flag = gb.readBool();
+            const chroma_loc_info_present_flag = gb.readBool();
             if (chroma_loc_info_present_flag) {
                 gb.readUEG();
                 gb.readUEG();
             }
-            let neutral_chroma_indication_flag = gb.readBool();
-            let field_seq_flag = gb.readBool();
-            let frame_field_info_present_flag = gb.readBool();
+            const neutral_chroma_indication_flag = gb.readBool();
+            const field_seq_flag = gb.readBool();
+            const frame_field_info_present_flag = gb.readBool();
             default_display_window_flag = gb.readBool();
             if (default_display_window_flag) {
                 gb.readUEG();
@@ -267,17 +267,17 @@ class H265NaluParser {
                 gb.readUEG();
                 gb.readUEG();
             }
-            let vui_timing_info_present_flag = gb.readBool();
+            const vui_timing_info_present_flag = gb.readBool();
             if (vui_timing_info_present_flag) {
                 fps_den = gb.readBits(32);
                 fps_num = gb.readBits(32);
-                let vui_poc_proportional_to_timing_flag = gb.readBool();
+                const vui_poc_proportional_to_timing_flag = gb.readBool();
                 if (vui_poc_proportional_to_timing_flag) {
                     gb.readUEG();
                 }
-                let vui_hrd_parameters_present_flag = gb.readBool();
+                const vui_hrd_parameters_present_flag = gb.readBool();
                 if (vui_hrd_parameters_present_flag) {
-                    let commonInfPresentFlag = 1;
+                    const commonInfPresentFlag = 1;
                     let nal_hrd_parameters_present_flag = false;
                     let vcl_hrd_parameters_present_flag = false;
                     let sub_pic_hrd_params_present_flag = false;
@@ -292,8 +292,8 @@ class H265NaluParser {
                                 gb.readBool();
                                 gb.readBits(5);
                             }
-                            let bit_rate_scale = gb.readBits(4);
-                            let cpb_size_scale = gb.readBits(4);
+                            const bit_rate_scale = gb.readBits(4);
+                            const cpb_size_scale = gb.readBits(4);
                             if (sub_pic_hrd_params_present_flag) {
                                 gb.readBits(4);
                             }
@@ -303,7 +303,7 @@ class H265NaluParser {
                         }
                     }
                     for (let i = 0; i <= max_sub_layers_minus1; i++) {
-                        let fixed_pic_rate_general_flag = gb.readBool();
+                        const fixed_pic_rate_general_flag = gb.readBool();
                         fps_fixed = fixed_pic_rate_general_flag;
                         let fixed_pic_rate_within_cvs_flag = true;
                         let cpbCnt = 1;
@@ -340,27 +340,27 @@ class H265NaluParser {
                     }
                 }
             }
-            let bitstream_restriction_flag = gb.readBool();
+            const bitstream_restriction_flag = gb.readBool();
             if (bitstream_restriction_flag) {
-                let tiles_fixed_structure_flag = gb.readBool()
-                let motion_vectors_over_pic_boundaries_flag = gb.readBool()
-                let restricted_ref_pic_lists_flag = gb.readBool();
+                const tiles_fixed_structure_flag = gb.readBool()
+                const motion_vectors_over_pic_boundaries_flag = gb.readBool()
+                const restricted_ref_pic_lists_flag = gb.readBool();
                 min_spatial_segmentation_idc = gb.readUEG();
-                let max_bytes_per_pic_denom = gb.readUEG();
-                let max_bits_per_min_cu_denom = gb.readUEG();
-                let log2_max_mv_length_horizontal = gb.readUEG();
-                let log2_max_mv_length_vertical = gb.readUEG();
+                const max_bytes_per_pic_denom = gb.readUEG();
+                const max_bits_per_min_cu_denom = gb.readUEG();
+                const log2_max_mv_length_horizontal = gb.readUEG();
+                const log2_max_mv_length_vertical = gb.readUEG();
             }
         }
-        let sps_extension_flag = gb.readBool(); // ignore...
+        const sps_extension_flag = gb.readBool(); // ignore...
 
         // for meta data
-        let codec_mimetype = `hvc1.${general_profile_idc}.1.L${general_level_idc}.B0`;
+        const codec_mimetype = `hvc1.${general_profile_idc}.1.L${general_level_idc}.B0`;
 
-        let sub_wc = (chroma_format_idc === 1 || chroma_format_idc === 2) ? 2 : 1;
-        let sub_hc = (chroma_format_idc === 1) ? 2 : 1;
-        let codec_width = pic_width_in_luma_samples - (left_offset + right_offset) * sub_wc;
-        let codec_height = pic_height_in_luma_samples - (top_offset + bottom_offset) * sub_hc;
+        const sub_wc = (chroma_format_idc === 1 || chroma_format_idc === 2) ? 2 : 1;
+        const sub_hc = (chroma_format_idc === 1) ? 2 : 1;
+        const codec_width = pic_width_in_luma_samples - (left_offset + right_offset) * sub_wc;
+        const codec_height = pic_height_in_luma_samples - (top_offset + bottom_offset) * sub_hc;
         let sar_scale = 1;
         if (sar_width !== 1 && sar_height !== 1) {
             sar_scale = sar_width / sar_height;
@@ -424,37 +424,37 @@ class H265NaluParser {
     }
 
     static parsePPS(uint8array) {
-        let rbsp = H265NaluParser._ebsp2rbsp(uint8array);
-        let gb = new ExpGolomb(rbsp);
+        const rbsp = H265NaluParser._ebsp2rbsp(uint8array);
+        const gb = new ExpGolomb(rbsp);
 
         /* remove NALu Header */
         gb.readByte();
         gb.readByte();
 
-        let pic_parameter_set_id = gb.readUEG();
-        let seq_parameter_set_id = gb.readUEG();
-        let dependent_slice_segments_enabled_flag = gb.readBool();
-        let output_flag_present_flag = gb.readBool();
-        let num_extra_slice_header_bits = gb.readBits(3);
-        let sign_data_hiding_enabled_flag = gb.readBool();
-        let cabac_init_present_flag = gb.readBool();
-        let num_ref_idx_l0_default_active_minus1 = gb.readUEG();
-        let num_ref_idx_l1_default_active_minus1 = gb.readUEG();
-        let init_qp_minus26 = gb.readSEG();
-        let constrained_intra_pred_flag = gb.readBool();
-        let transform_skip_enabled_flag = gb.readBool();
-        let cu_qp_delta_enabled_flag = gb.readBool();
+        const pic_parameter_set_id = gb.readUEG();
+        const seq_parameter_set_id = gb.readUEG();
+        const dependent_slice_segments_enabled_flag = gb.readBool();
+        const output_flag_present_flag = gb.readBool();
+        const num_extra_slice_header_bits = gb.readBits(3);
+        const sign_data_hiding_enabled_flag = gb.readBool();
+        const cabac_init_present_flag = gb.readBool();
+        const num_ref_idx_l0_default_active_minus1 = gb.readUEG();
+        const num_ref_idx_l1_default_active_minus1 = gb.readUEG();
+        const init_qp_minus26 = gb.readSEG();
+        const constrained_intra_pred_flag = gb.readBool();
+        const transform_skip_enabled_flag = gb.readBool();
+        const cu_qp_delta_enabled_flag = gb.readBool();
         if (cu_qp_delta_enabled_flag) {
-            let diff_cu_qp_delta_depth = gb.readUEG();
+            const diff_cu_qp_delta_depth = gb.readUEG();
         }
-        let cb_qp_offset = gb.readSEG();
-        let cr_qp_offset = gb.readSEG();
-        let pps_slice_chroma_qp_offsets_present_flag = gb.readBool();
-        let weighted_pred_flag = gb.readBool();
-        let weighted_bipred_flag = gb.readBool();
-        let transquant_bypass_enabled_flag = gb.readBool();
-        let tiles_enabled_flag = gb.readBool();
-        let entropy_coding_sync_enabled_flag = gb.readBool();
+        const cb_qp_offset = gb.readSEG();
+        const cr_qp_offset = gb.readSEG();
+        const pps_slice_chroma_qp_offsets_present_flag = gb.readBool();
+        const weighted_pred_flag = gb.readBool();
+        const weighted_bipred_flag = gb.readBool();
+        const transquant_bypass_enabled_flag = gb.readBool();
+        const tiles_enabled_flag = gb.readBool();
+        const entropy_coding_sync_enabled_flag = gb.readBool();
         // and more ...
 
         // needs hvcC

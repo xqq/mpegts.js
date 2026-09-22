@@ -51,10 +51,10 @@ class ParamSeekHandler {
     }
 
     removeURLParameters(seekedURL) {
-        let baseURL = seekedURL.split('?')[0];
+        const baseURL = seekedURL.split('?')[0];
         let params = undefined;
 
-        let queryIndex = seekedURL.indexOf('?');
+        const queryIndex = seekedURL.indexOf('?');
         if (queryIndex !== -1) {
             params = seekedURL.substring(queryIndex + 1);
         }
@@ -62,11 +62,11 @@ class ParamSeekHandler {
         let resultParams = '';
 
         if (params != undefined && params.length > 0) {
-            let pairs = params.split('&');
+            const pairs = params.split('&');
 
             for (let i = 0; i < pairs.length; i++) {
-                let pair = pairs[i].split('=');
-                let requireAnd = (i > 0);
+                const pair = pairs[i].split('=');
+                const requireAnd = (i > 0);
 
                 if (pair[0] !== this._startName && pair[0] !== this._endName) {
                     if (requireAnd) {

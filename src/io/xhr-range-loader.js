@@ -26,7 +26,7 @@ class RangeLoader extends BaseLoader {
 
     static isSupported() {
         try {
-            let xhr = new XMLHttpRequest();
+            const xhr = new XMLHttpRequest();
             xhr.open('GET', 'https://example.com', true);
             xhr.responseType = 'arraybuffer';
             return (xhr.responseType === 'arraybuffer');
@@ -107,9 +107,9 @@ class RangeLoader extends BaseLoader {
     }
 
     _openSubRange() {
-        let chunkSize = this._currentChunkSizeKB * 1024;
+        const chunkSize = this._currentChunkSizeKB * 1024;
 
-        let from = this._range.from + this._receivedLength;
+        const from = this._range.from + this._receivedLength;
         let to = from + chunkSize;
 
         if (this._contentLength != null) {
@@ -134,10 +134,10 @@ class RangeLoader extends BaseLoader {
             }
         }
 
-        let seekConfig = this._seekHandler.getConfig(sourceURL, range);
+        const seekConfig = this._seekHandler.getConfig(sourceURL, range);
         this._currentRequestURL = seekConfig.url;
 
-        let xhr = this._xhr = new XMLHttpRequest();
+        const xhr = this._xhr = new XMLHttpRequest();
         xhr.open('GET', seekConfig.url, true);
         xhr.responseType = 'arraybuffer';
         xhr.onreadystatechange = this._onReadyStateChange.bind(this);
@@ -150,9 +150,9 @@ class RangeLoader extends BaseLoader {
         }
 
         if (typeof seekConfig.headers === 'object') {
-            let headers = seekConfig.headers;
+            const headers = seekConfig.headers;
 
-            for (let key in headers) {
+            for (const key in headers) {
                 if (headers.hasOwnProperty(key)) {
                     xhr.setRequestHeader(key, headers[key]);
                 }
@@ -161,9 +161,9 @@ class RangeLoader extends BaseLoader {
 
         // add additional headers
         if (typeof this._config.headers === 'object') {
-            let headers = this._config.headers;
+            const headers = this._config.headers;
 
-            for (let key in headers) {
+            for (const key in headers) {
                 if (headers.hasOwnProperty(key)) {
                     xhr.setRequestHeader(key, headers[key]);
                 }
@@ -191,11 +191,11 @@ class RangeLoader extends BaseLoader {
     }
 
     _onReadyStateChange(e) {
-        let xhr = e.target;
+        const xhr = e.target;
 
         if (xhr.readyState === 2) {  // HEADERS_RECEIVED
             if (xhr.responseURL != undefined) {  // if the browser support this property
-                let redirectedURL = this._seekHandler.removeURLParameters(xhr.responseURL);
+                const redirectedURL = this._seekHandler.removeURLParameters(xhr.responseURL);
                 if (xhr.responseURL !== this._currentRequestURL && redirectedURL !== this._currentRedirectedURL) {
                     this._currentRedirectedURL = redirectedURL;
                     if (this._onURLRedirect) {
@@ -234,7 +234,7 @@ class RangeLoader extends BaseLoader {
                 this._totalLengthReceived = true;
                 openNextRange = true;
 
-                let total = e.total;
+                const total = e.total;
                 this._internalAbort();
                 if (total != null & total !== 0) {
                     this._totalLength = total;
@@ -257,14 +257,14 @@ class RangeLoader extends BaseLoader {
             }
         }
 
-        let delta = e.loaded - this._lastTimeLoaded;
+        const delta = e.loaded - this._lastTimeLoaded;
         this._lastTimeLoaded = e.loaded;
         this._speedSampler.addBytes(delta);
     }
 
     _normalizeSpeed(input) {
-        let list = this._chunkSizeKBList;
-        let last = list.length - 1;
+        const list = this._chunkSizeKBList;
+        const last = list.length - 1;
         let mid = 0;
         let lbound = 0;
         let ubound = last;
@@ -307,15 +307,15 @@ class RangeLoader extends BaseLoader {
         }
 
         if (KBps !== 0) {
-            let normalized = this._normalizeSpeed(KBps);
+            const normalized = this._normalizeSpeed(KBps);
             if (this._currentSpeedNormalized !== normalized) {
                 this._currentSpeedNormalized = normalized;
                 this._currentChunkSizeKB = normalized;
             }
         }
 
-        let chunk = e.target.response;
-        let byteStart = this._range.from + this._receivedLength;
+        const chunk = e.target.response;
+        const byteStart = this._range.from + this._receivedLength;
         this._receivedLength += chunk.byteLength;
 
         let reportComplete = false;

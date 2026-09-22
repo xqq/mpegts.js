@@ -20,8 +20,8 @@ import Log from '../utils/logger.js';
 import decodeUTF8 from '../utils/utf8-conv.js';
 import {IllegalStateException} from '../utils/exception.js';
 
-let le = (function () {
-    let buf = new ArrayBuffer(2);
+const le = (function () {
+    const buf = new ArrayBuffer(2);
     (new DataView(buf)).setInt16(0, 256, true);  // little-endian write
     return (new Int16Array(buf))[0] === 256;  // platform-spec read, if equal then LE
 })();
@@ -29,11 +29,11 @@ let le = (function () {
 class AMF {
 
     static parseScriptData(arrayBuffer, dataOffset, dataSize) {
-        let data = {};
+        const data = {};
 
         try {
-            let name = AMF.parseValue(arrayBuffer, dataOffset, dataSize);
-            let value = AMF.parseValue(arrayBuffer, dataOffset + name.size, dataSize - name.size);
+            const name = AMF.parseValue(arrayBuffer, dataOffset, dataSize);
+            const value = AMF.parseValue(arrayBuffer, dataOffset + name.size, dataSize - name.size);
 
             data[name.data] = value.data;
         } catch (e) {
@@ -47,9 +47,9 @@ class AMF {
         if (dataSize < 3) {
             throw new IllegalStateException('Data not enough when parse ScriptDataObject');
         }
-        let name = AMF.parseString(arrayBuffer, dataOffset, dataSize);
-        let value = AMF.parseValue(arrayBuffer, dataOffset + name.size, dataSize - name.size);
-        let isObjectEnd = value.objectEnd;
+        const name = AMF.parseString(arrayBuffer, dataOffset, dataSize);
+        const value = AMF.parseValue(arrayBuffer, dataOffset + name.size, dataSize - name.size);
+        const isObjectEnd = value.objectEnd;
 
         return {
             data: {
@@ -69,8 +69,8 @@ class AMF {
         if (dataSize < 2) {
             throw new IllegalStateException('Data not enough when parse String');
         }
-        let v = new DataView(arrayBuffer, dataOffset, dataSize);
-        let length = v.getUint16(0, !le);
+        const v = new DataView(arrayBuffer, dataOffset, dataSize);
+        const length = v.getUint16(0, !le);
 
         let str;
         if (length > 0) {
@@ -89,8 +89,8 @@ class AMF {
         if (dataSize < 4) {
             throw new IllegalStateException('Data not enough when parse LongString');
         }
-        let v = new DataView(arrayBuffer, dataOffset, dataSize);
-        let length = v.getUint32(0, !le);
+        const v = new DataView(arrayBuffer, dataOffset, dataSize);
+        const length = v.getUint32(0, !le);
 
         let str;
         if (length > 0) {
@@ -109,9 +109,9 @@ class AMF {
         if (dataSize < 10) {
             throw new IllegalStateException('Data size invalid when parse Date');
         }
-        let v = new DataView(arrayBuffer, dataOffset, dataSize);
+        const v = new DataView(arrayBuffer, dataOffset, dataSize);
         let timestamp = v.getFloat64(0, !le);
-        let localTimeOffset = v.getInt16(8, !le);
+        const localTimeOffset = v.getInt16(8, !le);
         timestamp += localTimeOffset * 60 * 1000;  // get UTC time
 
         return {
@@ -125,10 +125,10 @@ class AMF {
             throw new IllegalStateException('Data not enough when parse Value');
         }
 
-        let v = new DataView(arrayBuffer, dataOffset, dataSize);
+        const v = new DataView(arrayBuffer, dataOffset, dataSize);
 
         let offset = 1;
-        let type = v.getUint8(0);
+        const type = v.getUint8(0);
         let value;
         let objectEnd = false;
 
@@ -139,13 +139,13 @@ class AMF {
                     offset += 8;
                     break;
                 case 1: {  // Boolean type
-                    let b = v.getUint8(1);
+                    const b = v.getUint8(1);
                     value = b ? true : false;
                     offset += 1;
                     break;
                 }
                 case 2: {  // String type
-                    let amfstr = AMF.parseString(arrayBuffer, dataOffset + 1, dataSize - 1);
+                    const amfstr = AMF.parseString(arrayBuffer, dataOffset + 1, dataSize - 1);
                     value = amfstr.data;
                     offset += amfstr.size;
                     break;
@@ -157,14 +157,14 @@ class AMF {
                         terminal = 3;
                     }
                     while (offset < dataSize - 4) {  // 4 === type(UI8) + ScriptDataObjectEnd(UI24)
-                        let amfobj = AMF.parseObject(arrayBuffer, dataOffset + offset, dataSize - offset - terminal);
+                        const amfobj = AMF.parseObject(arrayBuffer, dataOffset + offset, dataSize - offset - terminal);
                         if (amfobj.objectEnd)
                             break;
                         value[amfobj.data.name] = amfobj.data.value;
                         offset += amfobj.size;
                     }
                     if (offset <= dataSize - 3) {
-                        let marker = v.getUint32(offset - 1, !le) & 0x00FFFFFF;
+                        const marker = v.getUint32(offset - 1, !le) & 0x00FFFFFF;
                         if (marker === 9) {
                             offset += 3;
                         }
@@ -179,14 +179,14 @@ class AMF {
                         terminal = 3;
                     }
                     while (offset < dataSize - 8) {  // 8 === type(UI8) + ECMAArrayLength(UI32) + ScriptDataVariableEnd(UI24)
-                        let amfvar = AMF.parseVariable(arrayBuffer, dataOffset + offset, dataSize - offset - terminal);
+                        const amfvar = AMF.parseVariable(arrayBuffer, dataOffset + offset, dataSize - offset - terminal);
                         if (amfvar.objectEnd)
                             break;
                         value[amfvar.data.name] = amfvar.data.value;
                         offset += amfvar.size;
                     }
                     if (offset <= dataSize - 3) {
-                        let marker = v.getUint32(offset - 1, !le) & 0x00FFFFFF;
+                        const marker = v.getUint32(offset - 1, !le) & 0x00FFFFFF;
                         if (marker === 9) {
                             offset += 3;
                         }
@@ -201,23 +201,23 @@ class AMF {
                 case 10: {  // Strict array type
                     // ScriptDataValue[n]. NOTE: according to video_file_format_spec_v10_1.pdf
                     value = [];
-                    let strictArrayLength = v.getUint32(1, !le);
+                    const strictArrayLength = v.getUint32(1, !le);
                     offset += 4;
                     for (let i = 0; i < strictArrayLength; i++) {
-                        let val = AMF.parseValue(arrayBuffer, dataOffset + offset, dataSize - offset);
+                        const val = AMF.parseValue(arrayBuffer, dataOffset + offset, dataSize - offset);
                         value.push(val.data);
                         offset += val.size;
                     }
                     break;
                 }
                 case 11: {  // Date type
-                    let date = AMF.parseDate(arrayBuffer, dataOffset + 1, dataSize - 1);
+                    const date = AMF.parseDate(arrayBuffer, dataOffset + 1, dataSize - 1);
                     value = date.data;
                     offset += date.size;
                     break;
                 }
                 case 12: {  // Long string type
-                    let amfLongStr = AMF.parseString(arrayBuffer, dataOffset + 1, dataSize - 1);
+                    const amfLongStr = AMF.parseString(arrayBuffer, dataOffset + 1, dataSize - 1);
                     value = amfLongStr.data;
                     offset += amfLongStr.size;
                     break;

@@ -21,9 +21,9 @@ import ExpGolomb from './exp-golomb.js';
 class SPSParser {
 
     static _ebsp2rbsp(uint8array) {
-        let src = uint8array;
-        let src_length = src.byteLength;
-        let dst = new Uint8Array(src_length);
+        const src = uint8array;
+        const src_length = src.byteLength;
+        const dst = new Uint8Array(src_length);
         let dst_idx = 0;
 
         for (let i = 0; i < src_length; i++) {
@@ -41,7 +41,7 @@ class SPSParser {
     }
 
     static parseSPS(uint8array) {
-        let codec_array = uint8array.subarray(1, 4);
+        const codec_array = uint8array.subarray(1, 4);
         let codec_mimetype = 'avc1.';
         for (let j = 0; j < 3; j++) {
             let h = codec_array[j].toString(16);
@@ -51,20 +51,20 @@ class SPSParser {
             codec_mimetype += h;
         }
 
-        let rbsp = SPSParser._ebsp2rbsp(uint8array);
+        const rbsp = SPSParser._ebsp2rbsp(uint8array);
         let gb = new ExpGolomb(rbsp);
 
         gb.readByte();
-        let profile_idc = gb.readByte();  // profile_idc
+        const profile_idc = gb.readByte();  // profile_idc
         gb.readByte();  // constraint_set_flags[5] + reserved_zero[3]
-        let level_idc = gb.readByte();  // level_idc
+        const level_idc = gb.readByte();  // level_idc
         gb.readUEG();  // seq_parameter_set_id
 
-        let profile_string = SPSParser.getProfileString(profile_idc);
-        let level_string = SPSParser.getLevelString(level_idc);
+        const profile_string = SPSParser.getProfileString(profile_idc);
+        const level_string = SPSParser.getLevelString(level_idc);
         let chroma_format_idc = 1;
         let chroma_format = 420;
-        let chroma_format_table = [0, 420, 422, 444];
+        const chroma_format_table = [0, 420, 422, 444];
         let bit_depth_luma = 8;
         let bit_depth_chroma = 8;
 
@@ -85,7 +85,7 @@ class SPSParser {
             bit_depth_chroma = gb.readUEG() + 8;  // bit_depth_chroma_minus8
             gb.readBits(1);  // qpprime_y_zero_transform_bypass_flag
             if (gb.readBool()) {  // seq_scaling_matrix_present_flag
-                let scaling_list_count = (chroma_format_idc !== 3) ? 8 : 12;
+                const scaling_list_count = (chroma_format_idc !== 3) ? 8 : 12;
                 for (let i = 0; i < scaling_list_count; i++) {
                     if (gb.readBool()) {  // seq_scaling_list_present_flag
                         if (i < 6) {
@@ -98,25 +98,25 @@ class SPSParser {
             }
         }
         gb.readUEG();  // log2_max_frame_num_minus4
-        let pic_order_cnt_type = gb.readUEG();
+        const pic_order_cnt_type = gb.readUEG();
         if (pic_order_cnt_type === 0) {
             gb.readUEG();  // log2_max_pic_order_cnt_lsb_minus_4
         } else if (pic_order_cnt_type === 1) {
             gb.readBits(1);  // delta_pic_order_always_zero_flag
             gb.readSEG();  // offset_for_non_ref_pic
             gb.readSEG();  // offset_for_top_to_bottom_field
-            let num_ref_frames_in_pic_order_cnt_cycle = gb.readUEG();
+            const num_ref_frames_in_pic_order_cnt_cycle = gb.readUEG();
             for (let i = 0; i < num_ref_frames_in_pic_order_cnt_cycle; i++) {
                 gb.readSEG();  // offset_for_ref_frame
             }
         }
-        let ref_frames = gb.readUEG();  // max_num_ref_frames
+        const ref_frames = gb.readUEG();  // max_num_ref_frames
         gb.readBits(1);  // gaps_in_frame_num_value_allowed_flag
 
-        let pic_width_in_mbs_minus1 = gb.readUEG();
-        let pic_height_in_map_units_minus1 = gb.readUEG();
+        const pic_width_in_mbs_minus1 = gb.readUEG();
+        const pic_height_in_map_units_minus1 = gb.readUEG();
 
-        let frame_mbs_only_flag = gb.readBits(1);
+        const frame_mbs_only_flag = gb.readBits(1);
         if (frame_mbs_only_flag === 0) {
             gb.readBits(1);  // mb_adaptive_frame_field_flag
         }
@@ -127,7 +127,7 @@ class SPSParser {
         let frame_crop_top_offset = 0;
         let frame_crop_bottom_offset = 0;
 
-        let frame_cropping_flag = gb.readBool();
+        const frame_cropping_flag = gb.readBool();
         if (frame_cropping_flag) {
             frame_crop_left_offset = gb.readUEG();
             frame_crop_right_offset = gb.readUEG();
@@ -138,12 +138,12 @@ class SPSParser {
         let sar_width = 1, sar_height = 1;
         let fps = 0, fps_fixed = true, fps_num = 0, fps_den = 0;
 
-        let vui_parameters_present_flag = gb.readBool();
+        const vui_parameters_present_flag = gb.readBool();
         if (vui_parameters_present_flag) {
             if (gb.readBool()) {  // aspect_ratio_info_present_flag
-                let aspect_ratio_idc = gb.readByte();
-                let sar_w_table = [1, 12, 10, 16, 40, 24, 20, 32, 80, 18, 15, 64, 160, 4, 3, 2];
-                let sar_h_table = [1, 11, 11, 11, 33, 11, 11, 11, 33, 11, 11, 33,  99, 3, 2, 1];
+                const aspect_ratio_idc = gb.readByte();
+                const sar_w_table = [1, 12, 10, 16, 40, 24, 20, 32, 80, 18, 15, 64, 160, 4, 3, 2];
+                const sar_h_table = [1, 11, 11, 11, 33, 11, 11, 11, 33, 11, 11, 33,  99, 3, 2, 1];
 
                 if (aspect_ratio_idc > 0 && aspect_ratio_idc < 16) {
                     sar_width = sar_w_table[aspect_ratio_idc - 1];
@@ -168,8 +168,8 @@ class SPSParser {
                 gb.readUEG();  // chroma_sample_loc_type_bottom_field
             }
             if (gb.readBool()) {  // timing_info_present_flag
-                let num_units_in_tick = gb.readBits(32);
-                let time_scale = gb.readBits(32);
+                const num_units_in_tick = gb.readBits(32);
+                const time_scale = gb.readBits(32);
                 fps_fixed = gb.readBool();  // fixed_frame_rate_flag
 
                 fps_num = time_scale;
@@ -188,8 +188,8 @@ class SPSParser {
             crop_unit_x = 1;
             crop_unit_y = 2 - frame_mbs_only_flag;
         } else {
-            let sub_wc = (chroma_format_idc === 3) ? 1 : 2;
-            let sub_hc = (chroma_format_idc === 1) ? 2 : 1;
+            const sub_wc = (chroma_format_idc === 3) ? 1 : 2;
+            const sub_hc = (chroma_format_idc === 1) ? 2 : 1;
             crop_unit_x = sub_wc;
             crop_unit_y = sub_hc * (2 - frame_mbs_only_flag);
         }
@@ -200,7 +200,7 @@ class SPSParser {
         codec_width -= (frame_crop_left_offset + frame_crop_right_offset) * crop_unit_x;
         codec_height -= (frame_crop_top_offset + frame_crop_bottom_offset) * crop_unit_y;
 
-        let present_width = Math.ceil(codec_width * sarScale);
+        const present_width = Math.ceil(codec_width * sarScale);
 
         gb.destroy();
         gb = null;

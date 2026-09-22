@@ -22,12 +22,12 @@ export class H265NaluHVC1 {
     data: Uint8Array;
 
     constructor(nalu: H265NaluPayload) {
-        let nalu_size = nalu.data.byteLength;
+        const nalu_size = nalu.data.byteLength;
 
         this.type = nalu.type;
         this.data = new Uint8Array(4 + nalu_size);  // 4 byte length-header + nalu payload
 
-        let v = new DataView(this.data.buffer);
+        const v = new DataView(this.data.buffer);
         // Fill 4 byte length-header
         v.setUint32(0, nalu_size);
         // Copy payload
@@ -53,7 +53,7 @@ export class H265AnnexBParser {
 
     private findNextStartCodeOffset(start_offset: number) {
         let i = start_offset;
-        let data = this.data_;
+        const data = this.data_;
 
         while (true) {
             if (i + 3 >= data.byteLength) {
@@ -62,11 +62,11 @@ export class H265AnnexBParser {
             }
 
             // search 00 00 00 01 or 00 00 01
-            let uint32 = (data[i + 0] << 24)
+            const uint32 = (data[i + 0] << 24)
                         | (data[i + 1] << 16)
                         | (data[i + 2] << 8)
                         | (data[i + 3]);
-            let uint24 = (data[i + 0] << 16)
+            const uint24 = (data[i + 0] << 16)
                         | (data[i + 1] << 8)
                         | (data[i + 2]);
             if (uint32 === 0x00000001 || uint24 === 0x000001) {
@@ -78,7 +78,7 @@ export class H265AnnexBParser {
     }
 
     public readNextNaluPayload(): H265NaluPayload | null {
-        let data = this.data_;
+        const data = this.data_;
         let nalu_payload: H265NaluPayload | null = null;
 
         while (nalu_payload == null) {
@@ -86,21 +86,21 @@ export class H265AnnexBParser {
                 break;
             }
             // offset pointed to start code
-            let startcode_offset = this.current_startcode_offset_;
+            const startcode_offset = this.current_startcode_offset_;
 
             // nalu payload start offset
             let offset = startcode_offset;
-            let u32 = (data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | (data[offset + 3]);
+            const u32 = (data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | (data[offset + 3]);
             if (u32 === 0x00000001) {
                 offset += 4;
             } else {
                 offset += 3;
             }
 
-            let nalu_type: H265NaluType = (data[offset] >> 1) & 0x3F;
-            let forbidden_bit = (data[offset] & 0x80) >>> 7;
+            const nalu_type: H265NaluType = (data[offset] >> 1) & 0x3F;
+            const forbidden_bit = (data[offset] & 0x80) >>> 7;
 
-            let next_startcode_offset = this.findNextStartCodeOffset(offset);
+            const next_startcode_offset = this.findNextStartCodeOffset(offset);
             this.current_startcode_offset_ = next_startcode_offset;
 
             if (forbidden_bit !== 0) {
@@ -108,7 +108,7 @@ export class H265AnnexBParser {
                 continue;
             }
 
-            let payload_data = data.subarray(offset, next_startcode_offset);
+            const payload_data = data.subarray(offset, next_startcode_offset);
 
             nalu_payload = {
                 type: nalu_type,
@@ -162,8 +162,8 @@ export class HEVCDecoderConfigurationRecord {
 
     // sps, pps: require Nalu without 4 byte length-header
     public constructor(vps: Uint8Array, sps: Uint8Array, pps: Uint8Array, detail: HEVCDecoderConfigurationRecordType) {
-        let length = 23 + (3 + 2 + vps.byteLength) + (3 + 2 + sps.byteLength) + (3 + 2 + pps.byteLength);
-        let data = this.data = new Uint8Array(length);
+        const length = 23 + (3 + 2 + vps.byteLength) + (3 + 2 + sps.byteLength) + (3 + 2 + pps.byteLength);
+        const data = this.data = new Uint8Array(length);
 
         data[0] = 0x01; // configurationVersion
         data[1] = ((detail.general_profile_space & 0x03) << 6) | ((detail.general_tier_flag ? 1 : 0) << 5) | ((detail.general_profile_idc & 0x1F));

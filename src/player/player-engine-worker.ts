@@ -158,7 +158,7 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
             getReadyState: () => media_element_ready_state,
         });
 
-        let handle = mse_controller.getHandle();
+        const handle = mse_controller.getHandle();
         self.postMessage({
             msg: 'mse_init',
             handle: handle,

@@ -113,7 +113,7 @@ class MSEController {
             Log.v(this.TAG, 'Using ManagedMediaSource');
         }
 
-        let ms = this._mediaSource = this._useManagedMediaSource ? new self.ManagedMediaSource() : new self.MediaSource();
+        const ms = this._mediaSource = this._useManagedMediaSource ? new self.ManagedMediaSource() : new self.MediaSource();
         ms.addEventListener('sourceopen', this.e.onSourceOpen);
         ms.addEventListener('sourceended', this.e.onSourceEnded);
         ms.addEventListener('sourceclose', this.e.onSourceClose);
@@ -129,17 +129,17 @@ class MSEController {
 
     shutdown() {
         if (this._mediaSource) {
-            let ms = this._mediaSource;
-            for (let type in this._sourceBuffers) {
+            const ms = this._mediaSource;
+            for (const type in this._sourceBuffers) {
                 // pending segments should be discard
-                let ps = this._pendingSegments[type];
+                const ps = this._pendingSegments[type];
                 ps.splice(0, ps.length);
                 this._pendingSegments[type] = null;
                 this._pendingRemoveRanges[type] = null;
                 this._lastInitSegments[type] = null;
 
                 // remove all sourcebuffers
-                let sb = this._sourceBuffers[type];
+                const sb = this._sourceBuffers[type];
                 if (sb) {
                     if (ms.readyState !== 'closed') {
                         // ms edge can throw an error: Unexpected call to method or property access
@@ -223,7 +223,7 @@ class MSEController {
             return;
         }
 
-        let is = initSegment;
+        const is = initSegment;
         let mimeType = `${is.container}`;
         if (is.codec && is.codec.length > 0) {
             if (is.codec === 'opus' && Browser.name === 'safari') {
@@ -241,7 +241,7 @@ class MSEController {
             if (!this._mimeTypes[is.type]) {  // empty, first chance create sourcebuffer
                 firstInitSegment = true;
                 try {
-                    let sb = this._sourceBuffers[is.type] = this._mediaSource.addSourceBuffer(mimeType);
+                    const sb = this._sourceBuffers[is.type] = this._mediaSource.addSourceBuffer(mimeType);
                     sb.addEventListener('error', this.e.onSourceBufferError);
                     sb.addEventListener('updateend', this.e.onSourceBufferUpdateEnd);
                 } catch (error) {
@@ -274,14 +274,14 @@ class MSEController {
     }
 
     appendMediaSegment(mediaSegment) {
-        let ms = mediaSegment;
+        const ms = mediaSegment;
         this._pendingSegments[ms.type].push(ms);
 
         if (this._config.autoCleanupSourceBuffer && this._needCleanupSourceBuffer()) {
             this._doCleanupSourceBuffer();
         }
 
-        let sb = this._sourceBuffers[ms.type];
+        const sb = this._sourceBuffers[ms.type];
         if (sb && !sb.updating && !this._hasPendingRemoveRanges()) {
             this._doAppendSegments();
         }
@@ -289,13 +289,13 @@ class MSEController {
 
     flush() {
         // remove all appended buffers
-        for (let type in this._sourceBuffers) {
+        for (const type in this._sourceBuffers) {
             if (!this._sourceBuffers[type]) {
                 continue;
             }
 
             // abort current buffer append algorithm
-            let sb = this._sourceBuffers[type];
+            const sb = this._sourceBuffers[type];
             if (this._mediaSource.readyState === 'open') {
                 try {
                     // If range removal algorithm is running, InvalidStateError will be throwed
@@ -307,7 +307,7 @@ class MSEController {
             }
 
             // pending segments should be discard
-            let ps = this._pendingSegments[type];
+            const ps = this._pendingSegments[type];
             ps.splice(0, ps.length);
 
             if (this._mediaSource.readyState === 'closed') {
@@ -317,8 +317,8 @@ class MSEController {
 
             // record ranges to be remove from SourceBuffer
             for (let i = 0; i < sb.buffered.length; i++) {
-                let start = sb.buffered.start(i);
-                let end = sb.buffered.end(i);
+                const start = sb.buffered.start(i);
+                const end = sb.buffered.end(i);
                 this._pendingRemoveRanges[type].push({start, end});
             }
 
@@ -331,7 +331,7 @@ class MSEController {
             // Internal parser's state may be invalid at this time. Re-append last InitSegment to workaround.
             // Related issue: https://bugs.webkit.org/show_bug.cgi?id=159230
             if (Browser.name === 'safari') {
-                let lastInitSegment = this._lastInitSegments[type];
+                const lastInitSegment = this._lastInitSegments[type];
                 if (lastInitSegment) {
                     this._pendingSegments[type].push(lastInitSegment);
                     if (!sb.updating) {
@@ -343,8 +343,8 @@ class MSEController {
     }
 
     endOfStream() {
-        let ms = this._mediaSource;
-        let sb = this._sourceBuffers;
+        const ms = this._mediaSource;
+        const sb = this._sourceBuffers;
         if (!ms || ms.readyState !== 'open') {
             if (ms && ms.readyState === 'closed' && this._hasPendingSegments()) {
                 // If MediaSource hasn't turned into open state, and there're pending segments
@@ -371,12 +371,12 @@ class MSEController {
             return false;
         }
 
-        let currentTime = this._mediaElementProxy.getCurrentTime();
+        const currentTime = this._mediaElementProxy.getCurrentTime();
 
-        for (let type in this._sourceBuffers) {
-            let sb = this._sourceBuffers[type];
+        for (const type in this._sourceBuffers) {
+            const sb = this._sourceBuffers[type];
             if (sb) {
-                let buffered = sb.buffered;
+                const buffered = sb.buffered;
                 if (buffered.length >= 1) {
                     if (currentTime - buffered.start(0) >= this._config.autoCleanupMaxBackwardDuration) {
                         return true;
@@ -389,22 +389,22 @@ class MSEController {
     }
 
     _doCleanupSourceBuffer() {
-        let currentTime = this._mediaElementProxy.getCurrentTime();
+        const currentTime = this._mediaElementProxy.getCurrentTime();
 
-        for (let type in this._sourceBuffers) {
-            let sb = this._sourceBuffers[type];
+        for (const type in this._sourceBuffers) {
+            const sb = this._sourceBuffers[type];
             if (sb) {
-                let buffered = sb.buffered;
+                const buffered = sb.buffered;
                 let doRemove = false;
 
                 for (let i = 0; i < buffered.length; i++) {
-                    let start = buffered.start(i);
-                    let end = buffered.end(i);
+                    const start = buffered.start(i);
+                    const end = buffered.end(i);
 
                     if (start <= currentTime && currentTime < end + 3) {  // padding 3 seconds
                         if (currentTime - start >= this._config.autoCleanupMaxBackwardDuration) {
                             doRemove = true;
-                            let removeEnd = currentTime - this._config.autoCleanupMinBackwardDuration;
+                            const removeEnd = currentTime - this._config.autoCleanupMinBackwardDuration;
                             this._pendingRemoveRanges[type].push({start: start, end: removeEnd});
                         }
                     } else if (end < currentTime) {
@@ -421,7 +421,7 @@ class MSEController {
     }
 
     _updateMediaSourceDuration() {
-        let sb = this._sourceBuffers;
+        const sb = this._sourceBuffers;
         if (this._mediaElementProxy.getReadyState() === 0 || this._mediaSource.readyState !== 'open') {
             return;
         }
@@ -429,8 +429,8 @@ class MSEController {
             return;
         }
 
-        let current = this._mediaSource.duration;
-        let target = this._pendingMediaDuration;
+        const current = this._mediaSource.duration;
+        const target = this._pendingMediaDuration;
 
         if (target > 0 && (isNaN(current) || target > current)) {
             Log.v(this.TAG, `Update MediaSource duration from ${current} to ${target}`);
@@ -442,37 +442,37 @@ class MSEController {
     }
 
     _doRemoveRanges() {
-        for (let type in this._pendingRemoveRanges) {
+        for (const type in this._pendingRemoveRanges) {
             if (!this._sourceBuffers[type] || this._sourceBuffers[type].updating) {
                 continue;
             }
-            let sb = this._sourceBuffers[type];
-            let ranges = this._pendingRemoveRanges[type];
+            const sb = this._sourceBuffers[type];
+            const ranges = this._pendingRemoveRanges[type];
             while (ranges.length && !sb.updating) {
-                let range = ranges.shift();
+                const range = ranges.shift();
                 sb.remove(range.start, range.end);
             }
         }
     }
 
     _doAppendSegments() {
-        let pendingSegments = this._pendingSegments;
+        const pendingSegments = this._pendingSegments;
 
-        for (let type in pendingSegments) {
+        for (const type in pendingSegments) {
             if (!this._sourceBuffers[type] || this._sourceBuffers[type].updating || this._mediaSource.streaming === false) {
                 continue;
             }
 
             if (pendingSegments[type].length > 0) {
-                let segment = pendingSegments[type].shift();
+                const segment = pendingSegments[type].shift();
 
                 if (typeof segment.timestampOffset === 'number' && isFinite(segment.timestampOffset)) {
                     // For MPEG audio stream in MSE, if unbuffered-seeking occurred
                     // We need explicitly set timestampOffset to the desired point in timeline for mpeg SourceBuffer.
-                    let currentOffset = this._sourceBuffers[type].timestampOffset;
-                    let targetOffset = segment.timestampOffset / 1000;  // in seconds
+                    const currentOffset = this._sourceBuffers[type].timestampOffset;
+                    const targetOffset = segment.timestampOffset / 1000;  // in seconds
 
-                    let delta = Math.abs(currentOffset - targetOffset);
+                    const delta = Math.abs(currentOffset - targetOffset);
                     if (delta > 0.1) {  // If time delta > 100ms
                         Log.v(this.TAG, `Update MPEG audio timestampOffset from ${currentOffset} to ${targetOffset}`);
                         this._sourceBuffers[type].timestampOffset = targetOffset;
@@ -519,9 +519,9 @@ class MSEController {
         this._mediaSource.removeEventListener('sourceopen', this.e.onSourceOpen);
         // deferred sourcebuffer creation / initialization
         if (this._pendingSourceBufferInit.length > 0) {
-            let pendings = this._pendingSourceBufferInit;
+            const pendings = this._pendingSourceBufferInit;
             while (pendings.length) {
-                let segment = pendings.shift();
+                const segment = pendings.shift();
                 this.appendInitSegment(segment, true);
             }
         }
@@ -567,12 +567,12 @@ class MSEController {
     }
 
     _hasPendingSegments() {
-        let ps = this._pendingSegments;
+        const ps = this._pendingSegments;
         return ps.video.length > 0 || ps.audio.length > 0;
     }
 
     _hasPendingRemoveRanges() {
-        let prr = this._pendingRemoveRanges;
+        const prr = this._pendingRemoveRanges;
         return prr.video.length > 0 || prr.audio.length > 0;
     }
 

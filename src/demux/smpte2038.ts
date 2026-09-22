@@ -27,25 +27,25 @@ export const smpte2038parse = (data: Uint8Array) => {
     let gb = new ExpGolomb(data);
     let readBits = 0;
 
-    let ancillaries: AncillaryData[] = [];
+    const ancillaries: AncillaryData[] = [];
     while (true) {
-        let zero = gb.readBits(6); readBits += 6;
+        const zero = gb.readBits(6); readBits += 6;
         if (zero !== 0) { break; }
-        let YC_indicator = gb.readBool(); readBits += 1;
-        let line_number = gb.readBits(11); readBits += 11;
-        let horizontal_offset = gb.readBits(12); readBits += 12;
-        let data_ID = gb.readBits(10) & 0xFF; readBits += 10;
-        let data_SDID = gb.readBits(10) & 0xFF; readBits += 10;
-        let data_count = gb.readBits(10) & 0xFF; readBits += 10;
-        let user_data = new Uint8Array(data_count);
+        const YC_indicator = gb.readBool(); readBits += 1;
+        const line_number = gb.readBits(11); readBits += 11;
+        const horizontal_offset = gb.readBits(12); readBits += 12;
+        const data_ID = gb.readBits(10) & 0xFF; readBits += 10;
+        const data_SDID = gb.readBits(10) & 0xFF; readBits += 10;
+        const data_count = gb.readBits(10) & 0xFF; readBits += 10;
+        const user_data = new Uint8Array(data_count);
         for (let i = 0; i < data_count; i++) {
-            let user_data_word = gb.readBits(10) & 0xFF; readBits += 10;
+            const user_data_word = gb.readBits(10) & 0xFF; readBits += 10;
             user_data[i] = user_data_word;
         }
-        let checksum_word = gb.readBits(10); readBits += 10;
+        const checksum_word = gb.readBits(10); readBits += 10;
 
         let description = 'User Defined';
-        let information: any = {};
+        const information: any = {};
         if (data_ID === 0x41) {
             if (data_SDID === 0x07) {
                 description = 'SCTE-104'

@@ -27,9 +27,9 @@ export class AV1OBUInMpegTsParser {
     private eof_flag_: boolean = false;
 
     static _ebsp2rbsp(uint8array: Uint8Array) {
-        let src = uint8array;
-        let src_length = src.byteLength;
-        let dst = new Uint8Array(src_length);
+        const src = uint8array;
+        const src_length = src.byteLength;
+        const dst = new Uint8Array(src_length);
         let dst_idx = 0;
 
         for (let i = 0; i < src_length; i++) {
@@ -56,7 +56,7 @@ export class AV1OBUInMpegTsParser {
 
     private findNextStartCodeOffset(start_offset: number) {
         let i = start_offset;
-        let data = this.data_;
+        const data = this.data_;
 
         while (true) {
             if (i + 2 >= data.byteLength) {
@@ -65,7 +65,7 @@ export class AV1OBUInMpegTsParser {
             }
 
             // search 00 00 01
-            let uint24 = (data[i + 0] << 16)
+            const uint24 = (data[i + 0] << 16)
                         | (data[i + 1] << 8)
                         | (data[i + 2]);
             if (uint24 === 0x000001) {
@@ -77,7 +77,7 @@ export class AV1OBUInMpegTsParser {
     }
 
     public readNextOBUPayload(): Uint8Array | null {
-        let data = this.data_;
+        const data = this.data_;
         let payload: Uint8Array | null = null;
 
         while (payload == null) {
@@ -85,11 +85,11 @@ export class AV1OBUInMpegTsParser {
                 break;
             }
             // offset pointed to start code
-            let startcode_offset = this.current_startcode_offset_;
+            const startcode_offset = this.current_startcode_offset_;
 
             // nalu payload start offset
-            let offset = startcode_offset + 3;
-            let next_startcode_offset = this.findNextStartCodeOffset(offset);
+            const offset = startcode_offset + 3;
+            const next_startcode_offset = this.findNextStartCodeOffset(offset);
             this.current_startcode_offset_ = next_startcode_offset;
 
             payload = AV1OBUInMpegTsParser._ebsp2rbsp(data.subarray(offset, next_startcode_offset));

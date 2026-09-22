@@ -126,9 +126,9 @@ class TransmuxingController {
 
     _loadSegment(segmentIndex, optionalFrom) {
         this._currentSegmentIndex = segmentIndex;
-        let dataSource = this._mediaDataSource.segments[segmentIndex];
+        const dataSource = this._mediaDataSource.segments[segmentIndex];
 
-        let ioctl = this._ioctl = new IOController(dataSource, this._config, segmentIndex);
+        const ioctl = this._ioctl = new IOController(dataSource, this._config, segmentIndex);
         ioctl.onError = this._onIOException.bind(this);
         ioctl.onSeeked = this._onIOSeeked.bind(this);
         ioctl.onComplete = this._onIOComplete.bind(this);
@@ -175,18 +175,18 @@ class TransmuxingController {
             return;
         }
 
-        let targetSegmentIndex = this._searchSegmentIndexContains(milliseconds);
+        const targetSegmentIndex = this._searchSegmentIndexContains(milliseconds);
 
         if (targetSegmentIndex === this._currentSegmentIndex) {
             // intra-segment seeking
-            let segmentInfo = this._mediaInfo.segments[targetSegmentIndex];
+            const segmentInfo = this._mediaInfo.segments[targetSegmentIndex];
 
             if (segmentInfo == undefined) {
                 // current segment loading started, but mediainfo hasn't received yet
                 // wait for the metadata loaded, then seek to expected position
                 this._pendingSeekTime = milliseconds;
             } else {
-                let keyframe = segmentInfo.getNearestKeyframe(milliseconds);
+                const keyframe = segmentInfo.getNearestKeyframe(milliseconds);
                 this._remuxer.seek(keyframe.milliseconds);
                 this._ioctl.seek(keyframe.fileposition);
                 // Will be resolved in _onRemuxerMediaSegmentArrival()
@@ -194,7 +194,7 @@ class TransmuxingController {
             }
         } else {
             // cross-segment seeking
-            let targetSegmentInfo = this._mediaInfo.segments[targetSegmentIndex];
+            const targetSegmentInfo = this._mediaInfo.segments[targetSegmentIndex];
 
             if (targetSegmentInfo == undefined) {
                 // target segment hasn't been loaded. We need metadata then seek to expected time
@@ -206,7 +206,7 @@ class TransmuxingController {
                 // Here we wait for the metadata loaded, then seek to expected position
             } else {
                 // We have target segment's metadata, direct seek to target position
-                let keyframe = targetSegmentInfo.getNearestKeyframe(milliseconds);
+                const keyframe = targetSegmentInfo.getNearestKeyframe(milliseconds);
                 this._internalAbort();
                 this._remuxer.seek(milliseconds);
                 this._remuxer.insertDiscontinuity();
@@ -222,7 +222,7 @@ class TransmuxingController {
     }
 
     _searchSegmentIndexContains(milliseconds) {
-        let segments = this._mediaDataSource.segments;
+        const segments = this._mediaDataSource.segments;
         let idx = segments.length - 1;
 
         for (let i = 0; i < segments.length; i++) {
@@ -287,7 +287,7 @@ class TransmuxingController {
             this._remuxer = new MP4Remuxer(this._config);
         }
 
-        let mds = this._mediaDataSource;
+        const mds = this._mediaDataSource;
         if (mds.duration != undefined && !isNaN(mds.duration)) {
             this._demuxer.overridedDuration = mds.duration;
         }
@@ -315,7 +315,7 @@ class TransmuxingController {
     }
 
     _setupTSDemuxerRemuxer(probeData) {
-        let demuxer = this._demuxer = new TSDemuxer(probeData, this._config);
+        const demuxer = this._demuxer = new TSDemuxer(probeData, this._config);
 
         if (!this._remuxer) {
             this._remuxer = new MP4Remuxer(this._config);
@@ -351,7 +351,7 @@ class TransmuxingController {
             Object.setPrototypeOf(this._mediaInfo, MediaInfo.prototype);
         }
 
-        let segmentInfo = Object.assign({}, mediaInfo);
+        const segmentInfo = Object.assign({}, mediaInfo);
         Object.setPrototypeOf(segmentInfo, MediaInfo.prototype);
         this._mediaInfo.segments[this._currentSegmentIndex] = segmentInfo;
 
@@ -360,7 +360,7 @@ class TransmuxingController {
 
         if (this._pendingSeekTime != null) {
             Promise.resolve().then(() => {
-                let target = this._pendingSeekTime;
+                const target = this._pendingSeekTime;
                 this._pendingSeekTime = null;
                 this.seek(target);
             });
@@ -376,7 +376,7 @@ class TransmuxingController {
     }
 
     _onTimedID3Metadata(timed_id3_metadata) {
-        let timestamp_base = this._remuxer.getTimestampBase();
+        const timestamp_base = this._remuxer.getTimestampBase();
         if (timestamp_base == undefined) { return; }
 
         if (timed_id3_metadata.pts != undefined) {
@@ -391,7 +391,7 @@ class TransmuxingController {
     }
 
     _onPGSSubtitle(pgs_data) {
-        let timestamp_base = this._remuxer.getTimestampBase();
+        const timestamp_base = this._remuxer.getTimestampBase();
         if (timestamp_base == undefined) { return; }
 
         if (pgs_data.pts != undefined) {
@@ -406,7 +406,7 @@ class TransmuxingController {
     }
 
     _onSynchronousKLVMetadata(synchronous_klv_metadata) {
-        let timestamp_base = this._remuxer.getTimestampBase();
+        const timestamp_base = this._remuxer.getTimestampBase();
         if (timestamp_base == undefined) { return; }
 
         if (synchronous_klv_metadata.pts != undefined) {
@@ -425,7 +425,7 @@ class TransmuxingController {
     }
 
     _onSMPTE2038Metadata(smpte2038_metadata) {
-        let timestamp_base = this._remuxer.getTimestampBase();
+        const timestamp_base = this._remuxer.getTimestampBase();
         if (timestamp_base == undefined) { return; }
 
         if (smpte2038_metadata.pts != undefined) {
@@ -444,7 +444,7 @@ class TransmuxingController {
     }
 
     _onSEI(sei_data) {
-        let timestamp_base = this._remuxer.getTimestampBase();
+        const timestamp_base = this._remuxer.getTimestampBase();
         if (timestamp_base == undefined) { return; }
 
         if (sei_data.pts != undefined) {
@@ -455,7 +455,7 @@ class TransmuxingController {
     }
 
     _onSCTE35Metadata(scte35) {
-        let timestamp_base = this._remuxer.getTimestampBase();
+        const timestamp_base = this._remuxer.getTimestampBase();
         if (timestamp_base == undefined) { return; }
 
         if (scte35.pts != undefined) {
@@ -474,7 +474,7 @@ class TransmuxingController {
     }
 
     _onPESPrivateData(private_data) {
-        let timestamp_base = this._remuxer.getTimestampBase();
+        const timestamp_base = this._remuxer.getTimestampBase();
         if (timestamp_base == undefined) { return; }
 
         if (private_data.pts != undefined) {
@@ -497,8 +497,8 @@ class TransmuxingController {
     }
 
     _onIOComplete(extraData) {
-        let segmentIndex = extraData;
-        let nextSegmentIndex = segmentIndex + 1;
+        const segmentIndex = extraData;
+        const nextSegmentIndex = segmentIndex + 1;
 
         if (nextSegmentIndex < this._mediaDataSource.segments.length) {
             this._internalAbort();
@@ -516,7 +516,7 @@ class TransmuxingController {
     }
 
     _onIORedirect(redirectedURL) {
-        let segmentIndex = this._ioctl.extraData;
+        const segmentIndex = this._ioctl.extraData;
         this._mediaDataSource.segments[segmentIndex].redirectedURL = redirectedURL;
     }
 
@@ -548,7 +548,7 @@ class TransmuxingController {
 
         // Resolve pending seekPoint
         if (this._pendingResolveSeekPoint != null && type === 'video') {
-            let syncPoints = mediaSegment.info.syncPoints;
+            const syncPoints = mediaSegment.info.syncPoints;
             let seekpoint = this._pendingResolveSeekPoint;
             this._pendingResolveSeekPoint = null;
 
@@ -578,8 +578,8 @@ class TransmuxingController {
     }
 
     _reportSegmentMediaInfo(segmentIndex) {
-        let segmentInfo = this._mediaInfo.segments[segmentIndex];
-        let exportInfo = Object.assign({}, segmentInfo);
+        const segmentInfo = this._mediaInfo.segments[segmentIndex];
+        const exportInfo = Object.assign({}, segmentInfo);
 
         exportInfo.duration = this._mediaInfo.duration;
         exportInfo.segmentCount = this._mediaInfo.segmentCount;
@@ -590,7 +590,7 @@ class TransmuxingController {
     }
 
     _reportStatisticsInfo() {
-        let info = {};
+        const info = {};
 
         info.url = this._ioctl.currentURL;
         info.hasRedirect = this._ioctl.hasRedirect;
