@@ -1,6 +1,6 @@
 export default FetchStreamLoader;
 declare class FetchStreamLoader extends BaseLoader {
-    static isSupported(): boolean | undefined;
+    static isSupported(): boolean;
     constructor(seekHandler: any, config: any);
     TAG: string;
     _seekHandler: any;

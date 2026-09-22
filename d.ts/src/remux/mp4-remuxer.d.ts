@@ -19,7 +19,7 @@ declare class MP4Remuxer {
     _onInitSegment: any;
     _onMediaSegment: any;
     _forceFirstIDR: boolean;
-    _fillSilentAfterSeek: boolean | undefined;
+    _fillSilentAfterSeek: boolean;
     _mp3UseMpegAudio: boolean;
     _fillAudioTimestampGap: any;
     destroy(): void;
