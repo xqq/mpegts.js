@@ -30,7 +30,7 @@ declare class MP4Remuxer {
     get onMediaSegment(): any;
     insertDiscontinuity(): void;
     seek(originalDts: any): void;
-    remux(audioTrack: any, videoTrack: any): void;
+    remux(audioTrack: any, videoTrack: any, force?: boolean): void;
     _onTrackMetadataReceived(type: any, metadata: any): void;
     _calculateDtsBase(audioTrack: any, videoTrack: any): void;
     getTimestampBase(): number | undefined;

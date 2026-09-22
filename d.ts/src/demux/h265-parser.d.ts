@@ -33,6 +33,9 @@ declare class H265NaluParser {
         chroma_format_idc: number;
         bit_depth_luma_minus8: number;
         bit_depth_chroma_minus8: number;
+        colour_primaries: number;
+        transfer_characteristics: number;
+        matrix_coeffs: number;
         frame_rate: {
             fixed: boolean;
             fps: number;
