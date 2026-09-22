@@ -192,6 +192,11 @@ class MP4Remuxer {
             this._videoDtsBase = videoTrack.samples[0].dts;
         }
 
+        // A forced metadata flush may arrive before either track has samples.
+        if (this._audioDtsBase === Infinity && this._videoDtsBase === Infinity) {
+            return;
+        }
+
         this._dtsBase = Math.min(this._audioDtsBase, this._videoDtsBase);
         this._dtsBaseInited = true;
     }
