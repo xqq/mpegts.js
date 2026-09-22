@@ -1774,7 +1774,7 @@ class TSDemuxer extends BaseDemuxer {
         } as const;
 
 
-        if (this.audio_init_segment_dispatched_ == false) {
+        if (this.audio_init_segment_dispatched_ == false || this.detectAudioMetadataChange(audio_sample)) {
             this.audio_metadata_ = {
                 codec: 'mp3',
                 object_type,
