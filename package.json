@@ -18,6 +18,7 @@
     "dvb"
   ],
   "scripts": {
+    "test": "node --test tests/*.test.cjs",
     "build": "webpack --mode=production --progress",
     "build:debug": "webpack --mode=development --progress",
     "watch": "webpack --mode=development --progress --watch",
