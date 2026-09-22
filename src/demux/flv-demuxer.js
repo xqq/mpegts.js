@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+import Browser from '../utils/browser';
 import Log from '../utils/logger.js';
 import AMF from './amf-parser.js';
 import SPSParser from './sps-parser.js';
@@ -776,9 +777,7 @@ class FLVDemuxer {
         }
 
         // workarounds for various browsers
-        let userAgent = self.navigator.userAgent.toLowerCase();
-
-        if (userAgent.indexOf('firefox') !== -1) {
+        if (Browser.name === 'firefox' && Browser.engine === 'gecko') {
             // firefox: use SBR (HE-AAC) if freq less than 24kHz
             if (samplingIndex >= 6) {
                 audioObjectType = 5;
@@ -789,7 +788,7 @@ class FLVDemuxer {
                 config = new Array(2);
                 extensionSamplingIndex = samplingIndex;
             }
-        } else if (userAgent.indexOf('android') !== -1) {
+        } else if (Browser.platform === 'android') {
             // android: always use LC-AAC
             audioObjectType = 2;
             config = new Array(2);

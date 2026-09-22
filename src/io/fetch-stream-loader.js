@@ -17,7 +17,8 @@
  */
 
 import Log from '../utils/logger.js';
-import Browser from '../utils/browser.js';
+import Browser from '../utils/browser';
+import { usesChromeWorkarounds } from '../utils/browser-compatibility';
 import {BaseLoader, LoaderStatus, LoaderErrors} from './loader.js';
 import {RuntimeException} from '../utils/exception.js';
 
@@ -34,8 +35,9 @@ class FetchStreamLoader extends BaseLoader {
             // fetch + stream is broken on Microsoft Edge. Disable before build 15048.
             // see https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/8196907/
             // Fixed in Jan 10, 2017. Build 15048+ removed from blacklist.
-            let isWorkWellEdge = Browser.msedge && Browser.version.minor >= 15048;
-            let browserNotBlacklisted = Browser.msedge ? isWorkWellEdge : true;
+            const version = Browser.version;
+            const browserNotBlacklisted = Browser.engine !== 'edgehtml' ||
+                (version !== null && version.minor !== null && version.minor >= 15048);
             return (self.fetch && self.ReadableStream && browserNotBlacklisted);
         } catch (e) {
             return false;
@@ -174,7 +176,7 @@ class FetchStreamLoader extends BaseLoader {
     abort() {
         this._requestAbort = true;
 
-        if (this._status !== LoaderStatus.kBuffering || !Browser.chrome) {
+        if (this._status !== LoaderStatus.kBuffering || !usesChromeWorkarounds(Browser)) {
             // Chrome may throw Exception-like things here, avoid using if is buffering
             if (this._abortController) {
                 try {
@@ -232,7 +234,7 @@ class FetchStreamLoader extends BaseLoader {
                 return;
             }
 
-            if (e.code === 11 && Browser.msedge) {  // InvalidStateError on Microsoft Edge
+            if (e.code === 11 && Browser.engine === 'edgehtml') {  // InvalidStateError on legacy Edge
                 // Workaround: Edge may throw InvalidStateError after ReadableStreamReader.cancel() call
                 // Ignore the unknown exception.
                 // Related issue: https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/11265202/

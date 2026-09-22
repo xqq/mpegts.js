@@ -18,7 +18,7 @@
 
 import EventEmitter from 'events';
 import Log from '../utils/logger.js';
-import Browser from '../utils/browser.js';
+import Browser from '../utils/browser';
 import MediaInfo from './media-info.js';
 import FLVDemuxer from '../demux/flv-demuxer.js';
 import TSDemuxer from '../demux/ts-demuxer';
@@ -553,7 +553,7 @@ class TransmuxingController {
             this._pendingResolveSeekPoint = null;
 
             // Safari: Pass PTS for recommend_seekpoint
-            if (Browser.safari && syncPoints.length > 0 && syncPoints[0].originalDts === seekpoint) {
+            if (Browser.name === 'safari' && syncPoints.length > 0 && syncPoints[0].originalDts === seekpoint) {
                 seekpoint = syncPoints[0].pts;
             }
             // else: use original DTS (keyframe.milliseconds)

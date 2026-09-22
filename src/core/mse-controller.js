@@ -18,7 +18,7 @@
 
 import EventEmitter from 'events';
 import Log from '../utils/logger.js';
-import Browser from '../utils/browser.js';
+import Browser from '../utils/browser';
 import MSEEvents from './mse-events';
 import {IllegalStateException} from '../utils/exception.js';
 
@@ -226,7 +226,7 @@ class MSEController {
         let is = initSegment;
         let mimeType = `${is.container}`;
         if (is.codec && is.codec.length > 0) {
-            if (is.codec === 'opus' && Browser.safari) {
+            if (is.codec === 'opus' && Browser.name === 'safari') {
                 is.codec = 'Opus';
             }
             mimeType += `;codecs=${is.codec}`;
@@ -264,7 +264,7 @@ class MSEController {
                 this._doAppendSegments();
             }
         }
-        if (Browser.safari && is.container === 'audio/mpeg' && is.mediaDuration > 0) {
+        if (Browser.name === 'safari' && is.container === 'audio/mpeg' && is.mediaDuration > 0) {
             // 'audio/mpeg' track under Safari may cause MediaElement's duration to be NaN
             // Manually correct MediaSource.duration to make progress bar seekable, and report right duration
             this._requireSetMediaDuration = true;
@@ -330,7 +330,7 @@ class MSEController {
             // Safari 10 may get InvalidStateError in the later appendBuffer() after SourceBuffer.remove() call
             // Internal parser's state may be invalid at this time. Re-append last InitSegment to workaround.
             // Related issue: https://bugs.webkit.org/show_bug.cgi?id=159230
-            if (Browser.safari) {
+            if (Browser.name === 'safari') {
                 let lastInitSegment = this._lastInitSegments[type];
                 if (lastInitSegment) {
                     this._pendingSegments[type].push(lastInitSegment);

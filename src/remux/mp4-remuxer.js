@@ -19,7 +19,8 @@
 import Log from '../utils/logger.js';
 import MP4 from './mp4-generator.js';
 import AAC from './aac-silent.js';
-import Browser from '../utils/browser.js';
+import Browser from '../utils/browser';
+import { needsChromeFirstIDR } from '../utils/browser-compatibility';
 import { SampleInfo, MediaSegmentInfo, MediaSegmentInfoList } from '../core/media-segment-info.js';
 import { IllegalStateException } from '../utils/exception.js';
 
@@ -53,16 +54,14 @@ class MP4Remuxer {
 
         // Workaround for chrome < 50: Always force first sample as a Random Access Point in media segment
         // see https://bugs.chromium.org/p/chromium/issues/detail?id=229412
-        this._forceFirstIDR = (Browser.chrome &&
-                              (Browser.version.major < 50 ||
-                              (Browser.version.major === 50 && Browser.version.build < 2661))) ? true : false;
+        this._forceFirstIDR = needsChromeFirstIDR(Browser);
 
         // Workaround for IE11/Edge: Fill silent aac frame after keyframe-seeking
         // Make audio beginDts equals with video beginDts, in order to fix seek freeze
-        this._fillSilentAfterSeek = (Browser.msedge || Browser.msie);
+        this._fillSilentAfterSeek = Browser.engine === 'edgehtml' || Browser.name === 'ie';
 
         // While only FireFox supports 'audio/mp4, codecs="mp3"', use 'audio/mpeg' for chrome, safari, ...
-        this._mp3UseMpegAudio = !Browser.firefox;
+        this._mp3UseMpegAudio = !(Browser.name === 'firefox' && Browser.engine === 'gecko');
 
         this._fillAudioTimestampGap = this._config.fixAudioTimestampGap;
     }

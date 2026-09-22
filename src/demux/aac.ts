@@ -1,3 +1,4 @@
+import Browser from '../utils/browser';
 import Log from "../utils/logger";
 import ExpGolomb from "./exp-golomb";
 import { MPEG4AudioObjectTypes, MPEG4SamplingFrequencies, MPEG4SamplingFrequencyIndex } from "./mpeg4-audio";
@@ -351,9 +352,7 @@ export class AudioSpecificConfig {
         let channel_config = frame.channel_config;
         let extension_sampling_index = 0;
 
-        let userAgent = navigator.userAgent.toLowerCase();
-
-        if (userAgent.indexOf('firefox') !== -1) {
+        if (Browser.name === 'firefox' && Browser.engine === 'gecko') {
             // firefox: use SBR (HE-AAC) if freq less than 24kHz
             if (sampling_index >= 6) {
                 audio_object_type = 5;
@@ -364,7 +363,7 @@ export class AudioSpecificConfig {
                 config = new Array(2);
                 extension_sampling_index = sampling_index;
             }
-        } else if (userAgent.indexOf('android') !== -1) {
+        } else if (Browser.platform === 'android') {
             // android: always use LC-AAC
             audio_object_type = 2;
             config = new Array(2);

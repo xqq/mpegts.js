@@ -17,6 +17,7 @@
  */
 
 import Browser from '../utils/browser';
+import { needsChromeFirstIDR } from '../utils/browser-compatibility';
 import { IDRSampleList } from '../core/media-segment-info';
 
 class SeekingHandler {
@@ -47,13 +48,8 @@ class SeekingHandler {
             onMediaSeeking: this._onMediaSeeking.bind(this),
         };
 
-        // Browser.version.build is absent when the UA reports fewer than three version
-        // components. Assert rather than defaulting: `undefined < 2661` is false today,
-        // and a `?? 0` fallback would flip this branch to true for those UAs.
-        let chrome_need_idr_fix = (Browser.chrome &&
-                                  (Browser.version.major < 50 ||
-                                  (Browser.version.major === 50 && Browser.version.build! < 2661)));
-        this._always_seek_keyframe = (chrome_need_idr_fix || Browser.msedge || Browser.msie) ? true : false;
+        this._always_seek_keyframe = needsChromeFirstIDR(Browser) ||
+            Browser.engine === 'edgehtml' || Browser.name === 'ie';
         if (this._always_seek_keyframe) {
             this._config.accurateSeek = false;
         }
@@ -75,10 +71,10 @@ class SeekingHandler {
 
         if (seconds < 1.0 && this._media_element.buffered.length > 0) {
             const video_begin_time = this._media_element.buffered.start(0);
-            if ((video_begin_time < 1.0 && seconds < video_begin_time) || Browser.safari) {
+            if ((video_begin_time < 1.0 && seconds < video_begin_time) || Browser.name === 'safari') {
                 direct_seek_to_video_begin = true;
                 // Workaround for Safari: Seek to 0 may cause video stuck, use 0.1 to avoid
-                seconds = Browser.safari ? 0.1 : video_begin_time;
+                seconds = Browser.name === 'safari' ? 0.1 : video_begin_time;
             }
         }
 
@@ -128,9 +124,9 @@ class SeekingHandler {
         // Handle seeking to video begin (near 0.0s)
         if (target < 1.0 && buffered.length > 0) {
             let video_begin_time = buffered.start(0);
-            if ((video_begin_time < 1.0 && target < video_begin_time) || Browser.safari) {
+            if ((video_begin_time < 1.0 && target < video_begin_time) || Browser.name === 'safari') {
                 // Safari may get stuck if currentTime set to 0, use 0.1 to avoid
-                let target: number = Browser.safari ? 0.1 : video_begin_time;
+                let target: number = Browser.name === 'safari' ? 0.1 : video_begin_time;
                 this.directSeek(target);
                 return;
             }
