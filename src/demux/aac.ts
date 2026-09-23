@@ -45,8 +45,14 @@ export class AACADTSParser {
 
         while (true) {
             if (i + 7 >= data.byteLength) {
+                // Not enough data for a frame, but a syncword beginning in the
+                // remaining bytes may start a frame that continues in the next payload
+                while (i < data.byteLength && !this.mayBeginSyncword(i)) {
+                    i++;
+                }
                 this.eof_flag_ = true;
-                return data.byteLength;
+                this.has_last_incomplete_data_ = i < data.byteLength;
+                return i;
             }
 
             // search 12-bit 0xFFF syncword
@@ -57,6 +63,16 @@ export class AACADTSParser {
                 i++;
             }
         }
+    }
+
+    // Whether the bytes from offset to the end of data may be the beginning of a syncword
+    private mayBeginSyncword(offset: number): boolean {
+        const data = this.data_;
+
+        if (data[offset] !== 0xFF) {
+            return false;
+        }
+        return offset + 1 === data.byteLength || (data[offset + 1] & 0xF0) === 0xF0;
     }
 
     public readNextAACFrame(): AACFrame | null {
@@ -157,11 +173,14 @@ export class AACLOASParser {
 
         while (true) {
             if (i + 1 >= data.byteLength) {
+                // Not enough data for a syncword, but the last byte may begin the
+                // syncword of a frame that continues in the next payload
                 this.eof_flag_ = true;
-                return data.byteLength;
+                this.has_last_incomplete_data_ = i < data.byteLength && data[i] === 0x56;  // first 8 bits of 0x2B7
+                return i;
             }
 
-            // search 12-bit 0xFFF syncword
+            // search 11-bit 0x2B7 syncword
             const syncword = (data[i + 0] << 3) | (data[i + 1] >>> 5);
             if (syncword === 0x2B7) {
                 return i;
