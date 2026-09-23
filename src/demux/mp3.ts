@@ -1,14 +1,6 @@
 import Log from "../utils/logger";
 import { MPEG4AudioObjectTypes } from "./mpeg4-audio";
 
-export interface MP3Data {
-    object_type: number;
-    sample_rate: number;
-    channel_count: number;
-
-    data: Uint8Array;
-}
-
 // A single MPEG audio frame: MPEG-1, MPEG-2 or MPEG-2.5, Layer I, II or III,
 // all of which are handled as 'mp3' codec.
 export interface MP3Frame {
