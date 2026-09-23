@@ -194,7 +194,7 @@ export class AACLOASParser {
             const offset = syncword_offset;
 
             const audioMuxLengthBytes = ((data[offset + 1] & 0x1F) << 8) | data[offset + 2];
-            if (offset + 3 + audioMuxLengthBytes >= this.data_.byteLength) {
+            if (offset + 3 + audioMuxLengthBytes > this.data_.byteLength) {
                 // data not enough for extracting last sample
                 this.eof_flag_ = true;
                 this.has_last_incomplete_data_ = true;
