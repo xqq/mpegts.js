@@ -1225,7 +1225,13 @@ class TSDemuxer extends BaseDemuxer {
 
         const fps_den = meta.frameRate.fps_den;
         const fps_num = meta.frameRate.fps_num;
-        meta.refSampleDuration = 1000 * (fps_den / fps_num);
+        if (fps_num > 0 && fps_den > 0) {
+            meta.refSampleDuration = 1000 * (fps_den / fps_num);
+        } else {
+            // Timing info is optional in H.264/H.265 VUI and in the AV1 sequence header:
+            // assume 23.976 fps, the default reference frame rate of FLVDemuxer
+            meta.refSampleDuration = 1000 * (1000 / 23976);
+        }
 
         meta.codec = details.codec_mimetype;
 
