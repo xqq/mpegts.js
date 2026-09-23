@@ -1321,10 +1321,13 @@ class TSDemuxer extends BaseDemuxer {
             return;
         }
 
-        if (this.aac_last_incomplete_data_) {
-            const buf = new Uint8Array(data.byteLength + this.aac_last_incomplete_data_.byteLength);
-            buf.set(this.aac_last_incomplete_data_, 0);
-            buf.set(data, this.aac_last_incomplete_data_.byteLength);
+        const incomplete_data = this.aac_last_incomplete_data_;
+        this.aac_last_incomplete_data_ = null;
+
+        if (incomplete_data) {
+            const buf = new Uint8Array(data.byteLength + incomplete_data.byteLength);
+            buf.set(incomplete_data, 0);
+            buf.set(data, incomplete_data.byteLength);
             data = buf;
         }
 
@@ -1343,7 +1346,7 @@ class TSDemuxer extends BaseDemuxer {
                 return;
             }
 
-            if (this.aac_last_incomplete_data_ && this.audio_last_sample_pts_) {
+            if (incomplete_data && this.audio_last_sample_pts_) {
                 ref_sample_duration = 1024 / this.audio_metadata_.sampling_frequency * 1000;
                 const new_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
 
@@ -1412,10 +1415,13 @@ class TSDemuxer extends BaseDemuxer {
             return;
         }
 
-        if (this.aac_last_incomplete_data_) {
-            const buf = new Uint8Array(data.byteLength + this.aac_last_incomplete_data_.byteLength);
-            buf.set(this.aac_last_incomplete_data_, 0);
-            buf.set(data, this.aac_last_incomplete_data_.byteLength);
+        const incomplete_data = this.aac_last_incomplete_data_;
+        this.aac_last_incomplete_data_ = null;
+
+        if (incomplete_data) {
+            const buf = new Uint8Array(data.byteLength + incomplete_data.byteLength);
+            buf.set(incomplete_data, 0);
+            buf.set(data, incomplete_data.byteLength);
             data = buf;
         }
 
@@ -1434,7 +1440,7 @@ class TSDemuxer extends BaseDemuxer {
                 return;
             }
 
-            if (this.aac_last_incomplete_data_ && this.audio_last_sample_pts_) {
+            if (incomplete_data && this.audio_last_sample_pts_) {
                 ref_sample_duration = 1024 / this.audio_metadata_.sampling_frequency * 1000;
                 const new_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
 
