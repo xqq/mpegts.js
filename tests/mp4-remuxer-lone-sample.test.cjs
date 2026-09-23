@@ -80,3 +80,42 @@ test('MP4Remuxer uses refSampleDuration for a lone video sample when nothing was
         { count: 1, beginDts: 121, endDts: 161, durations: [40] }
     ]);
 });
+
+test('MP4Remuxer does not carry the last remuxed video duration over a seek', () => {
+    const { remuxer, track, queue, segments } = createRemuxer(false, 1000);
+
+    // 1 fps video
+    queue(0, 1000, 2000);
+    remuxer.remux(null, track);
+    // Seek into a 25 fps segment, as TransmuxingController.seek() does
+    remuxer.seek(10000);
+    remuxer.insertDiscontinuity();
+    remuxer._videoMeta = { type: 'video', timescale: 1000, refSampleDuration: 40 };
+    // Its first frame is forced out alone, e.g. by a metadata change
+    queue(10000);
+    remuxer.remux(null, track, true);
+    queue(10040, 10080, 10120);
+    remuxer.remux(null, track);
+
+    // The lone frame used to last 1000 ms, which shifted all later video by 960 ms
+    assert.deepEqual(segments, [
+        { count: 2, beginDts: 0, endDts: 2000, durations: [1000, 1000] },
+        { count: 1, beginDts: 10000, endDts: 10040, durations: [40] },
+        { count: 2, beginDts: 10040, endDts: 10120, durations: [40, 40] }
+    ]);
+});
+
+test('MP4Remuxer keeps the last remuxed video duration over a discontinuity without seek', () => {
+    const { remuxer, track, queue, segments } = createRemuxer(false, 1000 * (1000 / 23976));
+
+    queue(0, 40, 80);
+    remuxer.remux(null, track);
+    // An HTTP reconnection after an early EOF continues the same stream
+    remuxer.insertDiscontinuity();
+    remuxer.flushStashedSamples();
+
+    assert.deepEqual(segments, [
+        { count: 2, beginDts: 0, endDts: 80, durations: [40, 40] },
+        { count: 1, beginDts: 80, endDts: 120, durations: [40] }
+    ]);
+});
