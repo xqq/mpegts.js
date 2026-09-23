@@ -101,8 +101,11 @@ export class MP3FrameParser {
 
         while (true) {
             if (i + 4 > data.byteLength) {
-                // Not enough data for a frame header, but the remaining bytes
-                // may be the beginning of a frame that continues in the next payload
+                // Not enough data for a frame header, but a syncword beginning in the
+                // remaining bytes may start a frame that continues in the next payload
+                while (i < data.byteLength && !this.mayBeginSyncword(i)) {
+                    i++;
+                }
                 this.eof_flag_ = true;
                 this.has_last_incomplete_data = i < data.byteLength;
                 return i;
@@ -126,6 +129,16 @@ export class MP3FrameParser {
 
             i++;
         }
+    }
+
+    // Whether the bytes from offset to the end of data may be the beginning of a syncword
+    private mayBeginSyncword(offset: number): boolean {
+        const data = this.data_;
+
+        if (data[offset] !== 0xFF) {
+            return false;
+        }
+        return offset + 1 === data.byteLength || (data[offset + 1] & 0xE0) === 0xE0;
     }
 
     // Parses the 4-byte frame header at offset, returns null if there is no supported frame header
