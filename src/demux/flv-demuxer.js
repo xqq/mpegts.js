@@ -28,6 +28,7 @@ import buffersAreEqual from '../utils/typedarray-equality.ts';
 import AV1OBUParser from './av1-parser.ts';
 import ExpGolomb from './exp-golomb.js';
 import { parseSEI } from './sei';
+import { MP3FrameParser } from './mp3';
 
 function Swap16(src) {
     return (((src >>> 8) & 0xFF) |
@@ -102,14 +103,6 @@ class FLVDemuxer {
             96000, 88200, 64000, 48000, 44100, 32000,
             24000, 22050, 16000, 12000, 11025, 8000, 7350
         ];
-
-        this._mpegAudioV10SampleRateTable = [44100, 48000, 32000, 0];
-        this._mpegAudioV20SampleRateTable = [22050, 24000, 16000, 0];
-        this._mpegAudioV25SampleRateTable = [11025, 12000, 8000,  0];
-
-        this._mpegAudioL1BitRateTable = [0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, -1];
-        this._mpegAudioL2BitRateTable = [0, 32, 48, 56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320, 384, -1];
-        this._mpegAudioL3BitRateTable = [0, 32, 40, 48,  56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320, -1];
 
         this._videoTrack = {type: 'video', id: 1, sequenceNumber: 0, samples: [], length: 0};
         this._audioTrack = {type: 'audio', id: 2, sequenceNumber: 0, samples: [], length: 0};
@@ -632,49 +625,7 @@ class FLVDemuxer {
                 Log.e(this.TAG, `Flv: Unsupported AAC data type ${aacData.packetType}`);
             }
         } else if (soundFormat === 2) {  // MP3
-            if (!meta.codec) {
-                // We need metadata for mp3 audio track, extract info from frame header
-                const misc = this._parseMP3AudioData(arrayBuffer, dataOffset + 1, dataSize - 1, true);
-                if (misc == undefined) {
-                    return;
-                }
-                meta.audioSampleRate = misc.samplingRate;
-                meta.channelCount = misc.channelCount;
-                meta.codec = misc.codec;
-                meta.originalCodec = misc.originalCodec;
-                // The decode result of an mp3 sample is 1152 PCM samples
-                meta.refSampleDuration = 1152 / meta.audioSampleRate * meta.timescale;
-                Log.v(this.TAG, 'Parsed MPEG Audio Frame Header');
-
-                this._audioInitialMetadataDispatched = true;
-                this._onTrackMetadata('audio', meta);
-
-                const mi = this._mediaInfo;
-                mi.audioCodec = meta.codec;
-                mi.audioSampleRate = meta.audioSampleRate;
-                mi.audioChannelCount = meta.channelCount;
-                mi.audioDataRate = misc.bitRate;
-                if (mi.hasVideo) {
-                    if (mi.videoCodec != null) {
-                        mi.mimeType = 'video/x-flv; codecs="' + mi.videoCodec + ',' + mi.audioCodec + '"';
-                    }
-                } else {
-                    mi.mimeType = 'video/x-flv; codecs="' + mi.audioCodec + '"';
-                }
-                if (mi.isComplete()) {
-                    this._onMediaInfo(mi);
-                }
-            }
-
-            // This packet is always a valid audio packet, extract it
-            const data = this._parseMP3AudioData(arrayBuffer, dataOffset + 1, dataSize - 1, false);
-            if (data == undefined) {
-                return;
-            }
-            const dts = this._timestampBase + tagTimestamp;
-            const mp3Sample = {unit: data, length: data.byteLength, dts: dts, pts: dts};
-            track.samples.push(mp3Sample);
-            track.length += data.length;
+            this._parseMP3AudioData(arrayBuffer, dataOffset + 1, dataSize - 1, tagTimestamp);
         } else if (soundFormat === 3) {
             if (!meta.codec) {
                 meta.audioSampleRate = soundRate;
@@ -830,80 +781,58 @@ class FLVDemuxer {
         };
     }
 
-    _parseMP3AudioData(arrayBuffer, dataOffset, dataSize, requestHeader) {
-        if (dataSize < 4) {
-            Log.w(this.TAG, 'Flv: Invalid MP3 packet, header missing!');
-            return;
+    _parseMP3AudioData(arrayBuffer, dataOffset, dataSize, tagTimestamp) {
+        const meta = this._audioMetadata;
+        const track = this._audioTrack;
+
+        const parser = new MP3FrameParser(new Uint8Array(arrayBuffer, dataOffset, dataSize));
+        let frame = null;
+        // The tag timestamp belongs to the first frame, if a tag carries several frames
+        let frameDts = this._timestampBase + tagTimestamp;
+
+        while ((frame = parser.readNextMP3Frame()) != null) {
+            if (!meta.codec) {
+                // We need metadata for mp3 audio track, extract info from the first frame header
+                meta.audioSampleRate = frame.sample_rate;
+                meta.channelCount = frame.channel_count;
+                meta.codec = 'mp3';
+                meta.originalCodec = 'mp3';
+                // An MPEG audio frame carries 384, 576 or 1152 PCM samples, depending on its version and layer
+                meta.refSampleDuration = frame.samples_per_frame / meta.audioSampleRate * meta.timescale;
+                Log.v(this.TAG, 'Parsed MPEG Audio Frame Header');
+
+                this._audioInitialMetadataDispatched = true;
+                this._onTrackMetadata('audio', meta);
+
+                const mi = this._mediaInfo;
+                mi.audioCodec = meta.codec;
+                mi.audioSampleRate = meta.audioSampleRate;
+                mi.audioChannelCount = meta.channelCount;
+                mi.audioDataRate = frame.bit_rate;
+                if (mi.hasVideo) {
+                    if (mi.videoCodec != null) {
+                        mi.mimeType = 'video/x-flv; codecs="' + mi.videoCodec + ',' + mi.audioCodec + '"';
+                    }
+                } else {
+                    mi.mimeType = 'video/x-flv; codecs="' + mi.audioCodec + '"';
+                }
+                if (mi.isComplete()) {
+                    this._onMediaInfo(mi);
+                }
+            }
+
+            const dts = Math.floor(frameDts);
+            const mp3Sample = {unit: frame.data, length: frame.data.byteLength, dts: dts, pts: dts};
+            track.samples.push(mp3Sample);
+            track.length += frame.data.byteLength;
+
+            frameDts += frame.samples_per_frame / frame.sample_rate * this._timescale;
         }
 
-        const le = this._littleEndian;
-        const array = new Uint8Array(arrayBuffer, dataOffset, dataSize);
-        let result = null;
-
-        if (requestHeader) {
-            if (array[0] !== 0xFF) {
-                return;
-            }
-            const ver = (array[1] >>> 3) & 0x03;
-            const layer = (array[1] & 0x06) >> 1;
-
-            const bitrate_index = (array[2] & 0xF0) >>> 4;
-            const sampling_freq_index = (array[2] & 0x0C) >>> 2;
-
-            const channel_mode = (array[3] >>> 6) & 0x03;
-            const channel_count = channel_mode !== 3 ? 2 : 1;
-
-            let sample_rate = 0;
-            let bit_rate = 0;
-            let object_type = 34;  // Layer-3, listed in MPEG-4 Audio Object Types
-
-            const codec = 'mp3';
-
-            switch (ver) {
-                case 0:  // MPEG 2.5
-                    sample_rate = this._mpegAudioV25SampleRateTable[sampling_freq_index];
-                    break;
-                case 2:  // MPEG 2
-                    sample_rate = this._mpegAudioV20SampleRateTable[sampling_freq_index];
-                    break;
-                case 3:  // MPEG 1
-                    sample_rate = this._mpegAudioV10SampleRateTable[sampling_freq_index];
-                    break;
-            }
-
-            switch (layer) {
-                case 1:  // Layer 3
-                    object_type = 34;
-                    if (bitrate_index < this._mpegAudioL3BitRateTable.length) {
-                        bit_rate = this._mpegAudioL3BitRateTable[bitrate_index];
-                    }
-                    break;
-                case 2:  // Layer 2
-                    object_type = 33;
-                    if (bitrate_index < this._mpegAudioL2BitRateTable.length) {
-                        bit_rate = this._mpegAudioL2BitRateTable[bitrate_index];
-                    }
-                    break;
-                case 3:  // Layer 1
-                    object_type = 32;
-                    if (bitrate_index < this._mpegAudioL1BitRateTable.length) {
-                        bit_rate = this._mpegAudioL1BitRateTable[bitrate_index];
-                    }
-                    break;
-            }
-
-            result = {
-                bitRate: bit_rate,
-                samplingRate: sample_rate,
-                channelCount: channel_count,
-                codec: codec,
-                originalCodec: codec
-            };
-        } else {
-            result = array;
+        if (parser.hasIncompleteData()) {
+            // An FLV audio tag should carry whole frames only
+            Log.w(this.TAG, 'Flv: Dropped an incomplete MP3 frame at the end of audio packet');
         }
-
-        return result;
     }
 
     _parseOpusAudioPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, packetType) {
