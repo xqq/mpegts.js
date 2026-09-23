@@ -1093,14 +1093,14 @@ class TSDemuxer extends BaseDemuxer {
             const nalu_hvc1 = new H265NaluHVC1(nalu_payload);
 
             if (nalu_hvc1.type === H265NaluType.kSliceVPS) {
-                if (!this.video_init_segment_dispatched_) {
-                    const details = H265Parser.parseVPS(nalu_payload.data);
-                    this.video_metadata_.vps = nalu_hvc1;
-                    this.video_metadata_.details = {
-                        ... this.video_metadata_.details,
-                        ... details
-                    };
-                }
+                // Keep the latest VPS, also after the init segment: the VPS of changed
+                // parameter sets comes before the SPS that shows the change
+                const details = H265Parser.parseVPS(nalu_payload.data);
+                this.video_metadata_.vps = nalu_hvc1;
+                this.video_metadata_.details = {
+                    ... this.video_metadata_.details,
+                    ... details
+                };
             } else if (nalu_hvc1.type === H265NaluType.kSliceSPS) {
                 const details = H265Parser.parseSPS(nalu_payload.data);
                 if (!this.video_init_segment_dispatched_) {
@@ -1112,7 +1112,19 @@ class TSDemuxer extends BaseDemuxer {
                 } else if (this.detectVideoMetadataChange(nalu_hvc1, details) === true) {
                     Log.v(this.TAG, `H265: Critical h265 metadata has been changed, attempt to re-generate InitSegment`);
                     this.video_metadata_changed_ = true;
-                    this.video_metadata_ = { vps: undefined, sps: nalu_hvc1, pps: undefined, av1c: undefined, details: details};
+                    // Keep the VPS, which came before this SPS, and its details
+                    // for the new HEVCDecoderConfigurationRecord
+                    this.video_metadata_ = {
+                        vps: this.video_metadata_.vps,
+                        sps: nalu_hvc1,
+                        pps: undefined,
+                        av1c: undefined,
+                        details: {
+                            num_temporal_layers: this.video_metadata_.details.num_temporal_layers,
+                            temporal_id_nested: this.video_metadata_.details.temporal_id_nested,
+                            ... details
+                        }
+                    };
                 }
             } else if (nalu_hvc1.type === H265NaluType.kSlicePPS) {
                 if (!this.video_init_segment_dispatched_ || this.video_metadata_changed_) {
