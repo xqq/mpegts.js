@@ -49,6 +49,19 @@ test('TS ADTS AAC does not prepend a completed frame to later PES again', () => 
     assert.deepEqual(queuedFrames(demuxer), eight_frames);
 });
 
+test('TS LOAS AAC does not hold back a frame ending exactly at the end of a PES', () => {
+    const demuxer = createDemuxer();
+    const frames = [0, 1, 2, 3].map(marker => loasFrame(marker, marker === 0));
+
+    demuxer.parseLOASAACPayload(concatBytes(frames[0], frames[1]), framePts(0));
+    assert.deepEqual(queuedFrames(demuxer), eight_frames.slice(0, 2));
+    assert.equal(demuxer.aac_last_incomplete_data_, null);
+
+    demuxer.parseLOASAACPayload(concatBytes(frames[2], frames[3]), framePts(2));
+    assert.deepEqual(queuedFrames(demuxer), eight_frames.slice(0, 4));
+    assert.equal(demuxer.aac_last_incomplete_data_, null);
+});
+
 test('TS LOAS AAC does not replay a completed frame after a PES leaving nothing incomplete', () => {
     const demuxer = createDemuxer();
     const frames = [0, 1, 2, 3, 4].map(marker => loasFrame(marker, marker === 0));
