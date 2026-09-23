@@ -37,6 +37,16 @@ test('TS ADTS AAC completes a frame split across two PES', () => {
     assert.deepEqual(queuedFrames(demuxer), eight_frames.slice(0, 4));
 });
 
+test('TS ADTS AAC completes a frame whose header is split across two PES', () => {
+    const demuxer = createDemuxer();
+    const frames = [0, 1, 2, 3].map(marker => adtsFrame(marker));
+
+    demuxer.parseADTSAACPayload(concatBytes(frames[0], frames[1], frames[2].subarray(0, 3)), framePts(0));
+    demuxer.parseADTSAACPayload(concatBytes(frames[2].subarray(3), frames[3]), framePts(3));
+
+    assert.deepEqual(queuedFrames(demuxer), eight_frames.slice(0, 4));
+});
+
 test('TS ADTS AAC does not prepend a completed frame to later PES again', () => {
     const demuxer = createDemuxer();
     const frames = [0, 1, 2, 3, 4, 5, 6, 7].map(marker => adtsFrame(marker));
@@ -60,6 +70,16 @@ test('TS LOAS AAC does not hold back a frame ending exactly at the end of a PES'
     demuxer.parseLOASAACPayload(concatBytes(frames[2], frames[3]), framePts(2));
     assert.deepEqual(queuedFrames(demuxer), eight_frames.slice(0, 4));
     assert.equal(demuxer.aac_last_incomplete_data_, null);
+});
+
+test('TS LOAS AAC completes a frame whose syncword is split across two PES', () => {
+    const demuxer = createDemuxer();
+    const frames = [0, 1, 2].map(marker => loasFrame(marker, marker === 0));
+
+    demuxer.parseLOASAACPayload(concatBytes(frames[0], frames[1].subarray(0, 1)), framePts(0));
+    demuxer.parseLOASAACPayload(concatBytes(frames[1].subarray(1), frames[2]), framePts(2));
+
+    assert.deepEqual(queuedFrames(demuxer), eight_frames.slice(0, 3));
 });
 
 test('TS LOAS AAC does not replay a completed frame after a PES leaving nothing incomplete', () => {
