@@ -42,6 +42,7 @@ class MP4Remuxer {
         this._videoNextDts = undefined;
         this._audioStashedLastSample = null;
         this._videoStashedLastSample = null;
+        this._videoLastSampleDuration = 0;
 
         this._audioMeta = null;
         this._videoMeta = null;
@@ -677,7 +678,11 @@ class MP4Remuxer {
                     sampleDuration = nextDts - dts;
                 } else if (mp4Samples.length >= 1) {  // use second last sample duration
                     sampleDuration = mp4Samples[mp4Samples.length - 1].duration;
-                } else {  // the only one sample, use reference sample duration
+                } else if (this._videoLastSampleDuration > 0) {
+                    // the only one sample, use the duration of the last remuxed sample
+                    // (the frame rate in the bitstream is optional, and not always right)
+                    sampleDuration = this._videoLastSampleDuration;
+                } else {  // the only one sample and nothing remuxed yet, use reference sample duration
                     sampleDuration = Math.floor(this._videoMeta.refSampleDuration);
                 }
             }
@@ -730,6 +735,7 @@ class MP4Remuxer {
         lastDts = latest.dts + latest.duration;
         lastPts = latest.pts + latest.duration;
         this._videoNextDts = lastDts;
+        this._videoLastSampleDuration = latest.duration;
 
         // fill media segment info & add to info list
         info.beginDts = firstDts;
