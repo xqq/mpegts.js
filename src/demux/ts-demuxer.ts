@@ -32,7 +32,7 @@ import { readSCTE35, SCTE35Data } from './scte35';
 import { H265AnnexBParser, H265NaluHVC1, H265NaluPayload, H265NaluType, HEVCDecoderConfigurationRecord } from './h265';
 import H265Parser from './h265-parser';
 import { SMPTE2038Data, smpte2038parse } from './smpte2038';
-import { MP3Data } from './mp3';
+import { MP3Frame, MP3FrameParser } from './mp3';
 import { AC3Config, AC3Frame, AC3Parser, EAC3Config, EAC3Frame, EAC3Parser } from './ac3';
 import { KLVData, klv_parse } from './klv';
 import AV1OBUInMpegTsParser from './av1';
@@ -82,9 +82,10 @@ type OpusAudioMetadata = {
 }
 type MP3AudioMetadata = {
     codec: 'mp3',
-    object_type: number,
+    object_type: MPEG4AudioObjectTypes,
     sample_rate: number,
     channel_count: number;
+    samples_per_frame: number;
 };
 type AudioData = {
     codec: 'aac';
@@ -100,7 +101,7 @@ type AudioData = {
     meta: OpusAudioMetadata,
 } | {
     codec: 'mp3';
-    data: MP3Data;
+    data: MP3Frame;
 }
 
 class TSDemuxer extends BaseDemuxer {
@@ -154,6 +155,7 @@ class TSDemuxer extends BaseDemuxer {
 
     private audio_last_sample_pts_: number | undefined = undefined;
     private aac_last_incomplete_data_: Uint8Array | null = null;
+    private mp3_last_incomplete_data_: Uint8Array | null = null;
 
     private has_video_ = false;
     private has_audio_ = false;
@@ -181,6 +183,7 @@ class TSDemuxer extends BaseDemuxer {
         this.video_metadata_ = null!;
         this.audio_metadata_ = null!;
         this.aac_last_incomplete_data_ = null;
+        this.mp3_last_incomplete_data_ = null;
 
         this.video_track_ = null!;
         this.audio_track_ = null!;
@@ -1710,91 +1713,93 @@ class TSDemuxer extends BaseDemuxer {
             return;
         }
 
-        const _mpegAudioV10SampleRateTable = [44100, 48000, 32000, 0];
-        const _mpegAudioV20SampleRateTable = [22050, 24000, 16000, 0];
-        const _mpegAudioV25SampleRateTable = [11025, 12000, 8000,  0];
-        const _mpegAudioL1BitRateTable = [0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, -1];
-        const _mpegAudioL2BitRateTable = [0, 32, 48, 56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320, 384, -1];
-        const _mpegAudioL3BitRateTable = [0, 32, 40, 48,  56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320, -1];
+        let ref_sample_duration = 0;
+        let expected_pts_ms: number | undefined;
 
-        const ver = (data[1] >>> 3) & 0x03;
-        const layer = (data[1] & 0x06) >> 1;
-        const bitrate_index = (data[2] & 0xF0) >>> 4;
-        const sampling_freq_index = (data[2] & 0x0C) >>> 2;
-        const channel_mode = (data[3] >>> 6) & 0x03;
-        const channel_count = channel_mode !== 3 ? 2 : 1;
-
-        let sample_rate = 0;
-        let bit_rate = 0;
-        let object_type = 34;  // Layer-3, listed in MPEG-4 Audio Object Types
-
-        const codec = 'mp3';
-        switch (ver) {
-            case 0:  // MPEG 2.5
-                sample_rate = _mpegAudioV25SampleRateTable[sampling_freq_index];
-                break;
-            case 2:  // MPEG 2
-                sample_rate = _mpegAudioV20SampleRateTable[sampling_freq_index];
-                break;
-            case 3:  // MPEG 1
-                sample_rate = _mpegAudioV10SampleRateTable[sampling_freq_index];
-                break;
+        if (this.audio_metadata_.codec === 'mp3' && this.audio_last_sample_pts_ != undefined) {
+            // the first frame of this payload is expected right after the last parsed frame
+            ref_sample_duration = this.audio_metadata_.samples_per_frame / this.audio_metadata_.sample_rate * 1000;
+            expected_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
         }
 
-        switch (layer) {
-            case 1:  // Layer 3
-                object_type = 34;
-                if (bitrate_index < _mpegAudioL3BitRateTable.length) {
-                    bit_rate = _mpegAudioL3BitRateTable[bitrate_index];
-                }
-                break;
-            case 2:  // Layer 2
-                object_type = 33;
-                if (bitrate_index < _mpegAudioL2BitRateTable.length) {
-                    bit_rate = _mpegAudioL2BitRateTable[bitrate_index];
-                }
-                break;
-            case 3:  // Layer 1
-                object_type = 32;
-                if (bitrate_index < _mpegAudioL1BitRateTable.length) {
-                    bit_rate = _mpegAudioL1BitRateTable[bitrate_index];
-                }
-                break;
+        let base_pts_ms = (pts != undefined) ? pts / this.timescale_ : expected_pts_ms;
+
+        const incomplete_data = this.mp3_last_incomplete_data_;
+        this.mp3_last_incomplete_data_ = null;
+
+        if (incomplete_data) {
+            // The incomplete frame left by the previous PES began in that PES, so it is expected right after
+            // the last parsed frame, while the pts of this PES belongs to the frame after it.
+            // Keep it only if this PES does continue there, e.g. not after a splice or a lost PES.
+            let is_continued = false;
+            if (expected_pts_ms != undefined) {
+                const pts_drift_ms = (pts != undefined) ? pts / this.timescale_ - (expected_pts_ms + ref_sample_duration) : 0;
+                // tolerate a few frames of pts jitter
+                is_continued = Math.abs(pts_drift_ms) <= 3 * ref_sample_duration;
+            }
+
+            if (is_continued) {
+                const buf = new Uint8Array(incomplete_data.byteLength + data.byteLength);
+                buf.set(incomplete_data, 0);
+                buf.set(data, incomplete_data.byteLength);
+                data = buf;
+                base_pts_ms = expected_pts_ms;
+            } else {
+                Log.w(this.TAG, `MP3: Dropped an incomplete frame which is not continued by this PES`);
+            }
         }
 
-        const sample: MP3Data = {
-            object_type: object_type,
-            sample_rate: sample_rate,
-            channel_count: channel_count,
-            data: data,
-        };
-        const audio_sample = {
-            codec: 'mp3',
-            data: sample
-        } as const;
+        if (base_pts_ms == undefined) {
+            Log.w(this.TAG, `MP3: Unknown pts`);
+            return;
+        }
 
+        const mp3_parser = new MP3FrameParser(data);
+        let mp3_frame: MP3Frame | null = null;
+        let sample_pts_ms = base_pts_ms;
+        let last_sample_pts_ms: number | undefined;
 
-        if (this.audio_init_segment_dispatched_ == false || this.detectAudioMetadataChange(audio_sample)) {
-            this.audio_metadata_ = {
+        while ((mp3_frame = mp3_parser.readNextMP3Frame()) != null) {
+            ref_sample_duration = mp3_frame.samples_per_frame / mp3_frame.sample_rate * 1000;
+            const audio_sample = {
                 codec: 'mp3',
-                object_type,
-                sample_rate,
-                channel_count
+                data: mp3_frame
+            } as const;
+
+            if (this.audio_init_segment_dispatched_ == false || this.detectAudioMetadataChange(audio_sample)) {
+                this.audio_metadata_ = {
+                    codec: 'mp3',
+                    object_type: mp3_frame.object_type,
+                    sample_rate: mp3_frame.sample_rate,
+                    channel_count: mp3_frame.channel_count,
+                    samples_per_frame: mp3_frame.samples_per_frame
+                };
+                // flush stashed frames before notify new MPEG audio metadata
+                this.dispatchAudioMediaSegment(true);
+                // notify new MPEG audio metadata
+                this.dispatchAudioInitSegment(audio_sample);
+            }
+
+            last_sample_pts_ms = sample_pts_ms;
+            const sample_pts_ms_int = Math.floor(sample_pts_ms);
+
+            const mp3_sample = {
+                unit: mp3_frame.data,
+                length: mp3_frame.data.byteLength,
+                pts: sample_pts_ms_int,
+                dts: sample_pts_ms_int
             };
-            // flush stashed frames before notify new AudioSpecificConfig
-            this.dispatchAudioMediaSegment(true);
-            // notify new AAC AudioSpecificConfig
-            this.dispatchAudioInitSegment(audio_sample);
+            this.audio_track_.samples.push(mp3_sample);
+            this.audio_track_.length += mp3_frame.data.byteLength;
+
+            sample_pts_ms += ref_sample_duration;
         }
 
-        const mp3_sample = {
-            unit: data,
-            length: data.byteLength,
-            pts: pts! / this.timescale_,
-            dts: pts! / this.timescale_
-        };
-        this.audio_track_.samples.push(mp3_sample);
-        this.audio_track_.length += data.byteLength;
+        this.mp3_last_incomplete_data_ = mp3_parser.getIncompleteData();
+
+        if (last_sample_pts_ms != undefined) {
+            this.audio_last_sample_pts_ = last_sample_pts_ms;
+        }
     }
 
     private detectAudioMetadataChange(sample: AudioData): boolean {
@@ -1941,6 +1946,7 @@ class TSDemuxer extends BaseDemuxer {
             meta.codec = 'mp3';
             meta.originalCodec = 'mp3';
             meta.config = undefined;
+            meta.refSampleDuration = this.audio_metadata_.samples_per_frame / meta.audioSampleRate * meta.timescale;
         }
 
         if (this.audio_init_segment_dispatched_ == false) {
