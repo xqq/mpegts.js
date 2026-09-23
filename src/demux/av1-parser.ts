@@ -171,11 +171,12 @@ class AV1OBUParser {
                     }
                     if (leading >= 32) {
                         num_ticks_per_picture_minus_1 = 0xFFFFFFFF;
-                    } else {
-                        num_ticks_per_picture_minus_1 = ((1 << leading) - 1) + gb.readBits(leading);
+                    } else if (leading > 0) {  // readBits(0) would return the whole current word
+                        num_ticks_per_picture_minus_1 = (Math.pow(2, leading) - 1) + gb.readBits(leading);
                     }
                 }
-                fps_den = num_units_in_display_tick;
+                // A picture lasts num_ticks_per_picture_minus_1 + 1 display ticks
+                fps_den = num_units_in_display_tick * (num_ticks_per_picture_minus_1 + 1);
                 fps_num = time_scale;
                 fps = fps_num / fps_den;
                 fps_fixed = equal_picture_interval;

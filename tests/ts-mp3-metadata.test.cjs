@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const loadSource = require('./helpers/load-source.cjs');
 const { mp3Frame, concatBytes } = require('./helpers/mp3.cjs');
+const { readMoof } = require('./helpers/mp4.cjs');
 
 // MPEG-1 Layer III, 128 kbps, 44.1 kHz: 417-byte frames of 1152 samples
 const original = mp3Frame([0xff, 0xfb, 0x90, 0x00], 417);
@@ -117,33 +118,6 @@ test('TS MPEG audio flushes exactly the frames before a change inside one PES', 
 });
 
 const FIREFOX = 'Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0';
-
-// Reads baseMediaDecodeTime and sample durations from the moof box of a fMP4 media segment
-function readMoof(buffer) {
-    const view = new DataView(buffer);
-    const moof = { decodeTime: undefined, sampleDurations: [] };
-
-    (function readBoxes(offset, end) {
-        while (offset + 8 <= end) {
-            const size = view.getUint32(offset);
-            const type = String.fromCharCode(...new Uint8Array(buffer, offset + 4, 4));
-            if (type === 'moof' || type === 'traf') {
-                readBoxes(offset + 8, offset + size);
-            } else if (type === 'tfdt') {
-                moof.decodeTime = view.getUint32(offset + 12);
-            } else if (type === 'trun') {
-                // 16 bytes per sample after sample_count and data_offset, sample_duration first
-                const sampleCount = view.getUint32(offset + 12);
-                for (let i = 0; i < sampleCount; i++) {
-                    moof.sampleDurations.push(view.getUint32(offset + 20 + i * 16));
-                }
-            }
-            offset += size;
-        }
-    })(0, buffer.byteLength);
-
-    return moof;
-}
 
 // Connects a TSDemuxer to a real MP4Remuxer, which keeps the segment history (isLive: false)
 function createRemuxingDemuxer(globals, events) {
