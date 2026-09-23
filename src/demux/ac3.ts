@@ -43,7 +43,7 @@ export class AC3Parser {
     private data_: Uint8Array;
     private current_syncword_offset_: number;
     private eof_flag_: boolean = false;
-    private has_last_incomplete_data: boolean = false;
+    private has_last_incomplete_data_: boolean = false;
 
     public constructor(data: Uint8Array) {
         this.data_ = data;
@@ -94,7 +94,7 @@ export class AC3Parser {
             if (isNaN(frame_size) || offset + frame_size > this.data_.byteLength) {
                 // data not enough for extracting last sample
                 this.eof_flag_ = true;
-                this.has_last_incomplete_data = true;
+                this.has_last_incomplete_data_ = true;
                 break;
             }
 
@@ -132,11 +132,11 @@ export class AC3Parser {
     }
 
     public hasIncompleteData(): boolean {
-        return this.has_last_incomplete_data;
+        return this.has_last_incomplete_data_;
     }
 
     public getIncompleteData(): Uint8Array | null {
-        if (!this.has_last_incomplete_data) {
+        if (!this.has_last_incomplete_data_) {
             return null;
         }
 
@@ -195,7 +195,7 @@ export class EAC3Parser {
     private data_: Uint8Array;
     private current_syncword_offset_: number;
     private eof_flag_: boolean = false;
-    private has_last_incomplete_data: boolean = false;
+    private has_last_incomplete_data_: boolean = false;
 
     public constructor(data: Uint8Array) {
         this.data_ = data;
@@ -261,7 +261,7 @@ export class EAC3Parser {
             if (offset + frame_size > this.data_.byteLength) {
                 // data not enough for extracting last sample
                 this.eof_flag_ = true;
-                this.has_last_incomplete_data = true;
+                this.has_last_incomplete_data_ = true;
                 break;
             }
 
@@ -289,11 +289,11 @@ export class EAC3Parser {
     }
 
     public hasIncompleteData(): boolean {
-        return this.has_last_incomplete_data;
+        return this.has_last_incomplete_data_;
     }
 
     public getIncompleteData(): Uint8Array | null {
-        if (!this.has_last_incomplete_data) {
+        if (!this.has_last_incomplete_data_) {
             return null;
         }
 

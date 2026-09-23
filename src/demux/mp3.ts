@@ -77,7 +77,7 @@ export class MP3FrameParser {
     private data_: Uint8Array;
     private current_syncword_offset_: number;
     private eof_flag_: boolean = false;
-    private has_last_incomplete_data: boolean = false;
+    private has_last_incomplete_data_: boolean = false;
 
     public constructor(data: Uint8Array) {
         this.data_ = data;
@@ -99,7 +99,7 @@ export class MP3FrameParser {
                     i++;
                 }
                 this.eof_flag_ = true;
-                this.has_last_incomplete_data = i < data.byteLength;
+                this.has_last_incomplete_data_ = i < data.byteLength;
                 return i;
             }
 
@@ -200,7 +200,7 @@ export class MP3FrameParser {
         if (offset + header.frame_length > this.data_.byteLength) {
             // data not enough for extracting last frame
             this.eof_flag_ = true;
-            this.has_last_incomplete_data = true;
+            this.has_last_incomplete_data_ = true;
             return null;
         }
 
@@ -217,11 +217,11 @@ export class MP3FrameParser {
     }
 
     public hasIncompleteData(): boolean {
-        return this.has_last_incomplete_data;
+        return this.has_last_incomplete_data_;
     }
 
     public getIncompleteData(): Uint8Array | null {
-        if (!this.has_last_incomplete_data) {
+        if (!this.has_last_incomplete_data_) {
             return null;
         }
 
