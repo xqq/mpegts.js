@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const loadSource = require('./helpers/load-source.cjs');
-const { hex } = require('./helpers/video.cjs');
+const { hex, av1 } = require('./helpers/video.cjs');
 
 const AV1OBUParser = loadSource()('demux/av1-parser.ts').default;
 
@@ -52,6 +52,32 @@ for (const { label, frame, codecSize, presentSize } of [
         assert.equal(details.keyframe, true);
         // Copy into plain objects of this realm, the parser runs in its own vm context
         assert.deepEqual({ ...details.codec_size }, codecSize);
+        assert.deepEqual({ ...details.present_size }, presentSize);
+    });
+}
+
+// The 64x64 fixtures of the TS AV1 tests cover what the key frames above do not: a hidden frame,
+// and a render size other than the frame size. The sizes are decoded by hand in the syntax order
+// of uncompressed_header() in the AV1 specification, not from the parser's arithmetic.
+for (const { label, frame, presentSize } of [
+    {
+        // Used to be 52x54: the parser skipped the showable_frame of hidden frames
+        label: 'a hidden intra-only frame of an SVT-AV1 open GOP',
+        frame: av1.testsrc2IntraOnlyFrame,
+        presentSize: { width: 64, height: 64 }
+    },
+    {
+        // render_width_minus_1 and render_height_minus_1 are 16-bit values, the parser used to
+        // read that many bits instead
+        label: 'a key frame header with a render size other than its frame size',
+        frame: av1.renderSizeKeyFrameHeader,
+        presentSize: { width: 48, height: 36 }
+    }
+]) {
+    test(`AV1OBUParser parses ${label}`, () => {
+        const details = AV1OBUParser.parseOBUs(frame, AV1OBUParser.parseOBUs(av1.sequenceHeader));
+        // Copy into plain objects of this realm, the parser runs in its own vm context
+        assert.deepEqual({ ...details.codec_size }, { width: 64, height: 64 });
         assert.deepEqual({ ...details.present_size }, presentSize);
     });
 }
