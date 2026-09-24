@@ -185,6 +185,7 @@ export class AC3Config {
 }
 
 export interface EAC3Frame {
+    stream_type: number;
     sampling_frequency: number;
     sampling_rate_code: number;
     bit_stream_identification: number;
@@ -287,6 +288,7 @@ export class EAC3Parser {
             gb.destroy();
 
             eac3_frame = {
+                stream_type: stream_type,
                 sampling_frequency: sampling_frequency,
                 sampling_rate_code: sampling_rate_code,
                 channel_count: channel_count,
