@@ -31,9 +31,10 @@ type SequenceHeaderDetails = {
     delta_frame_id_length_minus_2?: number;
     reduced_still_picture_header: boolean;
     decoder_model_info_present_flag: boolean;
-    operating_points_cnt_minus_1?: number;
+    operating_points_cnt_minus_1: number;
     operating_points: OperatingPoint[];
     buffer_removal_time_length_minus_1: number;
+    frame_presentation_time_length_minus_1: number;
     equal_picture_interval: boolean;
     seq_force_screen_content_tools: number;
     seq_force_integer_mv: number;
@@ -143,10 +144,11 @@ class AV1OBUParser {
         const reduced_still_picture_header = gb.readBool();
 
         let fps = 0, fps_fixed = true, fps_num = 0, fps_den = 1;
-        const decoder_model_info_present_flag = false;
-        const decoder_model_present_for_this_op = false;
+        let decoder_model_info_present_flag = false;
         let buffer_delay_length_minus_1: number | undefined = undefined;
         let buffer_removal_time_length_minus_1: number | undefined = undefined;
+        let frame_presentation_time_length_minus_1: number | undefined = undefined;
+        let operating_points_cnt_minus_1 = 0;
         const operating_points: OperatingPoint[] = [];
         if (reduced_still_picture_header) {
             operating_points.push({
@@ -181,18 +183,18 @@ class AV1OBUParser {
                 fps = fps_num / fps_den;
                 fps_fixed = equal_picture_interval;
 
-                const decoder_model_info_present_flag = gb.readBool();
+                decoder_model_info_present_flag = gb.readBool();
                 if (decoder_model_info_present_flag) {
                     // decoder_model_info
                     buffer_delay_length_minus_1 = gb.readBits(5);
                     const num_units_in_decoding_tick = gb.readBits(32);
                     buffer_removal_time_length_minus_1 = gb.readBits(5);
-                    const frame_presentation_time_length_minus_1 = gb.readBits(5);
+                    frame_presentation_time_length_minus_1 = gb.readBits(5);
                 }
             }
 
             const initial_display_delay_present_flag = gb.readBool();
-            const operating_points_cnt_minus_1 = gb.readBits(5);
+            operating_points_cnt_minus_1 = gb.readBits(5);
             for (let i = 0; i <= operating_points_cnt_minus_1; i++) {
                 const operating_point_idc = gb.readBits(12);
                 const level = gb.readBits(5);
@@ -237,11 +239,11 @@ class AV1OBUParser {
         if (!reduced_still_picture_header) {
             frame_id_numbers_present_flag = gb.readBool();
         }
-        const delta_frame_id_length_minus_2: number | undefined = undefined;
-        const additional_frame_id_length_minus_1: number | undefined = undefined;
+        let delta_frame_id_length_minus_2: number | undefined = undefined;
+        let additional_frame_id_length_minus_1: number | undefined = undefined;
         if (frame_id_numbers_present_flag) {
-            const delta_frame_id_length_minus_2 = gb.readBits(4);
-            const additional_frame_id_length_minus_1 = gb.readBits(4);
+            delta_frame_id_length_minus_2 = gb.readBits(4);
+            additional_frame_id_length_minus_1 = gb.readBits(3);
         }
 
         const SELECT_SCREEN_CONTENT_TOOLS = 2;
@@ -392,8 +394,10 @@ class AV1OBUParser {
                 delta_frame_id_length_minus_2,
                 reduced_still_picture_header,
                 decoder_model_info_present_flag,
+                operating_points_cnt_minus_1,
                 operating_points,
                 buffer_removal_time_length_minus_1: buffer_removal_time_length_minus_1!,
+                frame_presentation_time_length_minus_1: frame_presentation_time_length_minus_1!,
                 equal_picture_interval: fps_fixed,
                 seq_force_screen_content_tools,
                 seq_force_integer_mv,
@@ -459,7 +463,8 @@ class AV1OBUParser {
             keyframe = frame_type === INTRA_ONLY_FRAME || frame_type === KEY_FRAME;
             show_frame = gb.readBool();
             if (show_frame && sequence_header.decoder_model_info_present_flag && !sequence_header.equal_picture_interval) {
-                // decoder model info
+                // temporal_point_info
+                const frame_presentation_time = gb.readBits(sequence_header.frame_presentation_time_length_minus_1 + 1);
             }
             if (show_frame) {
                 showable_frame = frame_type !== KEY_FRAME;
@@ -506,7 +511,7 @@ class AV1OBUParser {
         if (sequence_header.decoder_model_info_present_flag) {
             const buffer_removal_time_present_flag = gb.readBool();
             if (buffer_removal_time_present_flag) {
-                for (let opNum = 0; opNum <= sequence_header.operating_points_cnt_minus_1!; opNum++) {
+                for (let opNum = 0; opNum <= sequence_header.operating_points_cnt_minus_1; opNum++) {
                     if (sequence_header.operating_points[opNum].decoder_model_present_for_this_op) {
                         const opPtIdc = sequence_header.operating_points[opNum].operating_point_idc;
                         const inTemporalLayer = (opPtIdc >> temporal_id ) & 1
