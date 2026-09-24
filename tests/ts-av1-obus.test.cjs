@@ -82,6 +82,11 @@ for (const { label, obus } of [
         // Used to throw an IllegalStateException in the sequence header parser
         label: 'with a decoder model',
         obus: [av1.decoderModelSequenceHeader, av1.decoderModelKeyFrame]
+    },
+    {
+        // Used to throw an IllegalStateException in the frame header parser: idLen was NaN
+        label: 'with frame ids',
+        obus: [av1.frameIdSequenceHeader, av1.frameIdKeyFrame]
     }
 ]) {
     test(`TS AV1 dispatches the size of a key frame of libaom ${label}`, () => {

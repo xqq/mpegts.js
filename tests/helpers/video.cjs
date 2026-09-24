@@ -127,6 +127,14 @@ const av1 = {
     // payload bytes, then codes no frame_presentation_time
     decoderModelSequenceHeader1Tick: hex('0a1d040000000400000067bc0000000529800001afc8afc85d57ffcfbf9804'),
     decoderModelKeyFrame1Tick: hex('32111501005f7e007e007e4100000100020100'),
+    // The same encode with --error-resilient=1 instead of --timing-info=model: a sequence header
+    // without timing_info, with frame_id_numbers_present_flag 1, delta_frame_id_length_minus_2 12
+    // (f(4)) and additional_frame_id_length_minus_1 0 (f(3)), so frame ids of 12 + 0 + 3 = 15 bits,
+    // then 7-bit order hints and enable_superres 0; and the key frame, cut after 17 payload bytes,
+    // with current_frame_id 19018 (15 bits) before its frame size (frame_size_override_flag 1:
+    // 32x32) and render size (64x64)
+    frameIdSequenceHeader: hex('0a0b00000002affff03efe6010'),
+    frameIdKeyFrame: hex('321115292a01f7e007e007e410000010002010'),
     // Body of the AV1 video descriptor in the PMT: the first 4 bytes of an
     // AV1CodecConfigurationRecord (version 1, profile 0, level 0, 8-bit 4:2:0)
     configRecord: Uint8Array.of(0x81, 0x00, 0x0c, 0x00)

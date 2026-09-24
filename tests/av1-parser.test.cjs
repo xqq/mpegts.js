@@ -133,3 +133,26 @@ for (const { label, sequenceHeader, frame, equalPictureInterval } of [
         assert.deepEqual({ ...frameDetails.present_size }, { width: 64, height: 64 });
     });
 }
+
+// The same encode with frame ids (--error-resilient=1) instead of a decoder model
+test('AV1OBUParser parses a key frame of libaom with frame ids', () => {
+    // additional_frame_id_length_minus_1 is f(3): reading 4 bits made the 7-bit order hints 5 bits
+    // and turned enable_superres on
+    const details = AV1OBUParser.parseOBUs(av1.frameIdSequenceHeader);
+    const expected = {
+        frame_id_numbers_present_flag: true,
+        delta_frame_id_length_minus_2: 12,
+        additional_frame_id_length_minus_1: 0,
+        // Coded after the frame id lengths
+        order_hint_bits: 7,
+        enable_superres: false
+    };
+    assert.deepEqual(pick(details.sequence_header, Object.keys(expected)), expected);
+
+    // Used to throw "ExpGolomb: _fillCurrentWord() but no bytes available": the two lengths were
+    // shadowed, so current_frame_id was read with an idLen of NaN
+    const frameDetails = AV1OBUParser.parseOBUs(av1.frameIdKeyFrame, details);
+    assert.equal(frameDetails.keyframe, true);
+    assert.deepEqual({ ...frameDetails.codec_size }, { width: 32, height: 32 });
+    assert.deepEqual({ ...frameDetails.present_size }, { width: 64, height: 64 });
+});
