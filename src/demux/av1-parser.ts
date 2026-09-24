@@ -239,11 +239,11 @@ class AV1OBUParser {
         if (!reduced_still_picture_header) {
             frame_id_numbers_present_flag = gb.readBool();
         }
-        const delta_frame_id_length_minus_2: number | undefined = undefined;
-        const additional_frame_id_length_minus_1: number | undefined = undefined;
+        let delta_frame_id_length_minus_2: number | undefined = undefined;
+        let additional_frame_id_length_minus_1: number | undefined = undefined;
         if (frame_id_numbers_present_flag) {
-            const delta_frame_id_length_minus_2 = gb.readBits(4);
-            const additional_frame_id_length_minus_1 = gb.readBits(4);
+            delta_frame_id_length_minus_2 = gb.readBits(4);
+            additional_frame_id_length_minus_1 = gb.readBits(3);
         }
 
         const SELECT_SCREEN_CONTENT_TOOLS = 2;
