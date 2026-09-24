@@ -967,11 +967,20 @@ class TSDemuxer extends BaseDemuxer {
         let length = 0;
         let keyframe = false;
 
-        let details = null;
         while ((payload = av1_in_ts_parser.readNextOBUPayload()) != null) {
-            details = AV1OBUParser.parseOBUs(payload, this.video_metadata_.details);
+            if (this.video_metadata_.details) {
+                // Only frame headers set keyframe, and not for show_existing_frame: clear the flag of
+                // the last frame, or OBUs like the temporal delimiter of the next PES would keep it
+                this.video_metadata_.details.keyframe = undefined;
+            }
+            const details = AV1OBUParser.parseOBUs(payload, this.video_metadata_.details);
+            if (details == undefined) {
+                // Nothing can be parsed before the first sequence header, e.g. the temporal delimiter
+                // before it, or the frames of a stream joined between key frames: skip these OBUs
+                continue;
+            }
 
-            if (details && details.keyframe === true) {
+            if (details.keyframe === true) {
                 if (!this.video_init_segment_dispatched_) {
                     this.video_metadata_.details = details;
                     this.dispatchVideoInitSegment();
@@ -988,17 +997,17 @@ class TSDemuxer extends BaseDemuxer {
             }
             this.video_metadata_.details = details;
 
-            //if (this.video_init_segment_dispatched_) {
-                keyframe ||= details!.keyframe!;
-                units.push({ data: payload });
-                length += payload.byteLength;
-            //}
+            keyframe ||= details.keyframe === true;
+            units.push({ data: payload });
+            length += payload.byteLength;
         }
 
         const pts_ms = Math.floor(pts! / this.timescale_);
         const dts_ms = Math.floor(dts! / this.timescale_);
 
-        if (units.length) {
+        // Push samples to remuxer only if initialization metadata has been dispatched, which happens at
+        // the key frame: the sequence header before it stays in the sample, as an AV1 sync sample requires
+        if (units.length && this.video_init_segment_dispatched_) {
             const track = this.video_track_;
             const av1_sample = {
                 units,
