@@ -88,4 +88,4 @@ const av1 = {
     configRecord: Uint8Array.of(0x81, 0x00, 0x0c, 0x00)
 };
 
-module.exports = { annexB, av1InTs, h264, h265, av1 };
+module.exports = { hex, annexB, av1InTs, h264, h265, av1 };
