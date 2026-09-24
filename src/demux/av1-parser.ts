@@ -461,7 +461,7 @@ class AV1OBUParser {
             if (show_frame && sequence_header.decoder_model_info_present_flag && !sequence_header.equal_picture_interval) {
                 // decoder model info
             }
-            if (!show_frame) {
+            if (show_frame) {
                 showable_frame = frame_type !== KEY_FRAME;
             } else {
                 showable_frame = gb.readBool();
@@ -525,7 +525,7 @@ class AV1OBUParser {
         if (!(frame_type === SWITCH_FRAME || (frame_type == KEY_FRAME && show_frame))) {
             refresh_frame_flags = gb.readBits(8);
         }
-        if (keyframe || refresh_frame_flags !== allFrames) {
+        if (!keyframe || refresh_frame_flags !== allFrames) {
             if (error_resilient_mode && sequence_header.enable_order_hint) {
                 for (let i = 0; i < NUM_REF_FRAMES; i++) {
                     gb.readBits(sequence_header.order_hint_bits);
@@ -578,10 +578,8 @@ class AV1OBUParser {
         let RenderWidth = UpscaledWidth;
         let RenderHeight = FrameHeight;
         if (render_and_frame_size_different) {
-            const render_width_bits = gb.readBits(16) + 1;
-            const render_height_bits = gb.readBits(16) + 1;
-            RenderWidth = gb.readBits(render_width_bits) + 1;
-            RenderHeight = gb.readBits(render_height_bits) + 1;
+            RenderWidth = gb.readBits(16) + 1;
+            RenderHeight = gb.readBits(16) + 1;
         }
 
         return {
