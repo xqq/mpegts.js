@@ -19,6 +19,9 @@ declare class PlayerEngineMainThread implements PlayerEngine {
     private _loaded_metadata_received;
     private _media_info;
     private _statistics_info?;
+    private _g711_audio_ctx?;
+    private _g711_gain_node?;
+    private _g711_next_play_time;
     private e?;
     constructor(mediaDataSource: any, config: any);
     destroy(): void;
@@ -45,5 +48,7 @@ declare class PlayerEngineMainThread implements PlayerEngine {
     private _onRequestPauseTransmuxer;
     private _onRequestResumeTransmuxer;
     private _fillStatisticsInfo;
+    private static readonly _PCMA_TABLE;
+    private _onG711AudioData;
 }
 export default PlayerEngineMainThread;

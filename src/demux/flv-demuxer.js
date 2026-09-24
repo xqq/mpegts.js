@@ -64,6 +64,7 @@ class FLVDemuxer {
         this._onTrackMetadata = null;
         this._onDataAvailable = null;
         this._onSeiArrived = null;
+        this._onG711AudioData = null;
 
         this._dataOffset = probeData.dataOffset;
         this._firstParse = true;
@@ -206,6 +207,14 @@ class FLVDemuxer {
 
     set onSeiArrived(callback) {
         this._onSeiArrived = callback;
+    }
+
+    get onG711AudioData() {
+        return this._onG711AudioData;
+    }
+
+    set onG711AudioData(callback) {
+        this._onG711AudioData = callback;
     }
 
     // prototype: function(type: number, info: string): void
@@ -529,7 +538,7 @@ class FLVDemuxer {
         }
         // Legacy FLV
 
-        if (soundFormat !== 2 && soundFormat !== 3 && soundFormat !== 10) {  // PCM or MP3 or AAC
+        if (soundFormat !== 2 && soundFormat !== 3 && soundFormat !== 7 && soundFormat !== 10) {  // PCM or MP3 or G711 PCMA or AAC
             this._onError(DemuxErrors.CODEC_UNSUPPORTED, 'Flv: Unsupported audio codec idx: ' + soundFormat);
             return;
         }
@@ -659,6 +668,30 @@ class FLVDemuxer {
             const pcmSample = {unit: data, length: data.byteLength, dts: dts, pts: dts};
             track.samples.push(pcmSample);
             track.length += data.length;
+        } else if (soundFormat === 7) {  // G.711 PCMA — bypass MSE, decode via Web Audio API
+            if (!meta.codec) {
+                meta.audioSampleRate = 8000;  // G.711 is always 8 kHz
+                meta.channelCount = (soundType === 0 ? 1 : 2);
+                meta.codec = 'pcma';
+                meta.originalCodec = 'pcma';
+
+                // Don't dispatch via _onTrackMetadata — G.711 is not remuxed into MP4
+                this._audioInitialMetadataDispatched = true;
+
+                let mi = this._mediaInfo;
+                mi.audioCodec = 'pcma';
+                mi.audioSampleRate = 8000;
+                mi.audioChannelCount = meta.channelCount;
+                if (mi.isComplete()) {
+                    this._onMediaInfo(mi);
+                }
+            }
+
+            if (this._onG711AudioData) {
+                let pcmaData = new Uint8Array(arrayBuffer, dataOffset + 1, dataSize - 1);
+                let dts = this._timestampBase + tagTimestamp;
+                this._onG711AudioData(pcmaData, dts, meta.channelCount);
+            }
         }
     }
 

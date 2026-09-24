@@ -62,6 +62,10 @@ class PlayerEngineMainThread implements PlayerEngine {
     private _media_info: MediaInfo | null = null;
     private _statistics_info?: any = null;
 
+    private _g711_audio_ctx?: AudioContext = null;
+    private _g711_gain_node?: GainNode = null;
+    private _g711_next_play_time: number = 0;
+
     private e?: any = null;
 
     public constructor(mediaDataSource: any, config: any) {
@@ -255,6 +259,9 @@ class PlayerEngineMainThread implements PlayerEngine {
         this._transmuxer.on(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, (private_data: any) => {
             this._emitter.emit(PlayerEvents.PES_PRIVATE_DATA_ARRIVED, private_data);
         });
+        this._transmuxer.on(TransmuxingEvents.G711_AUDIO_DATA, (pcmaData: Uint8Array, dts: number, channelCount: number) => {
+            this._onG711AudioData(pcmaData, dts, channelCount);
+        });
 
         this._seeking_handler = new SeekingHandler(
             this._config,
@@ -321,6 +328,13 @@ class PlayerEngineMainThread implements PlayerEngine {
         this._transmuxer?.close();
         this._transmuxer?.destroy();
         this._transmuxer = null;
+
+        if (this._g711_audio_ctx) {
+            this._g711_audio_ctx.close();
+            this._g711_audio_ctx = null;
+            this._g711_gain_node = null;
+        }
+        this._g711_next_play_time = 0;
     }
 
     public play(): Promise<void> {
@@ -449,6 +463,66 @@ class PlayerEngineMainThread implements PlayerEngine {
         }
 
         return stat_info;
+    }
+
+    // G.711 PCMA lookup table: 256 entries mapping each PCMA byte to a signed 16-bit PCM value.
+    // PCMA encoding: sign bit (bit 7), 3-bit exponent (bits 6-4), 4-bit mantissa (bits 3-0).
+    private static readonly _PCMA_TABLE: Int16Array = (() => {
+        const table = new Int16Array(256);
+        for (let i = 0; i < 256; i++) {
+            let a = i ^ 0x55;  // XOR with 0x55 as per G.711 spec
+            const sign = a & 0x80;
+            a &= 0x7f;
+            let linear: number;
+            if (a >= 16) {
+                const exp = (a >> 4) & 0x07;
+                const mantissa = a & 0x0f;
+                linear = ((mantissa << 1) | 1) << (exp + 2);
+            } else {
+                linear = (a << 1) | 1;
+            }
+            table[i] = sign ? -linear : linear;
+        }
+        return table;
+    })();
+
+    private _onG711AudioData(pcmaData: Uint8Array, dts: number, channelCount: number): void {
+        if (!this._g711_audio_ctx) {
+            this._g711_audio_ctx = new AudioContext({ sampleRate: 8000 });
+            this._g711_gain_node = this._g711_audio_ctx.createGain();
+            this._g711_gain_node.connect(this._g711_audio_ctx.destination);
+            this._g711_next_play_time = this._g711_audio_ctx.currentTime;
+        }
+
+        const ctx = this._g711_audio_ctx;
+        const gain = this._g711_gain_node;
+
+        // Sync gain from <video> element so the slider controls G.711 volume too
+        if (this._media_element) {
+            gain.gain.value = this._media_element.muted ? 0 : this._media_element.volume;
+        }
+
+        const sampleCount = pcmaData.length / channelCount;
+        const buf = ctx.createBuffer(channelCount, sampleCount, 8000);
+        const table = PlayerEngineMainThread._PCMA_TABLE;
+
+        for (let ch = 0; ch < channelCount; ch++) {
+            const channelData = buf.getChannelData(ch);
+            for (let i = 0; i < sampleCount; i++) {
+                channelData[i] = table[pcmaData[i * channelCount + ch]] / 32768;
+            }
+        }
+
+        const source = ctx.createBufferSource();
+        source.buffer = buf;
+        source.connect(gain);
+
+        const now = ctx.currentTime;
+        if (this._g711_next_play_time < now) {
+            this._g711_next_play_time = now;
+        }
+        source.start(this._g711_next_play_time);
+        this._g711_next_play_time += buf.duration;
     }
 
 }

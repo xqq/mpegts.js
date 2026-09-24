@@ -27,6 +27,7 @@ declare class FLVDemuxer {
     _onTrackMetadata: any;
     _onDataAvailable: any;
     _onSeiArrived: any;
+    _onG711AudioData: any;
     _dataOffset: any;
     _firstParse: boolean;
     _dispatch: boolean;
@@ -86,6 +87,8 @@ declare class FLVDemuxer {
     get onScriptDataArrived(): any;
     set onSeiArrived(callback: any);
     get onSeiArrived(): any;
+    set onG711AudioData(callback: any);
+    get onG711AudioData(): any;
     set onError(callback: any);
     get onError(): any;
     set onDataAvailable(callback: any);

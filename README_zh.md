@@ -12,6 +12,10 @@ mpegts.js 通过在 JavaScript 中渐进化解析 MPEG2-TS 流并实时转封装
 [Media Source Extensions]: https://w3c.github.io/media-source/
 
 ## News
+- **v1.8.2**（@brid9e fork）
+
+    新增 **G.711 PCMA** 音频支持（FLV 音频编码索引 7），常见于监控摄像头和 IP 摄像机。由于 MSE 不支持 G.711，PCMA 帧通过 Web Audio API 解码，与 MSE 视频管线并行播放。
+
 - **v1.8.0**
 
     支持在 **iOS Safari**（iOS 17.1+）上运行，使用 Apple [ManagedMediaSource API](https://github.com/w3c/media-source/issues/320)
@@ -50,6 +54,7 @@ mpegts.js 通过在 JavaScript 中渐进化解析 MPEG2-TS 流并实时转封装
 ## Features
 - 回放 http(s) 或 WebSocket 上承载的 H.264/H.265 + AAC 编码的 MPEG2-TS 流
 - 回放 http(s) 或 WebSocket 上承载的 H.264/H.265 + AAC 编码的 FLV 流
+- **支持 FLV 流中的 G.711 PCMA 音频**（编码索引 7），通过 Web Audio API 解码，适用于监控/IP 摄像机场景
 - 超低延迟，最佳情况延迟可低达 1 秒以内
 - 回放 TS packet 为 192 字节的 `.m2ts` 文件（BDAV/BDMV）或 204 字节的 TS 流
 - 支持动态编码参数切换，如视频分辨率动态变化
