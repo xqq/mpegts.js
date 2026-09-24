@@ -289,7 +289,6 @@ export class AACLOASParser {
                             otherDataLenBits += otherDataLenTmp
                             if (!otherDataLenEsc) { break; }
                         }
-                        console.log(otherDataLenBits)
                     }
                 }
 
