@@ -107,6 +107,26 @@ const av1 = {
     // -i color=black:s=128x96:r=30000/1001: the sequence header and the key frame
     sequenceHeader128x96: hex('0a0b0200000559bfdf1abe6010'),
     keyFrame128x96: hex('321210008e80820810404000020095d001f5f066'),
+    // aomenc (libaom 3.14.1) for the 3 frames of `-f lavfi -i testsrc2=s=64x64:r=25 -frames:v 3
+    // -pix_fmt yuv420p -f yuv4mpegpipe`, with `--lag-in-frames=0 --timing-info=model --resize-mode=1
+    // --resize-denominator=16 --resize-kf-denominator=16 --obu`: the sequence header, and the key
+    // frame (OBU_FRAME) cut after the 18 payload bytes of its uncompressed header (obu_size adjusted).
+    // The sequence header has timing_info (1/25 s ticks, equal_picture_interval 0) and
+    // decoder_model_info (buffer_delay_length_minus_1 15, buffer_removal_time_length_minus_1 9,
+    // frame_presentation_time_length_minus_1 9). Its only operating point has
+    // decoder_model_present_for_this_op 1 with operating_parameters_info() (decoder_buffer_delay and
+    // encoder_buffer_delay 45000, low_delay_mode_flag 0), then initial_display_delay_minus_1 7; after
+    // the operating points come a 64x64 maximum frame size and 7-bit order hints. The key frame codes
+    // frame_presentation_time 0 (10 bits) after show_frame, and buffer_removal_time_present_flag 1
+    // and buffer_removal_time[0] 1 (10 bits) after order_hint, before its frame size
+    // (frame_size_override_flag 1: 32x32) and render size (64x64)
+    decoderModelSequenceHeader: hex('0a1d040000000400000065780000000a530000035f915f90baafff9f7f3008'),
+    decoderModelKeyFrame: hex('32121001404017df801f801f9040000040008040'),
+    // The same after -bsf:v av1_metadata=tick_rate=25/1:num_ticks_per_picture=1, which only sets
+    // equal_picture_interval 1 (num_ticks_per_picture_minus_1 0): the key frame, cut after 17
+    // payload bytes, then codes no frame_presentation_time
+    decoderModelSequenceHeader1Tick: hex('0a1d040000000400000067bc0000000529800001afc8afc85d57ffcfbf9804'),
+    decoderModelKeyFrame1Tick: hex('32111501005f7e007e007e4100000100020100'),
     // Body of the AV1 video descriptor in the PMT: the first 4 bytes of an
     // AV1CodecConfigurationRecord (version 1, profile 0, level 0, 8-bit 4:2:0)
     configRecord: Uint8Array.of(0x81, 0x00, 0x0c, 0x00)

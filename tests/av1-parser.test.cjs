@@ -5,6 +5,9 @@ const { hex, av1 } = require('./helpers/video.cjs');
 
 const AV1OBUParser = loadSource()('demux/av1-parser.ts').default;
 
+// Copies the given fields into a plain object of this realm, the parser runs in its own vm context
+const pick = (object, keys) => Object.fromEntries(keys.map(key => [key, object[key]]));
+
 // Real encoder output of ffmpeg 9.0.1 with SVT-AV1 4.2.0 for `-f lavfi -i testsrc2=s=320x240:r=25
 // -c:v libsvtav1 -svtav1-params log-level=0 -f obu`, with the options given for each key frame
 // below. Each key frame (OBU_FRAME) is cut after 16 payload bytes, which hold its whole
@@ -79,5 +82,54 @@ for (const { label, frame, presentSize } of [
         // Copy into plain objects of this realm, the parser runs in its own vm context
         assert.deepEqual({ ...details.codec_size }, { width: 64, height: 64 });
         assert.deepEqual({ ...details.present_size }, presentSize);
+    });
+}
+
+// Real encoder output of aomenc (libaom 3.14.1) with a decoder model, see tests/helpers/video.cjs.
+// Its key frames are resized to 32x32, so their frame size comes after everything the decoder
+// model adds to the frame header. FFmpeg's trace_headers BSF gives the reference values.
+for (const { label, sequenceHeader, frame, equalPictureInterval } of [
+    {
+        // frame_presentation_time after show_frame, and buffer_removal_time[0] after order_hint
+        label: 'a key frame of libaom with a decoder model',
+        sequenceHeader: av1.decoderModelSequenceHeader,
+        frame: av1.decoderModelKeyFrame,
+        equalPictureInterval: false
+    },
+    {
+        // After av1_metadata: only buffer_removal_time[0], no frame_presentation_time
+        label: 'a key frame of libaom with a decoder model and equal_picture_interval',
+        sequenceHeader: av1.decoderModelSequenceHeader1Tick,
+        frame: av1.decoderModelKeyFrame1Tick,
+        equalPictureInterval: true
+    }
+]) {
+    test(`AV1OBUParser parses ${label}`, () => {
+        // Used to throw "ExpGolomb: _fillCurrentWord() but no bytes available": the operating point
+        // loop saw a shadowed decoder_model_info_present_flag of false, and skipped
+        // decoder_model_present_for_this_op and operating_parameters_info()
+        const details = AV1OBUParser.parseOBUs(sequenceHeader);
+        const sequence_header = details.sequence_header;
+        assert.equal(details.codec_mimetype, 'av01.0.00M.08');
+        assert.deepEqual(Array.from(sequence_header.operating_points, point => ({ ...point })), [
+            { operating_point_idc: 0, level: 0, tier: 0, decoder_model_present_for_this_op: true }
+        ]);
+        const expected = {
+            decoder_model_info_present_flag: true,
+            operating_points_cnt_minus_1: 0,
+            buffer_removal_time_length_minus_1: 9,
+            frame_presentation_time_length_minus_1: 9,
+            equal_picture_interval: equalPictureInterval,
+            // Coded after the operating points
+            max_frame_width: 64,
+            max_frame_height: 64,
+            order_hint_bits: 7
+        };
+        assert.deepEqual(pick(sequence_header, Object.keys(expected)), expected);
+
+        const frameDetails = AV1OBUParser.parseOBUs(frame, details);
+        assert.equal(frameDetails.keyframe, true);
+        assert.deepEqual({ ...frameDetails.codec_size }, { width: 32, height: 32 });
+        assert.deepEqual({ ...frameDetails.present_size }, { width: 64, height: 64 });
     });
 }

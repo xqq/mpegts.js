@@ -77,6 +77,25 @@ test('TS AV1 dispatches the size of a key frame of testsrc2', () => {
     ]);
 });
 
+for (const { label, obus } of [
+    {
+        // Used to throw an IllegalStateException in the sequence header parser
+        label: 'with a decoder model',
+        obus: [av1.decoderModelSequenceHeader, av1.decoderModelKeyFrame]
+    }
+]) {
+    test(`TS AV1 dispatches the size of a key frame of libaom ${label}`, () => {
+        const events = [];
+        const demuxer = createDemuxer(events);
+
+        demuxer.parseAV1Payload(av1InTs(av1.temporalDelimiter, ...obus), 90000, 90000, 0, 1);
+
+        // Resized: coded at 32x32
+        assert.deepEqual(events, [{ type: 'video', codec: 'av01.0.00M.08', width: 32, height: 32 }]);
+        assert.deepEqual(queuedSamples(demuxer), [{ obus: obus.map(toHex), isKeyframe: true }]);
+    });
+}
+
 test('TS AV1 queues no sample before the first key frame when joining a stream between key frames', () => {
     const events = [];
     const demuxer = createDemuxer(events);
