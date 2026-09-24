@@ -242,12 +242,12 @@ export class EAC3Parser {
             const stream_type = gb.readBits(2);
             const sub_stream_id = gb.readBits(3);
             const frame_size = (gb.readBits(11) + 1) << 1;
-            let sampling_rate_code = gb.readBits(2);
+            const sampling_rate_code = gb.readBits(2);
             let sampling_frequency: number | null = null;
             let num_blocks_code: number | null = null;
             if (sampling_rate_code === 0x03) {
-                sampling_rate_code = gb.readBits(2);
-                sampling_frequency = [24000, 22050, 16000][sampling_rate_code];
+                const sampling_rate_code2 = gb.readBits(2);
+                sampling_frequency = [24000, 22050, 16000][sampling_rate_code2];
                 num_blocks_code = 3
             } else {
                 sampling_frequency = [48000, 44100, 32000][sampling_rate_code];
@@ -315,12 +315,13 @@ export class EAC3Config {
     public constructor(frame: EAC3Frame) {
         let config: Array<number> | null = null;
 
-        const data_rate_sub = Math.floor((frame.frame_size * frame.sampling_frequency) / (frame.num_blks * 16))
+        // In kbit/s, from the size of this frame of num_blks blocks of 256 samples
+        const data_rate = Math.round((frame.frame_size * 8 * frame.sampling_frequency) / (frame.num_blks * 256) / 1000);
 
         config = [
-            (data_rate_sub & 0x1FE0 >> 5),
-            (data_rate_sub & 0x001F << 3), // num_ind_sub = zero
-            (frame.sampling_rate_code << 6) | (frame.bit_stream_identification << 1) | (0 << 0),
+            (data_rate & 0x1FE0) >> 5,
+            (data_rate & 0x001F) << 3, // num_ind_sub = zero
+            (frame.sampling_rate_code << 6) | (frame.bit_stream_identification << 1) | (0 << 0), // fscod 3 for reduced sample rates
             (0 << 7) | (0 << 4) | (frame.channel_mode << 1) | (frame.low_frequency_effects_channel_on << 0),
             (0 << 5) | (0 << 1) | (0 << 0)
         ];
