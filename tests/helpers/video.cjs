@@ -135,6 +135,28 @@ const av1 = {
     // 32x32) and render size (64x64)
     frameIdSequenceHeader: hex('0a0b00000002affff03efe6010'),
     frameIdKeyFrame: hex('321115292a01f7e007e007e410000010002010'),
+    // rav1e 0.8.1 `--limit 1 -s 10 --low-latency` for one picture of `-f lavfi -i
+    // testsrc2=s=128x128:r=25 -frames:v 1 -pix_fmt yuv444p12le -f yuv4mpegpipe -strict -1` (aomenc
+    // cannot encode 12-bit 4:4:4 or 4:2:2): the sequence header of its IVF output. Profile 2 with
+    // high_bitdepth 1 and twelve_bit 1, color_description_present_flag 0, color_range 0,
+    // subsampling_x 0 (so no subsampling_y: 4:4:4), separate_uv_delta_q 1 and
+    // film_grain_params_present 0, then only the trailing one bit
+    sequenceHeader12Bit444: hex('0a0a400000f99bfff1085585'),
+    // The same for s=128x64 and -pix_fmt yuv422p12le: subsampling_x 1 and subsampling_y 0 (4:2:2),
+    // separate_uv_delta_q 1 and film_grain_params_present 0, then only the trailing one bit
+    sequenceHeader12Bit422: hex('0a0a400000f997ffe210ab15'),
+    // The same as the 4:4:4 one with `--range full --primaries BT709 --transfer SRGB --matrix
+    // Identity`: color_description_present_flag 1 with color_primaries 1 (CP_BT_709),
+    // transfer_characteristics 13 (TC_SRGB) and matrix_coefficients 0 (MC_IDENTITY), for which
+    // neither color_range nor the subsampling is coded (full range 4:4:4), then
+    // separate_uv_delta_q 1 and film_grain_params_present 0, then 3 trailing bits
+    sequenceHeader12BitSrgb: hex('0a0d400000f99bfff10855a021a014'),
+    // aomenc (libaom 3.14.1) `--limit=1 --lag-in-frames=0 --cpu-used=8 --obu --profile=1
+    // --color-primaries=bt709 --transfer-characteristics=srgb --matrix-coefficients=identity` for
+    // s=64x64 and -pix_fmt yuv444p: the sequence header of profile 1 (8-bit 4:4:4, which codes no
+    // mono_chrome) with the same sRGB color description, then separate_uv_delta_q 0 and
+    // film_grain_params_present 0, then 8 trailing bits
+    sequenceHeaderSrgb: hex('0a0938157ffdb404340080'),
     // Body of the AV1 video descriptor in the PMT: the first 4 bytes of an
     // AV1CodecConfigurationRecord (version 1, profile 0, level 0, 8-bit 4:2:0)
     configRecord: Uint8Array.of(0x81, 0x00, 0x0c, 0x00)

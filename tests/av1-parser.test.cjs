@@ -156,3 +156,43 @@ test('AV1OBUParser parses a key frame of libaom with frame ids', () => {
     assert.deepEqual({ ...frameDetails.codec_size }, { width: 32, height: 32 });
     assert.deepEqual({ ...frameDetails.present_size }, { width: 64, height: 64 });
 });
+
+// Real encoder output of rav1e and aomenc with other chroma formats than 4:2:0, and with the sRGB
+// color description, see tests/helpers/video.cjs. FFmpeg's trace_headers BSF gives the reference
+// values.
+for (const { label, sequenceHeader, expected } of [
+    {
+        // Used to throw "ExpGolomb: _fillCurrentWord() but no bytes available": subsampling_x and
+        // subsampling_y were shadowed, so the parser kept 4:2:0 and read 2 bits of
+        // chroma_sample_position, past the one trailing bit (with more of them, it reported 4:2:0)
+        label: 'a 12-bit 4:4:4 sequence header',
+        sequenceHeader: av1.sequenceHeader12Bit444,
+        expected: { chroma_format: 3, chroma_format_string: '4:4:4' }
+    },
+    {
+        // The same, with a subsampling_y of 0 after subsampling_x
+        label: 'a 12-bit 4:2:2 sequence header',
+        sequenceHeader: av1.sequenceHeader12Bit422,
+        expected: { chroma_format: 2, chroma_format_string: '4:2:2' }
+    },
+    {
+        // Used to throw too: the color description was shadowed, so the parser missed the sRGB
+        // branch, and read color_range, subsampling_x and chroma_sample_position, 4 bits that are
+        // not coded, past the 3 trailing bits
+        label: 'a 12-bit sRGB sequence header',
+        sequenceHeader: av1.sequenceHeader12BitSrgb,
+        expected: { chroma_format: 3, chroma_format_string: '4:4:4' }
+    },
+    {
+        // Came out as 4:4:4 only because the parser missed the sRGB branch, which inferred 4:2:0,
+        // and took the profile 1 branch, reading a color_range that is not coded
+        label: 'a profile 1 sRGB sequence header',
+        sequenceHeader: av1.sequenceHeaderSrgb,
+        expected: { chroma_format: 3, chroma_format_string: '4:4:4' }
+    }
+]) {
+    test(`AV1OBUParser parses the chroma format of ${label}`, () => {
+        const details = AV1OBUParser.parseOBUs(sequenceHeader);
+        assert.deepEqual(pick(details, Object.keys(expected)), expected);
+    });
+}
