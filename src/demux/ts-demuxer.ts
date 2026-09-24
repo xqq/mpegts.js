@@ -1897,6 +1897,46 @@ class TSDemuxer extends BaseDemuxer {
                                 `${this.audio_metadata_.low_frequency_effects_channel_on} to ${frame.low_frequency_effects_channel_on}`);
                 return true;
             }
+        } else if (sample.codec === 'ec-3' && this.audio_metadata_.codec === 'ec-3') {
+            const frame = sample.data;
+            if (frame.stream_type === 1) {
+                // A dependent substream carries channels that extend the independent substream before
+                // it, e.g. to 7.1, with an acmod and lfeon of its own. The metadata, like dec3, describe
+                // the independent substream.
+                return false;
+            }
+
+            if (frame.sampling_frequency !== this.audio_metadata_.sampling_frequency) {
+                Log.v(this.TAG, `EAC3: Sampling Frequency changed from ` +
+                                `${this.audio_metadata_.sampling_frequency} to ${frame.sampling_frequency}`);
+                return true;
+            }
+
+            if (frame.bit_stream_identification !== this.audio_metadata_.bit_stream_identification) {
+                Log.v(this.TAG, `EAC3: Bit Stream Identification changed from ` +
+                                `${this.audio_metadata_.bit_stream_identification} to ${frame.bit_stream_identification}`);
+                return true;
+            }
+
+            if (frame.channel_mode !== this.audio_metadata_.channel_mode) {
+                Log.v(this.TAG, `EAC3: Channel Mode changed from ` +
+                                `${this.audio_metadata_.channel_mode} to ${frame.channel_mode}`);
+                return true;
+            }
+
+            if (frame.low_frequency_effects_channel_on !== this.audio_metadata_.low_frequency_effects_channel_on) {
+                Log.v(this.TAG, `EAC3: Low Frequency Effects Channel On changed from ` +
+                                `${this.audio_metadata_.low_frequency_effects_channel_on} to ${frame.low_frequency_effects_channel_on}`);
+                return true;
+            }
+
+            // Not in the sample entry, but in refSampleDuration, from which MP4Remuxer regenerates the
+            // timestamps. The data rate of dec3 is left out: it follows the size of each frame.
+            if (frame.num_blks !== this.audio_metadata_.num_blks) {
+                Log.v(this.TAG, `EAC3: Number of Blocks changed from ` +
+                                `${this.audio_metadata_.num_blks} to ${frame.num_blks}`);
+                return true;
+            }
         } else if (sample.codec === 'opus' && this.audio_metadata_.codec === 'opus') {
             const data = sample.meta;
 
