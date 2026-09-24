@@ -89,9 +89,17 @@ export class AC3Parser {
             const sampling_frequency = [48000, 44100, 32000][sampling_rate_code];
 
             const frame_size_code = data[offset + 4] & 0x3F;
+
+            if (sampling_rate_code === 0x03 || frame_size_code > 37) {
+                // fscod 3 is reserved and frmsizecod ends at 37: not a frame header but e.g. a
+                // syncword found by chance, so resync at the next syncword
+                this.current_syncword_offset_ = this.findNextSyncwordOffset(offset + 1);
+                continue;
+            }
+
             const frame_size = frame_size_code_table[sampling_rate_code][frame_size_code] * 2;
 
-            if (isNaN(frame_size) || offset + frame_size > this.data_.byteLength) {
+            if (offset + frame_size > this.data_.byteLength) {
                 // data not enough for extracting last sample
                 this.eof_flag_ = true;
                 this.has_last_incomplete_data_ = true;
@@ -247,6 +255,12 @@ export class EAC3Parser {
             let num_blocks_code: number | null = null;
             if (sampling_rate_code === 0x03) {
                 const sampling_rate_code2 = gb.readBits(2);
+                if (sampling_rate_code2 === 0x03) {
+                    // fscod2 3 is reserved: not a frame header but e.g. a syncword found by chance,
+                    // so resync at the next syncword
+                    this.current_syncword_offset_ = this.findNextSyncwordOffset(offset + 1);
+                    continue;
+                }
                 sampling_frequency = [24000, 22050, 16000][sampling_rate_code2];
                 num_blocks_code = 3
             } else {
