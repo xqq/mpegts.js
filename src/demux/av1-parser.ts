@@ -321,9 +321,9 @@ class AV1OBUParser {
         let transfer_characteristics = TC_UNSPECIFIED;
         let matrix_coefficients = MC_UNSPECIFIED;
         if (color_description_present_flag) {
-            const color_primaries = gb.readBits(8);
-            const transfer_characteristics = gb.readBits(8);
-            const matrix_coefficients = gb.readBits(8);
+            color_primaries = gb.readBits(8);
+            transfer_characteristics = gb.readBits(8);
+            matrix_coefficients = gb.readBits(8);
         }
         let color_range = 1;
         let subsampling_x = 1
@@ -335,11 +335,10 @@ class AV1OBUParser {
             const chroma_sample_position = 0; /* CSP_UNKNOWN */
             const separate_uv_delta_q = 0
         } else {
-            let color_range = 1;
             if (color_primaries === CP_BT_709 && transfer_characteristics === TC_SRGB && matrix_coefficients === MC_IDENTITY) {
                 color_range = 1;
-                subsampling_x = 1
-                subsampling_y = 1
+                subsampling_x = 0
+                subsampling_y = 0
             } else {
                 color_range = gb.readBits(1);
                 if (seq_profile == 0) {
@@ -350,11 +349,11 @@ class AV1OBUParser {
                     subsampling_y = 0
                 } else {
                     if (bitDepth == 12) {
-                        const subsampling_x = gb.readBits(1);
+                        subsampling_x = gb.readBits(1);
                         if (subsampling_x) {
-                            const subsampling_y = gb.readBits(1);
+                            subsampling_y = gb.readBits(1);
                         } else {
-                            const subsampling_y = 0;
+                            subsampling_y = 0;
                         }
                     } else {
                         subsampling_x = 1
@@ -364,8 +363,8 @@ class AV1OBUParser {
                 if (subsampling_x && subsampling_y) {
                     const chroma_sample_position = gb.readBits(2)
                 }
-                const separate_uv_delta_q = gb.readBits(1);
             }
+            const separate_uv_delta_q = gb.readBits(1);
         }
         //
         const film_grain_params_present = gb.readBool();
