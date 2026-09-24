@@ -53,12 +53,6 @@ declare class FLVDemuxer {
     };
     _flvSoundRateTable: number[];
     _mpegSamplingRates: number[];
-    _mpegAudioV10SampleRateTable: number[];
-    _mpegAudioV20SampleRateTable: number[];
-    _mpegAudioV25SampleRateTable: number[];
-    _mpegAudioL1BitRateTable: number[];
-    _mpegAudioL2BitRateTable: number[];
-    _mpegAudioL3BitRateTable: number[];
     _videoTrack: {
         type: string;
         id: number;
@@ -123,13 +117,7 @@ declare class FLVDemuxer {
         codec: string;
         originalCodec: string;
     } | undefined;
-    _parseMP3AudioData(arrayBuffer: any, dataOffset: any, dataSize: any, requestHeader: any): Uint8Array<any> | {
-        bitRate: number;
-        samplingRate: number;
-        channelCount: number;
-        codec: string;
-        originalCodec: string;
-    } | undefined;
+    _parseMP3AudioData(arrayBuffer: any, dataOffset: any, dataSize: any, tagTimestamp: any): void;
     _parseOpusAudioPacket(arrayBuffer: any, dataOffset: any, dataSize: any, tagTimestamp: any, packetType: any): void;
     _parseOpusSequenceHeader(arrayBuffer: any, dataOffset: any, dataSize: any): void;
     _parseOpusAudioData(arrayBuffer: any, dataOffset: any, dataSize: any, tagTimestamp: any): void;

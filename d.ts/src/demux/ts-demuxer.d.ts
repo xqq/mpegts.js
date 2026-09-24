@@ -16,12 +16,14 @@ declare class TSDemuxer extends BaseDemuxer {
     private pes_slice_queues_;
     private section_slice_queues_;
     private video_metadata_;
+    private av1_details_;
     private audio_metadata_;
     private last_pcr_;
     private last_pcr_base_;
     private timestamp_offset_;
     private audio_last_sample_pts_;
     private aac_last_incomplete_data_;
+    private mp3_last_incomplete_data_;
     private has_video_;
     private has_audio_;
     private video_init_segment_dispatched_;

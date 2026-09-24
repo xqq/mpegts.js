@@ -12,6 +12,7 @@ declare class MP4Remuxer {
     _videoNextDts: number | undefined;
     _audioStashedLastSample: any;
     _videoStashedLastSample: any;
+    _videoLastSampleDuration: number;
     _audioMeta: any;
     _videoMeta: any;
     _audioSegmentInfoList: MediaSegmentInfoList;

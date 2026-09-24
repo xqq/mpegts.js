@@ -14,7 +14,7 @@ export declare class AC3Parser {
     private data_;
     private current_syncword_offset_;
     private eof_flag_;
-    private has_last_incomplete_data;
+    private has_last_incomplete_data_;
     constructor(data: Uint8Array);
     private findNextSyncwordOffset;
     readNextAC3Frame(): AC3Frame | null;
@@ -34,6 +34,7 @@ export declare class AC3Config {
     constructor(frame: AC3Frame);
 }
 export interface EAC3Frame {
+    stream_type: number;
     sampling_frequency: number;
     sampling_rate_code: number;
     bit_stream_identification: number;
@@ -49,7 +50,7 @@ export declare class EAC3Parser {
     private data_;
     private current_syncword_offset_;
     private eof_flag_;
-    private has_last_incomplete_data;
+    private has_last_incomplete_data_;
     constructor(data: Uint8Array);
     private findNextSyncwordOffset;
     readNextEAC3Frame(): EAC3Frame | null;

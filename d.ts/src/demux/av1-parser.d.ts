@@ -11,9 +11,10 @@ type SequenceHeaderDetails = {
     delta_frame_id_length_minus_2?: number;
     reduced_still_picture_header: boolean;
     decoder_model_info_present_flag: boolean;
-    operating_points_cnt_minus_1?: number;
+    operating_points_cnt_minus_1: number;
     operating_points: OperatingPoint[];
     buffer_removal_time_length_minus_1: number;
+    frame_presentation_time_length_minus_1: number;
     equal_picture_interval: boolean;
     seq_force_screen_content_tools: number;
     seq_force_integer_mv: number;

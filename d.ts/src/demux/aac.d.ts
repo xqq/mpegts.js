@@ -17,9 +17,10 @@ export declare class AACADTSParser {
     private data_;
     private current_syncword_offset_;
     private eof_flag_;
-    private has_last_incomplete_data;
+    private has_last_incomplete_data_;
     constructor(data: Uint8Array);
     private findNextSyncwordOffset;
+    private mayBeginSyncword;
     readNextAACFrame(): AACFrame | null;
     hasIncompleteData(): boolean;
     getIncompleteData(): Uint8Array | null;
@@ -29,7 +30,7 @@ export declare class AACLOASParser {
     private data_;
     private current_syncword_offset_;
     private eof_flag_;
-    private has_last_incomplete_data;
+    private has_last_incomplete_data_;
     constructor(data: Uint8Array);
     private findNextSyncwordOffset;
     private getLATMValue;
