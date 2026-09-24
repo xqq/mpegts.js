@@ -1623,7 +1623,7 @@ class TSDemuxer extends BaseDemuxer {
 
         if (this.audio_metadata_.codec === 'ec-3') {
             if (pts == undefined && this.audio_last_sample_pts_ != undefined) {
-                ref_sample_duration = (256 * this.audio_metadata_.num_blks) / this.audio_metadata_.sampling_frequency * 1000; // TODO: AEC3 BLK
+                ref_sample_duration = (256 * this.audio_metadata_.num_blks) / this.audio_metadata_.sampling_frequency * 1000;
                 base_pts_ms = this.audio_last_sample_pts_ + ref_sample_duration;
             } else if (pts == undefined){
                 Log.w(this.TAG, `EAC3: Unknown pts`);
@@ -1637,7 +1637,7 @@ class TSDemuxer extends BaseDemuxer {
         let last_sample_pts_ms: number | undefined;
 
         while ((eac3_frame = adts_parser.readNextEAC3Frame()) != null) {
-            ref_sample_duration = 1536 / eac3_frame.sampling_frequency * 1000; // TODO: EAC3 BLK
+            ref_sample_duration = (256 * eac3_frame.num_blks) / eac3_frame.sampling_frequency * 1000;
             const audio_sample = {
                 codec: 'ec-3',
                 data: eac3_frame
@@ -2009,7 +2009,7 @@ class TSDemuxer extends BaseDemuxer {
             meta.codec = ec3_config.codec_mimetype;
             meta.originalCodec = ec3_config.original_codec_mimetype;
             meta.config = ec3_config.config;
-            meta.refSampleDuration = (256 * ec3_config.num_blks) / meta.audioSampleRate * meta.timescale; // TODO: blk size
+            meta.refSampleDuration = (256 * ec3_config.num_blks) / meta.audioSampleRate * meta.timescale;
         } else if (this.audio_metadata_.codec === 'opus') {
             meta.audioSampleRate = this.audio_metadata_.sample_rate;
             meta.channelCount = this.audio_metadata_.channel_count;
