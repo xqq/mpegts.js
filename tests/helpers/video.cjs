@@ -101,6 +101,12 @@ const av1 = {
     // allow_screen_content_tools 0, frame_size_override_flag 0, order_hint 0,
     // render_and_frame_size_different 1, render_width_minus_1 47, render_height_minus_1 35
     renderSizeKeyFrameHeader: hex('1a061002005e0046'),
+    // The same with frame_size_override_flag 1, frame_width_minus_1 47, frame_height_minus_1 31
+    // and render_and_frame_size_different 0: a key frame of 48x32 without a new sequence header
+    frameSizeKeyFrameHeader: hex('1a041202f7c0'),
+    // -i color=black:s=128x96:r=30000/1001: the sequence header and the key frame
+    sequenceHeader128x96: hex('0a0b0200000559bfdf1abe6010'),
+    keyFrame128x96: hex('321210008e80820810404000020095d001f5f066'),
     // Body of the AV1 video descriptor in the PMT: the first 4 bytes of an
     // AV1CodecConfigurationRecord (version 1, profile 0, level 0, 8-bit 4:2:0)
     configRecord: Uint8Array.of(0x81, 0x00, 0x0c, 0x00)
