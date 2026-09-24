@@ -52,6 +52,19 @@ test('TS AV1 skips the temporal delimiter before the first sequence header', () 
     ]);
 });
 
+test('TS AV1 dispatches the size of a key frame of testsrc2', () => {
+    const events = [];
+    const demuxer = createDemuxer(events);
+
+    // Used to throw an InvalidArgumentException in the frame header parser
+    demuxer.parseAV1Payload(av1InTs(av1.temporalDelimiter, av1.sequenceHeader, av1.testsrc2KeyFrame), 90000, 90000, 0, 1);
+
+    assert.deepEqual(events, [METADATA]);
+    assert.deepEqual(queuedSamples(demuxer), [
+        { obus: [av1.sequenceHeader, av1.testsrc2KeyFrame].map(hex), isKeyframe: true }
+    ]);
+});
+
 test('TS AV1 queues no sample before the first key frame when joining a stream between key frames', () => {
     const events = [];
     const demuxer = createDemuxer(events);

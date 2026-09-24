@@ -91,6 +91,16 @@ const av1 = {
     hiddenInterFrame: hex('32112802004000001d8c00000200000c009c10'),
     interFrame: hex('32113002000000493b1800000200000c009b70'),
     showExistingFrame: hex('1a0198'),
+    // -i testsrc2=s=64x64:r=30000/1001 -g 16 -svtav1-params irefresh-type=1 (same sequence
+    // header): the key frame, and the hidden intra-only frame (open GOP) of the next temporal
+    // unit, cut after 16 bytes (obu_size adjusted), as the parsers stop within the frame header
+    testsrc2KeyFrame: hex('32101400a9e090d91e892935385b2da4fb02'),
+    testsrc2IntraOnlyFrame: hex('321049080129c824d926385b9eab6df6e05c'),
+    // Hand-built OBU_FRAME_HEADER of a shown key frame up to render_size(), then zero padding:
+    // show_existing_frame 0, frame_type 0 (KEY_FRAME), show_frame 1, disable_cdf_update 0,
+    // allow_screen_content_tools 0, frame_size_override_flag 0, order_hint 0,
+    // render_and_frame_size_different 1, render_width_minus_1 47, render_height_minus_1 35
+    renderSizeKeyFrameHeader: hex('1a061002005e0046'),
     // Body of the AV1 video descriptor in the PMT: the first 4 bytes of an
     // AV1CodecConfigurationRecord (version 1, profile 0, level 0, 8-bit 4:2:0)
     configRecord: Uint8Array.of(0x81, 0x00, 0x0c, 0x00)
