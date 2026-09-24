@@ -53,7 +53,8 @@ const h264 = {
 };
 
 const h265 = {
-    // -c:v libx265 -f hevc (4.3): the VPS and PPS are the same for every SPS below
+    // -c:v libx265 -f hevc (4.3): the VPS and PPS are the same for every SPS below,
+    // except that temporal sub-layers come with a VPS of their own
     vps: hex('40010c01ffff01600000030090000003000003001e959809'),
     // VUI timing 1/25 s per tick
     sps25: hex('42010101600000030090000003000003001ea020810596566924caf0168080000003008000000c84'),
@@ -61,6 +62,12 @@ const h265 = {
     sps30000: hex('42010101600000030090000003000003001ea020810596566924caf01680800001f480003a9804'),
     // -x265-params vui-timing-info=0: VUI without timing info
     spsNoTiming: hex('42010101600000030090000003000003001ea020810596566924caf0168010'),
+    // s=128x64
+    sps128x64: hex('42010101600000030090000003000003001ea010204165959a4932bc05a02000000300200000030321'),
+    // s=128x64 -x265-params temporal-layers=2: two temporal sub-layers, so
+    // max_sub_layers_minus1 1 and temporal_id_nesting_flag 0 in the VPS and the SPS
+    vpsTemporalLayers: hex('40010c02ffff01600000030090000003000003001e00009598acc048'),
+    spsTemporalLayers: hex('42010201600000030090000003000003001e0000a0102041659598acd24995e02d010000030001000003001908'),
     pps: hex('4401c172b42240'),
     idr: hex('2601af00'),    // IDR_W_RADL
     trail: hex('0201d000')   // TRAIL_R
