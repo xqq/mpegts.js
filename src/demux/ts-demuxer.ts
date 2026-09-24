@@ -141,6 +141,10 @@ class TSDemuxer extends BaseDemuxer {
         details: undefined
     };
 
+    // State of AV1OBUParser (sequence header, last frame header), which it updates in place:
+    // video_metadata_.details gets a copy at each init segment, to compare the next key frames with
+    private av1_details_: any = undefined;
+
     private audio_metadata_: AACAudioMetadata | AC3AudioMetadata | EAC3AudioMetadata | OpusAudioMetadata | MP3AudioMetadata | UnsetAudioMetadata = {
         codec: undefined,
         audio_object_type: undefined,
@@ -181,6 +185,7 @@ class TSDemuxer extends BaseDemuxer {
         this.section_slice_queues_ = null!;
 
         this.video_metadata_ = null!;
+        this.av1_details_ = null;
         this.audio_metadata_ = null!;
         this.aac_last_incomplete_data_ = null;
         this.mp3_last_incomplete_data_ = null;
@@ -968,21 +973,22 @@ class TSDemuxer extends BaseDemuxer {
         let keyframe = false;
 
         while ((payload = av1_in_ts_parser.readNextOBUPayload()) != null) {
-            if (this.video_metadata_.details) {
+            if (this.av1_details_) {
                 // Only frame headers set keyframe, and not for show_existing_frame: clear the flag of
                 // the last frame, or OBUs like the temporal delimiter of the next PES would keep it
-                this.video_metadata_.details.keyframe = undefined;
+                this.av1_details_.keyframe = undefined;
             }
-            const details = AV1OBUParser.parseOBUs(payload, this.video_metadata_.details);
+            const details = AV1OBUParser.parseOBUs(payload, this.av1_details_);
             if (details == undefined) {
                 // Nothing can be parsed before the first sequence header, e.g. the temporal delimiter
                 // before it, or the frames of a stream joined between key frames: skip these OBUs
                 continue;
             }
+            this.av1_details_ = details;
 
             if (details.keyframe === true) {
                 if (!this.video_init_segment_dispatched_) {
-                    this.video_metadata_.details = details;
+                    this.video_metadata_.details = { ... details };
                     this.dispatchVideoInitSegment();
                 } else if (this.detectVideoMetadataChange(null, details) === true) {
                     Log.v(this.TAG, `AV1: Critical av1 metadata has been changed, attempt to re-generate InitSegment`);
@@ -990,12 +996,11 @@ class TSDemuxer extends BaseDemuxer {
                     // flush stashed frames before changing codec metadata
                     this.dispatchVideoMediaSegment(true);
 
-                    this.video_metadata_.details = details;
+                    this.video_metadata_.details = { ... details };
                     // notify new codec metadata (maybe changed)
                     this.dispatchVideoInitSegment();
                 }
             }
-            this.video_metadata_.details = details;
 
             keyframe ||= details.keyframe === true;
             units.push({ data: payload });
