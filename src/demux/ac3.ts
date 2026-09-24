@@ -86,7 +86,7 @@ export class AC3Parser {
             const offset = syncword_offset;
 
             const sampling_rate_code = data[offset + 4] >> 6;
-            const sampling_frequency = [48000, 44200, 33000][sampling_rate_code];
+            const sampling_frequency = [48000, 44100, 32000][sampling_rate_code];
 
             const frame_size_code = data[offset + 4] & 0x3F;
             const frame_size = frame_size_code_table[sampling_rate_code][frame_size_code] * 2;
@@ -247,7 +247,7 @@ export class EAC3Parser {
             let num_blocks_code: number | null = null;
             if (sampling_rate_code === 0x03) {
                 sampling_rate_code = gb.readBits(2);
-                sampling_frequency = [24000, 22060, 16000][sampling_rate_code];
+                sampling_frequency = [24000, 22050, 16000][sampling_rate_code];
                 num_blocks_code = 3
             } else {
                 sampling_frequency = [48000, 44100, 32000][sampling_rate_code];
