@@ -3,7 +3,7 @@ const test = require('node:test');
 const loadSource = require('./helpers/load-source.cjs');
 const { av1InTs, av1 } = require('./helpers/video.cjs');
 
-const hex = (bytes) => Buffer.from(bytes).toString('hex');
+const toHex = (bytes) => Buffer.from(bytes).toString('hex');
 
 const METADATA = { type: 'video', codec: 'av01.0.00M.08', width: 64, height: 64 };
 
@@ -41,7 +41,7 @@ function temporalUnitFeeder(demuxer) {
 // realm: the demuxer runs in its own vm context
 function samplesOf(track) {
     return Array.from(track.samples, sample => ({
-        obus: Array.from(sample.units, unit => hex(unit.data)),
+        obus: Array.from(sample.units, unit => toHex(unit.data)),
         isKeyframe: sample.isKeyframe
     }));
 }
@@ -60,7 +60,7 @@ test('TS AV1 skips the temporal delimiter before the first sequence header', () 
     assert.deepEqual(events, [METADATA]);
     // The key frame sample keeps its sequence header, as an AV1 sync sample requires
     assert.deepEqual(queuedSamples(demuxer), [
-        { obus: [av1.sequenceHeader, av1.keyFrame].map(hex), isKeyframe: true }
+        { obus: [av1.sequenceHeader, av1.keyFrame].map(toHex), isKeyframe: true }
     ]);
 });
 
@@ -73,7 +73,7 @@ test('TS AV1 dispatches the size of a key frame of testsrc2', () => {
 
     assert.deepEqual(events, [METADATA]);
     assert.deepEqual(queuedSamples(demuxer), [
-        { obus: [av1.sequenceHeader, av1.testsrc2KeyFrame].map(hex), isKeyframe: true }
+        { obus: [av1.sequenceHeader, av1.testsrc2KeyFrame].map(toHex), isKeyframe: true }
     ]);
 });
 
@@ -96,8 +96,8 @@ test('TS AV1 queues no sample before the first key frame when joining a stream b
 
     assert.deepEqual(events, [METADATA]);
     assert.deepEqual(queuedSamples(demuxer), [
-        { obus: [av1.temporalDelimiter, av1.sequenceHeader, av1.keyFrame].map(hex), isKeyframe: true },
-        { obus: [av1.temporalDelimiter, av1.interFrame].map(hex), isKeyframe: false }
+        { obus: [av1.temporalDelimiter, av1.sequenceHeader, av1.keyFrame].map(toHex), isKeyframe: true },
+        { obus: [av1.temporalDelimiter, av1.interFrame].map(toHex), isKeyframe: false }
     ]);
 });
 
@@ -171,14 +171,14 @@ for (const { label, obus, metadata } of [
             {
                 type: 'flush',
                 samples: [
-                    { obus: [av1.sequenceHeader, av1.keyFrame].map(hex), isKeyframe: true },
-                    { obus: [av1.temporalDelimiter, av1.interFrame].map(hex), isKeyframe: false }
+                    { obus: [av1.sequenceHeader, av1.keyFrame].map(toHex), isKeyframe: true },
+                    { obus: [av1.temporalDelimiter, av1.interFrame].map(toHex), isKeyframe: false }
                 ]
             },
             metadata
         ]);
         assert.deepEqual(queuedSamples(demuxer), [
-            { obus: [av1.temporalDelimiter, ...obus].map(hex), isKeyframe: true }
+            { obus: [av1.temporalDelimiter, ...obus].map(toHex), isKeyframe: true }
         ]);
     });
 }
