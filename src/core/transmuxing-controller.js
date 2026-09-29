@@ -305,6 +305,9 @@ class TransmuxingController {
         this._demuxer.onMetaDataArrived = this._onMetaDataArrived.bind(this);
         this._demuxer.onScriptDataArrived = this._onScriptDataArrived.bind(this);
         this._demuxer.onSeiArrived = this._onSEI.bind(this);
+        this._demuxer.onG711AudioData = (pcmaData, dts, channelCount) => {
+            this._emitter.emit(TransmuxingEvents.G711_AUDIO_DATA, pcmaData, dts, channelCount);
+        };
 
         this._remuxer.bindDataSource(this._demuxer
                         .bindDataSource(this._ioctl

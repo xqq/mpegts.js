@@ -14,6 +14,10 @@ mpegts.js works by transmuxing MPEG2-TS stream into ISO BMFF (Fragmented MP4) se
 [Media Source Extensions]: https://w3c.github.io/media-source/
 
 ## News
+- **v1.8.2** (@brid9e fork)
+
+    Added support for **G.711 PCMA** (FLV audio codec index 7) commonly used in surveillance cameras and IP cameras. PCMA frames are decoded via the Web Audio API and played in parallel with the MSE video pipeline, since G.711 is not supported by Media Source Extensions.
+
 - **v1.8.0**
 
     Support working on **iOS Safari** with iOS 17.1+ through Apple's [ManagedMediaSource API](https://github.com/w3c/media-source/issues/320)
@@ -51,6 +55,7 @@ mpegts.js works by transmuxing MPEG2-TS stream into ISO BMFF (Fragmented MP4) se
 ## Features
 - Playback for MPEG2-TS stream with H.264/H.265 + AAC codec transported in http(s) or WebSocket
 - Playback for FLV stream with H.264/H.265 + AAC codec transported in http(s) or WebSocket
+- **G.711 PCMA audio support for FLV streams** (codec index 7), decoded via Web Audio API — common in surveillance/IP cameras
 - Extremely low latency of less than 1 second in the best case
 - Playback for `.m2ts` file like BDAV/BDMV with 192 bytes TS packet, or 204 bytes TS packet
 - Support handling dynamic codec parameters change (e.g. video resolution change)

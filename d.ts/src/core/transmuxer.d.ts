@@ -39,6 +39,7 @@ declare class Transmuxer {
     _onIOError(type: any, info: any): void;
     _onDemuxError(type: any, info: any): void;
     _onRecommendSeekpoint(milliseconds: any): void;
+    _onG711AudioData(pcmaData: any, dts: any, channelCount: any): void;
     _onLoggingConfigChanged(config: any): void;
     _onWorkerMessage(e: any): void;
 }
