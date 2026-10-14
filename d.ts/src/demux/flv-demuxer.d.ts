@@ -67,6 +67,7 @@ declare class FLVDemuxer {
         samples: never[];
         length: number;
     };
+    _g711Transcoder: G711Transcoder | null;
     _littleEndian: boolean;
     destroy(): void;
     bindDataSource(loader: any): this;
@@ -91,6 +92,8 @@ declare class FLVDemuxer {
     set overridedHasAudio(hasAudio: any);
     set overridedHasVideo(hasVideo: any);
     resetMediaInfo(): void;
+    resetAudio(): void;
+    flushAudio(): void;
     _isInitialMetadataDispatched(): boolean;
     parseChunks(chunk: any, byteStart: any): number;
     _parseScriptData(arrayBuffer: any, dataOffset: any, dataSize: any): void;
@@ -118,6 +121,8 @@ declare class FLVDemuxer {
         originalCodec: string;
     } | undefined;
     _parseMP3AudioData(arrayBuffer: any, dataOffset: any, dataSize: any, tagTimestamp: any): void;
+    _parseG711AudioData(arrayBuffer: any, dataOffset: any, dataSize: any, tagTimestamp: any, codec: any, channels: any): void;
+    _appendMP3Frame(frame: any, frameDts: any): void;
     _parseOpusAudioPacket(arrayBuffer: any, dataOffset: any, dataSize: any, tagTimestamp: any, packetType: any): void;
     _parseOpusSequenceHeader(arrayBuffer: any, dataOffset: any, dataSize: any): void;
     _parseOpusAudioData(arrayBuffer: any, dataOffset: any, dataSize: any, tagTimestamp: any): void;
@@ -137,3 +142,4 @@ declare class FLVDemuxer {
     _parseAV1VideoData(arrayBuffer: any, dataOffset: any, dataSize: any, tagTimestamp: any, tagPosition: any, frameType: any, cts: any): void;
 }
 import MediaInfo from '../core/media-info.js';
+import G711Transcoder from './g711-transcoder';
