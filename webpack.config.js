@@ -44,6 +44,7 @@ module.exports = {
     },
 
     plugins: [
+        new webpack.BannerPlugin('Includes @breezystack/lamejs 1.2.7 (LGPL-3.0), based on LAME/lamejs. See THIRD_PARTY_NOTICES.md for source and license information.'),
         new webpack.DefinePlugin({
           __VERSION__: JSON.stringify(packagejson.version)
         })
