@@ -315,10 +315,22 @@ class MSEController {
                 continue;
             }
 
+            // Worker detachment can precede the MediaSource readyState change.
+            let buffered;
+            try {
+                buffered = sb.buffered;
+            } catch (error) {
+                if (error && error.name === 'InvalidStateError') {
+                    this._pendingRemoveRanges[type].length = 0;
+                    continue;
+                }
+                throw error;
+            }
+
             // record ranges to be remove from SourceBuffer
-            for (let i = 0; i < sb.buffered.length; i++) {
-                const start = sb.buffered.start(i);
-                const end = sb.buffered.end(i);
+            for (let i = 0; i < buffered.length; i++) {
+                const start = buffered.start(i);
+                const end = buffered.end(i);
                 this._pendingRemoveRanges[type].push({start, end});
             }
 
