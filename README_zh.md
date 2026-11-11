@@ -50,6 +50,7 @@ mpegts.js 通过在 JavaScript 中渐进化解析 MPEG2-TS 流并实时转封装
 ## Features
 - 回放 http(s) 或 WebSocket 上承载的 H.264/H.265 + AAC 编码的 MPEG2-TS 流
 - 回放 http(s) 或 WebSocket 上承载的 H.264/H.265 + AAC 编码的 FLV 流
+- 支持 FLV 中的 G.711 A-law（PCMA）和 mu-law（PCMU）音频，自动转码为 MP3 后播放
 - 超低延迟，最佳情况延迟可低达 1 秒以内
 - 回放 TS packet 为 192 字节的 `.m2ts` 文件（BDAV/BDMV）或 204 字节的 TS 流
 - 支持动态编码参数切换，如视频分辨率动态变化
@@ -117,6 +118,8 @@ npm run build               # packaged & minimized js will be emitted in dist fo
 - 超低开销并且由你的浏览器硬件加速
 
 ## FLV playback limitations
+- G.711 音频（FLV 编码编号 7 和 8）按 8 kHz 单声道／双声道解码为 PCM，再转码为 MP3 并进入现有 MSE 音频管线。这会增加编码缓冲、CPU 开销和有损压缩，要求浏览器支持通过 MSE 播放 MP3；`hasAudio: false` 会跳过转码。不支持 MPEG-TS 中的 G.711。
+- MP3 编码器使用 LGPL-3.0 许可的 `@breezystack/lamejs`，源码和许可证说明见 [第三方声明](THIRD_PARTY_NOTICES.md)。
 - MP3 编码在 IE11 和旧版 Edge 上不受支持
 - HTTP FLV 直播不支持部分旧浏览器，参阅 [livestream.md](docs/livestream.md)
 

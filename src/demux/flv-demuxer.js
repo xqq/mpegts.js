@@ -29,6 +29,7 @@ import AV1OBUParser from './av1-parser.ts';
 import ExpGolomb from './exp-golomb.js';
 import { parseSEI } from './sei';
 import { MP3FrameParser } from './mp3';
+import G711Transcoder from './g711-transcoder';
 
 function Swap16(src) {
     return (((src >>> 8) & 0xFF) |
@@ -106,6 +107,7 @@ class FLVDemuxer {
 
         this._videoTrack = {type: 'video', id: 1, sequenceNumber: 0, samples: [], length: 0};
         this._audioTrack = {type: 'audio', id: 2, sequenceNumber: 0, samples: [], length: 0};
+        this._g711Transcoder = null;
 
         this._littleEndian = (function () {
             const buf = new ArrayBuffer(2);
@@ -115,6 +117,7 @@ class FLVDemuxer {
     }
 
     destroy() {
+        this.resetAudio();
         this._mediaInfo = null;
         this._metadata = null;
         this._audioMetadata = null;
@@ -261,7 +264,32 @@ class FLVDemuxer {
     }
 
     resetMediaInfo() {
+        this.resetAudio();
         this._mediaInfo = new MediaInfo();
+    }
+
+    resetAudio() {
+        if (this._g711Transcoder) {
+            this._g711Transcoder.destroy();
+            this._g711Transcoder = null;
+            // Seek/discard must not carry old encoder samples into a new timeline.
+            this._audioTrack.samples = [];
+            this._audioTrack.length = 0;
+        }
+    }
+
+    flushAudio() {
+        if (!this._g711Transcoder) {
+            return;
+        }
+        const frames = this._g711Transcoder.flush();
+        this._g711Transcoder = null;
+        for (const frame of frames) {
+            this._appendMP3Frame(frame, frame.dts);
+        }
+        if (this._isInitialMetadataDispatched() && (this._audioTrack.length || this._videoTrack.length)) {
+            this._onDataAvailable(this._audioTrack, this._videoTrack);
+        }
     }
 
     _isInitialMetadataDispatched() {
@@ -529,7 +557,7 @@ class FLVDemuxer {
         }
         // Legacy FLV
 
-        if (soundFormat !== 2 && soundFormat !== 3 && soundFormat !== 10) {  // PCM or MP3 or AAC
+        if (soundFormat !== 2 && soundFormat !== 3 && soundFormat !== 7 && soundFormat !== 8 && soundFormat !== 10) {  // PCM, MP3, G.711 or AAC
             this._onError(DemuxErrors.CODEC_UNSUPPORTED, 'Flv: Unsupported audio codec idx: ' + soundFormat);
             return;
         }
@@ -626,6 +654,8 @@ class FLVDemuxer {
             }
         } else if (soundFormat === 2) {  // MP3
             this._parseMP3AudioData(arrayBuffer, dataOffset + 1, dataSize - 1, tagTimestamp);
+        } else if (soundFormat === 7 || soundFormat === 8) {  // G.711 A-law / mu-law
+            this._parseG711AudioData(arrayBuffer, dataOffset + 1, dataSize - 1, tagTimestamp, soundFormat, soundType === 0 ? 1 : 2);
         } else if (soundFormat === 3) {
             if (!meta.codec) {
                 meta.audioSampleRate = soundRate;
@@ -782,50 +812,13 @@ class FLVDemuxer {
     }
 
     _parseMP3AudioData(arrayBuffer, dataOffset, dataSize, tagTimestamp) {
-        const meta = this._audioMetadata;
-        const track = this._audioTrack;
-
         const parser = new MP3FrameParser(new Uint8Array(arrayBuffer, dataOffset, dataSize));
         let frame = null;
         // The tag timestamp belongs to the first frame, if a tag carries several frames
         let frameDts = this._timestampBase + tagTimestamp;
 
         while ((frame = parser.readNextMP3Frame()) != null) {
-            if (!meta.codec) {
-                // We need metadata for mp3 audio track, extract info from the first frame header
-                meta.audioSampleRate = frame.sample_rate;
-                meta.channelCount = frame.channel_count;
-                meta.codec = 'mp3';
-                meta.originalCodec = 'mp3';
-                // An MPEG audio frame carries 384, 576 or 1152 PCM samples, depending on its version and layer
-                meta.refSampleDuration = frame.samples_per_frame / meta.audioSampleRate * meta.timescale;
-                Log.v(this.TAG, 'Parsed MPEG Audio Frame Header');
-
-                this._audioInitialMetadataDispatched = true;
-                this._onTrackMetadata('audio', meta);
-
-                const mi = this._mediaInfo;
-                mi.audioCodec = meta.codec;
-                mi.audioSampleRate = meta.audioSampleRate;
-                mi.audioChannelCount = meta.channelCount;
-                mi.audioDataRate = frame.bit_rate;
-                if (mi.hasVideo) {
-                    if (mi.videoCodec != null) {
-                        mi.mimeType = 'video/x-flv; codecs="' + mi.videoCodec + ',' + mi.audioCodec + '"';
-                    }
-                } else {
-                    mi.mimeType = 'video/x-flv; codecs="' + mi.audioCodec + '"';
-                }
-                if (mi.isComplete()) {
-                    this._onMediaInfo(mi);
-                }
-            }
-
-            const dts = Math.floor(frameDts);
-            const mp3Sample = {unit: frame.data, length: frame.data.byteLength, dts: dts, pts: dts};
-            track.samples.push(mp3Sample);
-            track.length += frame.data.byteLength;
-
+            this._appendMP3Frame(frame, frameDts);
             frameDts += frame.samples_per_frame / frame.sample_rate * this._timescale;
         }
 
@@ -833,6 +826,68 @@ class FLVDemuxer {
             // An FLV audio tag should carry whole frames only
             Log.w(this.TAG, 'Flv: Dropped an incomplete MP3 frame at the end of audio packet');
         }
+    }
+
+    _parseG711AudioData(arrayBuffer, dataOffset, dataSize, tagTimestamp, codec, channels) {
+        if (dataSize % channels !== 0 || !Number.isFinite(tagTimestamp)) {
+            this._onError(DemuxErrors.FORMAT_ERROR, 'Flv: Invalid G.711 timestamp or interleaved audio payload');
+            return;
+        }
+        try {
+            if (!this._g711Transcoder || this._g711Transcoder.codec !== codec || this._g711Transcoder.channelCount !== channels) {
+                this.flushAudio();
+                this._g711Transcoder = new G711Transcoder(codec, channels);
+            }
+            const frames = this._g711Transcoder.transcode(
+                new Uint8Array(arrayBuffer, dataOffset, dataSize), this._timestampBase + tagTimestamp
+            );
+            for (const frame of frames) {
+                this._appendMP3Frame(frame, frame.dts);
+            }
+        } catch (error) {
+            this._onError(DemuxErrors.FORMAT_ERROR, 'Flv: G.711 to MP3 encoding failed: ' + error.message);
+        }
+    }
+
+    _appendMP3Frame(frame, frameDts) {
+        const meta = this._audioMetadata;
+        const track = this._audioTrack;
+        if (!meta.codec || meta.codec !== 'mp3' || meta.audioSampleRate !== frame.sample_rate || meta.channelCount !== frame.channel_count) {
+            if (this._isInitialMetadataDispatched() && (track.length || this._videoTrack.length)) {
+                this._onDataAvailable(track, this._videoTrack);
+            }
+            // We need metadata for mp3 audio track, extract info from the first frame header
+            meta.audioSampleRate = frame.sample_rate;
+            meta.channelCount = frame.channel_count;
+            meta.codec = 'mp3';
+            meta.originalCodec = 'mp3';
+            // An MPEG audio frame carries 384, 576 or 1152 PCM samples, depending on its version and layer
+            meta.refSampleDuration = frame.samples_per_frame / meta.audioSampleRate * meta.timescale;
+            Log.v(this.TAG, 'Parsed MPEG Audio Frame Header');
+
+            this._audioInitialMetadataDispatched = true;
+            this._onTrackMetadata('audio', meta);
+
+            const mi = this._mediaInfo;
+            mi.audioCodec = meta.codec;
+            mi.audioSampleRate = meta.audioSampleRate;
+            mi.audioChannelCount = meta.channelCount;
+            mi.audioDataRate = frame.bit_rate;
+            if (mi.hasVideo) {
+                if (mi.videoCodec != null) {
+                    mi.mimeType = 'video/x-flv; codecs="' + mi.videoCodec + ',' + mi.audioCodec + '"';
+                }
+            } else {
+                mi.mimeType = 'video/x-flv; codecs="' + mi.audioCodec + '"';
+            }
+            if (mi.isComplete()) {
+                this._onMediaInfo(mi);
+            }
+        }
+        const dts = Math.floor(frameDts);
+        const mp3Sample = {unit: frame.data, length: frame.data.byteLength, dts: dts, pts: dts};
+        track.samples.push(mp3Sample);
+        track.length += frame.data.byteLength;
     }
 
     _parseOpusAudioPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, packetType) {

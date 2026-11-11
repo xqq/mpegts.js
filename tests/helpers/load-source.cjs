@@ -35,6 +35,12 @@ module.exports = function loadSource(globals = {}) {
 
         const localRequire = (specifier) => {
             if (!specifier.startsWith('.')) {
+                if (specifier === '@breezystack/lamejs') {
+                    // Its require entry is an IIFE without CommonJS exports. Compile
+                    // the self-contained ESM entry used by webpack instead; this also
+                    // keeps the tests runnable on Node 20 without require(ESM).
+                    return load(path.join(path.dirname(require.resolve(specifier)), 'lamejs.js'));
+                }
                 return require(specifier);
             }
 
