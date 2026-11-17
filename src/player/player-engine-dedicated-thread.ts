@@ -366,6 +366,9 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
 
         if (msg == 'destroyed' || this._worker_destroying) {
             this._worker_destroying = false;
+            if (typeof (this._worker as any).revokeObjectURL === 'function') {
+                (this._worker as any).revokeObjectURL();
+            }
             this._worker?.terminate();
             this._worker = null!;
             return;

@@ -277,6 +277,9 @@ class Transmuxer {
 
         if (message.msg === 'destroyed' || this._workerDestroying) {
             this._workerDestroying = false;
+            if (typeof this._worker.revokeObjectURL === 'function') {
+                this._worker.revokeObjectURL();
+            }
             this._worker.terminate();
             this._worker = null;
             return;
