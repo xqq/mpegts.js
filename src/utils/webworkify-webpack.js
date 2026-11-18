@@ -214,5 +214,12 @@ module.exports = function (moduleId, options) {
   var worker = new self.Worker(workerUrl)
   worker.objectURL = workerUrl
 
+  worker.revokeObjectURL = function () {
+    if (worker.objectURL) {
+      URL.revokeObjectURL(worker.objectURL)
+      worker.objectURL = null
+    }
+  }
+
   return worker
 }
