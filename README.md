@@ -51,6 +51,7 @@ mpegts.js works by transmuxing MPEG2-TS stream into ISO BMFF (Fragmented MP4) se
 ## Features
 - Playback for MPEG2-TS stream with H.264/H.265 + AAC codec transported in http(s) or WebSocket
 - Playback for FLV stream with H.264/H.265 + AAC codec transported in http(s) or WebSocket
+- Playback for FLV G.711 A-law (PCMA) and mu-law (PCMU) audio through automatic MP3 transcoding
 - Extremely low latency of less than 1 second in the best case
 - Playback for `.m2ts` file like BDAV/BDMV with 192 bytes TS packet, or 204 bytes TS packet
 - Support handling dynamic codec parameters change (e.g. video resolution change)
@@ -118,6 +119,9 @@ mpegts.js could be tested with [Simple Realtime Server](https://github.com/ossrs
 - Extremely low overhead, and hardware accelerated by your browser!
 
 ## FLV playback limitations
+
+- G.711 audio (FLV codec IDs 7 and 8) is decoded as 8 kHz mono/stereo PCM and encoded to MP3 before entering the existing MSE audio pipeline. This adds encoder buffering, CPU work and lossy compression; it requires browser support for MP3 through MSE. `hasAudio: false` skips transcoding. MPEG-TS G.711 is not supported.
+- MP3 encoding uses `@breezystack/lamejs` under LGPL-3.0. See [third-party notices](THIRD_PARTY_NOTICES.md) for source and license information.
 - MP3 audio codec is currently not working on IE11 / Edge
 - HTTP FLV live stream is not currently working on all browsers, see [livestream.md](docs/livestream.md)
 

@@ -28,6 +28,7 @@
     "node": ">=20.9.0"
   },
   "dependencies": {
+    "@breezystack/lamejs": "1.2.7",
     "es6-promise": "^4.2.8",
     "events": "^3.3.0"
   },

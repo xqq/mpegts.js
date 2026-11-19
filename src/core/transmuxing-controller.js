@@ -281,6 +281,9 @@ class TransmuxingController {
     }
 
     _setupFLVDemuxerRemuxer(probeData) {
+        if (this._demuxer) {
+            this._demuxer.destroy();
+        }
         this._demuxer = new FLVDemuxer(probeData, this._config);
 
         if (!this._remuxer) {
@@ -493,12 +496,17 @@ class TransmuxingController {
     }
 
     _onIOSeeked() {
+        this._demuxer?.resetAudio?.();
         this._remuxer.insertDiscontinuity();
     }
 
     _onIOComplete(extraData) {
         const segmentIndex = extraData;
         const nextSegmentIndex = segmentIndex + 1;
+
+        // G.711 encoders retain PCM and partial MP3 output. Emit their tail before
+        // remuxer flush / LOADING_COMPLETE, on both final EOF and segment changes.
+        this._demuxer?.flushAudio?.();
 
         if (nextSegmentIndex < this._mediaDataSource.segments.length) {
             this._internalAbort();
