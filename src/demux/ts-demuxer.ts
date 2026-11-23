@@ -27,7 +27,7 @@ import SPSParser from './sps-parser';
 import { AACADTSParser, AACFrame, AACLOASParser, AudioSpecificConfig, LOASAACFrame } from './aac';
 import { MPEG4AudioObjectTypes, MPEG4SamplingFrequencyIndex } from './mpeg4-audio';
 import { PESPrivateData, PESPrivateDataDescriptor } from './pes-private-data';
-import { parseSEI } from './sei';
+import { parseSEIMessages, SEIConfig, SEIFilter } from './sei';
 import { readSCTE35, SCTE35Data } from './scte35';
 import { H265AnnexBParser, H265NaluHVC1, H265NaluPayload, H265NaluType, HEVCDecoderConfigurationRecord } from './h265';
 import H265Parser from './h265-parser';
@@ -109,6 +109,7 @@ class TSDemuxer extends BaseDemuxer {
     private readonly TAG: string = 'TSDemuxer';
 
     private config_: any;
+    private sei_filter_: SEIFilter;
     private ts_packet_size_: number;
     private sync_offset_: number;
     private first_parse_: boolean = true;
@@ -177,6 +178,12 @@ class TSDemuxer extends BaseDemuxer {
         this.ts_packet_size_ = probe_data.ts_packet_size;
         this.sync_offset_ = probe_data.sync_offset;
         this.config_ = config;
+        this.sei_filter_ = new SEIFilter(config);
+    }
+
+    // Applies the SEI fields of config (enableSEIParsing, seiUUIDAllowlist) from the next video PES on
+    public updateSEIConfig(config: SEIConfig): void {
+        this.sei_filter_ = new SEIFilter(config);
     }
 
     public destroy() {
@@ -1066,7 +1073,7 @@ class TSDemuxer extends BaseDemuxer {
             } else if (nalu_avc1.type === H264NaluType.kSliceNonIDR && random_access_indicator === 1) {
                 // For open-gop stream, use random_access_indicator to identify keyframe
                 keyframe = true;
-            } else if (nalu_avc1.type === H264NaluType.kSliceSEI) {
+            } else if (nalu_avc1.type === H264NaluType.kSliceSEI && this.sei_filter_.active) {
                 this.parseSEIPayload(nalu_payload.data, pts, 'h264');
             }
 
@@ -1160,7 +1167,8 @@ class TSDemuxer extends BaseDemuxer {
                 }
             } else if (nalu_hvc1.type === H265NaluType.kSliceIDR_W_RADL || nalu_hvc1.type === H265NaluType.kSliceIDR_N_LP || nalu_hvc1.type === H265NaluType.kSliceCRA_NUT) {
                 keyframe = true;
-            } else if (nalu_hvc1.type === H265NaluType.kSliceSEI || nalu_hvc1.type === H265NaluType.kSliceSEISuffix) {
+            } else if ((nalu_hvc1.type === H265NaluType.kSliceSEI || nalu_hvc1.type === H265NaluType.kSliceSEISuffix)
+                    && this.sei_filter_.active) {
                 this.parseSEIPayload(nalu_payload.data, pts, 'h265');
             }
 
@@ -2206,10 +2214,12 @@ class TSDemuxer extends BaseDemuxer {
     }
 
     private parseSEIPayload(data: Uint8Array, pts: number | undefined, codec: 'h264' | 'h265') {
-        const timestamp = pts != undefined ? Math.floor(pts / this.timescale_) : undefined;
-        const sei_data = parseSEI(data, timestamp, codec);
+        if (!this.onSEI) {
+            return;
+        }
 
-        if (sei_data && this.onSEI) {
+        const timestamp = pts != undefined ? Math.floor(pts / this.timescale_) : undefined;
+        for (const sei_data of parseSEIMessages(data, timestamp, codec, this.sei_filter_)) {
             this.onSEI(sei_data);
         }
     }

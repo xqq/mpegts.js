@@ -47,6 +47,10 @@ export const defaultConfig = {
 
     fixAudioTimestampGap: true,
 
+    // Both can be changed during playback with MSEPlayer.updateSEIConfig()
+    enableSEIParsing: true,
+    seiUUIDAllowlist: null,
+
     accurateSeek: false,
     seekType: 'range',  // [range, param, custom]
     seekParamStart: 'bstart',

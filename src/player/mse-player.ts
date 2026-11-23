@@ -22,6 +22,7 @@ import PlayerEngine from './player-engine';
 import PlayerEngineMainThread from './player-engine-main-thread';
 import PlayerEngineDedicatedThread from './player-engine-dedicated-thread';
 import {InvalidArgumentException} from '../utils/exception';
+import { SEIConfig, validateSEIConfig } from '../demux/sei';
 
 class MSEPlayer {
 
@@ -92,6 +93,23 @@ class MSEPlayer {
 
     public pause(): void {
         this._player_engine.pause();
+    }
+
+    // Changes enableSEIParsing / seiUUIDAllowlist during playback; fields left undefined keep their value
+    public updateSEIConfig(update: SEIConfig): void {
+        const error = validateSEIConfig(update);
+        if (error != null) {
+            throw new InvalidArgumentException(error);
+        }
+        // Only the SEI fields are passed on, also to the workers
+        const sei_config: SEIConfig = {};
+        if (update.enableSEIParsing !== undefined) {
+            sei_config.enableSEIParsing = update.enableSEIParsing;
+        }
+        if (update.seiUUIDAllowlist !== undefined) {
+            sei_config.seiUUIDAllowlist = update.seiUUIDAllowlist === null ? null : update.seiUUIDAllowlist.slice();
+        }
+        this._player_engine.updateSEIConfig(sei_config);
     }
 
     public get type(): string {

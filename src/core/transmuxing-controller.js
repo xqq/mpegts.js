@@ -26,6 +26,7 @@ import MP4Remuxer from '../remux/mp4-remuxer.js';
 import DemuxErrors from '../demux/demux-errors.js';
 import IOController from '../io/io-controller.js';
 import TransmuxingEvents from './transmuxing-events';
+import { applySEIConfig } from '../demux/sei';
 import {LoaderStatus, LoaderErrors} from '../io/loader.js';
 
 // Transmuxing (IO, Demuxing, Remuxing) controller, with multipart support
@@ -441,6 +442,14 @@ class TransmuxingController {
         }
 
         this._emitter.emit(TransmuxingEvents.SMPTE2038_METADATA_ARRIVED, smpte2038_metadata);
+    }
+
+    // update: the SEI fields of Config to change; the current demuxer and later ones use the result
+    updateSEIConfig(update) {
+        applySEIConfig(this._config, update);
+        if (this._demuxer && typeof this._demuxer.updateSEIConfig === 'function') {
+            this._demuxer.updateSEIConfig(this._config);
+        }
     }
 
     _onSEI(sei_data) {

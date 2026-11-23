@@ -144,6 +144,14 @@ class Transmuxer {
         }
     }
 
+    updateSEIConfig(update) {
+        if (this._worker) {
+            this._worker.postMessage({cmd: 'update_sei_config', param: update});
+        } else {
+            this._controller.updateSEIConfig(update);
+        }
+    }
+
     _onInitSegment(type, initSegment) {
         // do async invoke
         Promise.resolve().then(() => {

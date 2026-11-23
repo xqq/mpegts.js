@@ -31,13 +31,15 @@ import LoadingController from './loading-controller';
 import StartupStallJumper from './startup-stall-jumper';
 import LiveLatencyChaser from './live-latency-chaser';
 import LiveLatencySynchronizer from './live-latency-synchronizer';
+import { applySEIConfig, SEIConfig } from '../demux/sei';
 import {
     WorkerCommandPacket,
     WorkerCommandPacketInit,
     WorkerCommandPacketLoggingConfig,
     WorkerCommandPacketTimeUpdate,
     WorkerCommandPacketReadyStateChange,
-    WorkerCommandPacketUnbufferedSeek
+    WorkerCommandPacketUnbufferedSeek,
+    WorkerCommandPacketUpdateSEIConfig
 } from './player-engine-worker-cmd-def.js';
 import {
     WorkerMessagePacket,
@@ -286,6 +288,14 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
         } else {
             this._pending_seek_time = seconds;
         }
+    }
+
+    public updateSEIConfig(update: SEIConfig): void {
+        applySEIConfig(this._config, update);
+        this._worker.postMessage({
+            cmd: 'update_sei_config',
+            sei_config: update
+        } as WorkerCommandPacketUpdateSEIConfig);
     }
 
     public get mediaInfo(): MediaInfo {

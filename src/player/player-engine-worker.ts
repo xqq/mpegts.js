@@ -33,7 +33,9 @@ import {
     WorkerCommandPacketUnbufferedSeek,
     WorkerCommandPacketTimeUpdate,
     WorkerCommandPacketReadyStateChange,
+    WorkerCommandPacketUpdateSEIConfig,
 } from './player-engine-worker-cmd-def.js';
+import { applySEIConfig } from '../demux/sei';
 import {
     WorkerMessagePacket,
     WorkerMessagePacketMSEInit,
@@ -129,6 +131,16 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
             case 'resume_transmuxer':
                 transmuxer!.resume();
                 break;
+            case 'update_sei_config': {
+                const packet = command_packet as WorkerCommandPacketUpdateSEIConfig;
+                if (config) {
+                    applySEIConfig(config, packet.sei_config);
+                }
+                if (transmuxer) {
+                    transmuxer.updateSEIConfig(packet.sei_config);
+                }
+                break;
+            }
         }
     });
 

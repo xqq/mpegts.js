@@ -88,6 +88,8 @@ In multipart mode, `duration` `filesize` `url` field in `MediaDataSource` struct
 | `autoCleanupMaxBackwardDuration` | `number`  | `3 * 60`                     | When backward buffer duration exceeded this value (in seconds), do auto cleanup for SourceBuffer |
 | `autoCleanupMinBackwardDuration` | `number`  | `2 * 60`                     | Indicates the duration in seconds to reserve for backward buffer when doing auto cleanup. |
 | `fixAudioTimestampGap`           | `boolean` | `true`                       | Fill silent audio frames to avoid a/v unsync when detect large audio timestamp gap. |
+| `enableSEIParsing?`              | `boolean` | `true`                       | Parse H.264 / H.265 SEI NAL units and fire `SEI_ARRIVED`. When `false`, SEI NAL units are skipped without being parsed. Can be changed with `MSEPlayer.updateSEIConfig()`. |
+| `seiUUIDAllowlist?`              | `string[] \| null` | `null`             | `null` reports every SEI message. An array reports only user_data_unregistered (payload type 5) messages whose uuid is listed (32 hex digits, dashes and case ignored); `[]` reports nothing. Can be changed with `MSEPlayer.updateSEIConfig()`. |
 | `accurateSeek?`                  | `boolean` | `false`                      | Accurate seek to any frame, not limited to video IDR frame, but may a bit slower. Available on `Chrome > 50`, `FireFox` and `Safari`. |
 | `seekType?`                      | `string`  | `'range'`                    | `'range'` use range request to seek, or `'param'` add params into url to indicate request range. |
 | `seekParamStart?`                | `string`  | `'bstart'`                   | Indicates seek start parameter name for `seekType = 'param'` |
@@ -131,10 +133,23 @@ Return a `FeatureList` object which has following details:
 
 ### mpegts.MSEPlayer
 ```typescript
-interface MSEPlayer extends Player {}
+interface MSEPlayer extends Player {
+    updateSEIConfig(config: { enableSEIParsing?: boolean, seiUUIDAllowlist?: string[] | null }): void;
+}
 ```
 
 MSE player which implements the `Player` interface. Can be created by `new` operator directly.
+
+`updateSEIConfig()` changes the SEI fields of **Config** during playback, also when transmuxing runs in a worker. It applies from the next demuxed video frame; fields left `undefined` keep their value, and an invalid value throws.
+
+```js
+player.on(mpegts.Events.SEI_ARRIVED, (sei) => {
+    // sei: { type, size, uuid?, uuid_string?, user_data?, pts? }, one event per SEI message
+    // pts is in milliseconds, on the same timeline as video.currentTime * 1000
+});
+player.updateSEIConfig({ seiUUIDAllowlist: ['12345678-1234-1234-1234-123456789abc'] });
+player.updateSEIConfig({ enableSEIParsing: false });  // SEI NAL units are no longer parsed
+```
 
 ### mpegts.NativePlayer
 
@@ -207,6 +222,7 @@ A series of constants that can be used with `Player.on()` / `Player.off()`. They
 | SYNCHRONOUS_KLV_METADATA_ARRIVED  |  Provides Synchronous KLV Metadata packets containing private data (stream_type=0x15) callback |
 | ASYNCHRONOUS_KLV_METADATA_ARRIVED |  Provides Asynchronous KLV Metadata packets containing private data (stream_type=0x06) callback |
 | SMPTE2038_METADATA_ARRIVED | Provides SMPTE2038 Metadata packets containing private data callback |
+| SEI_ARRIVED                | Provides each H.264 / H.265 SEI message (FLV and MPEG-TS) filtered by `enableSEIParsing` and `seiUUIDAllowlist` |
 | SCTE35_METADATA_ARRIVED    | Provides SCTE35 Metadata packets containing section (stream_type=0x86) callback |
 | PES_PRIVATE_DATA_ARRIVED   | Provides ISO/IEC 13818-1 PES packets containing private data (stream_type=0x06) callback |
 | STATISTICS_INFO            | Provides playback statistics information like dropped frames, current speed, etc. |
