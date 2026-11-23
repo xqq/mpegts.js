@@ -16,6 +16,8 @@
  * limitations under the License.
  */
 
+import type { SEIConfig } from '../demux/sei';
+
 export type WorkerCommandOp =
     | 'logging_config'
     | 'init'
@@ -28,7 +30,8 @@ export type WorkerCommandOp =
     | 'timeupdate'
     | 'readystatechange'
     | 'pause_transmuxer'
-    | 'resume_transmuxer';
+    | 'resume_transmuxer'
+    | 'update_sei_config';
 
 export type WorkerCommandPacket = {
     cmd: WorkerCommandOp,
@@ -58,4 +61,9 @@ export type WorkerCommandPacketTimeUpdate = WorkerCommandPacket & {
 export type WorkerCommandPacketReadyStateChange = WorkerCommandPacket & {
     cmd: 'readystatechange',
     ready_state: number,
+};
+
+export type WorkerCommandPacketUpdateSEIConfig = WorkerCommandPacket & {
+    cmd: 'update_sei_config',
+    sei_config: SEIConfig,
 };

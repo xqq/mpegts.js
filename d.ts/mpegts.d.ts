@@ -176,6 +176,22 @@ declare namespace Mpegts {
         fixAudioTimestampGap?: boolean;
 
         /**
+         * @desc Parse H.264 / H.265 SEI NAL units and fire `Events.SEI_ARRIVED`.
+         * @desc When false, SEI NAL units are skipped without being parsed.
+         * @desc Can be changed during playback with `MSEPlayer.updateSEIConfig()`
+         * @defaultvalue true
+         */
+        enableSEIParsing?: boolean;
+        /**
+         * @desc null: report every SEI message.
+         * @desc Array: report only user_data_unregistered (payload type 5) messages whose uuid is listed,
+         *       given as 32 hex digits with or without dashes, in any case. [] reports nothing, like disabling.
+         * @desc Can be changed during playback with `MSEPlayer.updateSEIConfig()`
+         * @defaultvalue null
+         */
+        seiUUIDAllowlist?: string[] | null;
+
+        /**
          * @desc Accurate seek to any frame, not limited to video IDR frame, but may a bit slower.
          *          Available on Chrome > 50, FireFox and Safari.
          * @defaultvalue false
@@ -384,9 +400,34 @@ declare namespace Mpegts {
         [k: string]: any;
     }
 
+    type SEIConfig = Pick<Config, 'enableSEIParsing' | 'seiUUIDAllowlist'>;
+
+    /**
+     * @desc Payload of `Events.SEI_ARRIVED`, one per SEI message
+     */
+    interface SEIData {
+        /** SEI payloadType */
+        type: number;
+        /** SEI payloadSize in bytes */
+        size: number;
+        /** Only for user_data_unregistered (type 5) */
+        uuid?: Uint8Array;
+        /** uuid as lowercase 8-4-4-4-12 hex */
+        uuid_string?: string;
+        /** Bytes after the uuid, exactly as sent by the encoder */
+        user_data?: Uint8Array;
+        /** Presentation time in milliseconds, on the same timeline as `HTMLMediaElement.currentTime * 1000` */
+        pts?: number;
+    }
+
     interface MSEPlayer extends Player {
         mediaInfo: MSEPlayerMediaInfo;
         statisticsInfo: MSEPlayerStatisticsInfo;
+        /**
+         * @desc Changes `enableSEIParsing` / `seiUUIDAllowlist` during playback, from the next demuxed video frame on.
+         *       Fields left undefined keep their value. Throws on an invalid value.
+         */
+        updateSEIConfig(config: SEIConfig): void;
     }
 
     interface NativePlayer extends Player {
@@ -424,6 +465,7 @@ declare namespace Mpegts {
         SYNCHRONOUS_KLV_METADATA_ARRIVED: string;
         ASYNCHRONOUS_KLV_METADATA_ARRIVED: string;
         SMPTE2038_METADATA_ARRIVED: string;
+        SEI_ARRIVED: string;
         PES_PRIVATE_DATA_DESCRIPTOR: string;
         PES_PRIVATE_DATA_ARRIVED: string;
         STATISTICS_INFO: string;

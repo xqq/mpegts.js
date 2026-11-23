@@ -33,6 +33,7 @@ import LoadingController from './loading-controller';
 import StartupStallJumper from './startup-stall-jumper';
 import LiveLatencyChaser from './live-latency-chaser';
 import LiveLatencySynchronizer from './live-latency-synchronizer';
+import { applySEIConfig, SEIConfig } from '../demux/sei';
 
 class PlayerEngineMainThread implements PlayerEngine {
 
@@ -336,6 +337,13 @@ class PlayerEngineMainThread implements PlayerEngine {
             this._seeking_handler.seek(seconds);
         } else {
             this._pending_seek_time = seconds;
+        }
+    }
+
+    public updateSEIConfig(update: SEIConfig): void {
+        applySEIConfig(this._config, update);
+        if (this._transmuxer) {
+            this._transmuxer.updateSEIConfig(update);
         }
     }
 

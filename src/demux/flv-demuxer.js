@@ -27,7 +27,7 @@ import H265Parser from './h265-parser.js';
 import buffersAreEqual from '../utils/typedarray-equality.ts';
 import AV1OBUParser from './av1-parser.ts';
 import ExpGolomb from './exp-golomb.js';
-import { parseSEI } from './sei';
+import { parseSEIMessages, SEIFilter } from './sei';
 import { MP3FrameParser } from './mp3';
 
 function Swap16(src) {
@@ -64,6 +64,8 @@ class FLVDemuxer {
         this._onTrackMetadata = null;
         this._onDataAvailable = null;
         this._onSeiArrived = null;
+
+        this._seiFilter = new SEIFilter(config);
 
         this._dataOffset = probeData.dataOffset;
         this._firstParse = true;
@@ -463,11 +465,19 @@ class FLVDemuxer {
         }
     }
 
-    _parseSEIPayload(data, pts, codec) {
-        const sei_data = parseSEI(data, pts, codec);
+    // Applies the SEI fields of config (enableSEIParsing, seiUUIDAllowlist) from the next video tag on
+    updateSEIConfig(config) {
+        this._seiFilter = new SEIFilter(config);
+    }
 
-        if (sei_data && typeof this._onSeiArrived === 'function') {
-            this._onSeiArrived(sei_data);
+    _parseSEIPayload(data, pts, codec) {
+        if (typeof this._onSeiArrived !== 'function') {
+            return;
+        }
+
+        const messages = parseSEIMessages(data, pts, codec, this._seiFilter);
+        for (let i = 0; i < messages.length; i++) {
+            this._onSeiArrived(messages[i]);
         }
     }
 
@@ -1621,7 +1631,7 @@ class FLVDemuxer {
             units.push(unit);
             length += data.byteLength;
 
-            if (unitType === 6) {  // SEI
+            if (unitType === 6 && this._seiFilter.active) {  // SEI
                 this._parseSEIPayload(data.subarray(lengthSize), dts + cts, 'h264');
             }
 
@@ -1684,7 +1694,7 @@ class FLVDemuxer {
             units.push(unit);
             length += data.byteLength;
 
-            if (unitType === 39 || unitType === 40) {  // Prefix / Suffix SEI
+            if ((unitType === 39 || unitType === 40) && this._seiFilter.active) {  // Prefix / Suffix SEI
                 this._parseSEIPayload(data.subarray(lengthSize), dts + cts, 'h265');
             }
 

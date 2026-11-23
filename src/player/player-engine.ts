@@ -17,6 +17,7 @@
  */
 
 import type MediaInfo from "../core/media-info";
+import type { SEIConfig } from "../demux/sei";
 
 export default interface PlayerEngine {
     destroy(): void;
@@ -29,6 +30,7 @@ export default interface PlayerEngine {
     play(): Promise<void>;
     pause(): void;
     seek(seconds: number): void;
+    updateSEIConfig(update: SEIConfig): void;
     readonly mediaInfo: MediaInfo | undefined;
     readonly statisticsInfo: any | undefined;
 }

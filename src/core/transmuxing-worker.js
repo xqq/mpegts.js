@@ -90,6 +90,11 @@ const TransmuxingWorker = function (self) {
             case 'resume':
                 controller.resume();
                 break;
+            case 'update_sei_config':
+                if (controller) {
+                    controller.updateSEIConfig(e.data.param);
+                }
+                break;
             case 'logging_config': {
                 const config = e.data.param;
                 LoggingControl.applyConfig(config);
