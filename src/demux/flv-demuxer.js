@@ -586,8 +586,14 @@ class FLVDemuxer {
                 meta.codec = misc.codec;
                 meta.originalCodec = misc.originalCodec;
                 meta.config = misc.config;
-                // The decode result of an aac sample is 1024 PCM samples
-                meta.refSampleDuration = 1024 / meta.audioSampleRate * meta.timescale;
+                // AAC LC frames decode to 1024 PCM samples; HE-AAC (SBR/PS) frames decode to 2048.
+                // Explicit SBR signaling carries both the output and the core sampling rate in the
+                // AudioSpecificConfig, in either order, so the decoder output rate is the higher one.
+                const aacSamplesPerFrame = (misc.originalAudioObjectType === 5 || misc.originalAudioObjectType === 29) ? 2048 : 1024;
+                const aacOutputRate = (aacSamplesPerFrame === 2048 && misc.extensionSamplingRate)
+                    ? Math.max(misc.samplingRate, misc.extensionSamplingRate)
+                    : misc.samplingRate;
+                meta.refSampleDuration = aacSamplesPerFrame / aacOutputRate * meta.timescale;
                 Log.v(this.TAG, 'Parsed AudioSpecificConfig');
 
                 if (this._isInitialMetadataDispatched()) {
@@ -775,9 +781,12 @@ class FLVDemuxer {
         return {
             config: config,
             samplingRate: samplingFrequence,
+            extensionSamplingRate: (extensionSamplingIndex != null && extensionSamplingIndex < this._mpegSamplingRates.length)
+                ? this._mpegSamplingRates[extensionSamplingIndex] : undefined,
             channelCount: channelConfig,
             codec: 'mp4a.40.' + audioObjectType,
-            originalCodec: 'mp4a.40.' + originalAudioObjectType
+            originalCodec: 'mp4a.40.' + originalAudioObjectType,
+            originalAudioObjectType: originalAudioObjectType
         };
     }
 
