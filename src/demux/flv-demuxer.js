@@ -84,6 +84,7 @@ class FLVDemuxer {
         this._metadata = null;
         this._audioMetadata = null;
         this._videoMetadata = null;
+        this._pendingVideoMetadata = null;
 
         this._naluLengthSize = 4;
         this._timestampBase = 0;  // int32, in milliseconds
@@ -119,6 +120,7 @@ class FLVDemuxer {
         this._metadata = null;
         this._audioMetadata = null;
         this._videoMetadata = null;
+        this._pendingVideoMetadata = null;
         this._videoTrack = null;
         this._audioTrack = null;
 
@@ -1207,7 +1209,7 @@ class FLVDemuxer {
                 this._mediaInfo.hasVideo = true;
             }
 
-            meta = this._videoMetadata = {};
+            meta = {};
             meta.type = 'video';
             meta.id = track.id;
             meta.timescale = this._timescale;
@@ -1222,6 +1224,7 @@ class FLVDemuxer {
                     Log.w(this.TAG, 'AVCDecoderConfigurationRecord has been changed, re-generate initialization segment');
                 }
             }
+            meta = { ...meta };
         }
 
         const version = v.getUint8(0);  // configurationVersion
@@ -1351,17 +1354,7 @@ class FLVDemuxer {
         meta.avcc.set(new Uint8Array(arrayBuffer, dataOffset, dataSize), 0);
         Log.v(this.TAG, 'Parsed AVCDecoderConfigurationRecord');
 
-        if (this._isInitialMetadataDispatched()) {
-            // flush parsed frames
-            if (this._dispatch && (this._audioTrack.length || this._videoTrack.length)) {
-                this._onDataAvailable(this._audioTrack, this._videoTrack);
-            }
-        } else {
-            this._videoInitialMetadataDispatched = true;
-        }
-        // notify new metadata
-        this._dispatch = false;
-        this._onTrackMetadata('video', meta);
+        this._setVideoConfig(meta);
     }
 
     _parseHEVCDecoderConfigurationRecord(arrayBuffer, dataOffset, dataSize) {
@@ -1381,7 +1374,7 @@ class FLVDemuxer {
                 this._mediaInfo.hasVideo = true;
             }
 
-            meta = this._videoMetadata = {};
+            meta = {};
             meta.type = 'video';
             meta.id = track.id;
             meta.timescale = this._timescale;
@@ -1396,6 +1389,7 @@ class FLVDemuxer {
                     Log.w(this.TAG, 'HEVCDecoderConfigurationRecord has been changed, re-generate initialization segment');
                 }
             }
+            meta = { ...meta };
         }
 
         const version = v.getUint8(0);  // configurationVersion
@@ -1487,17 +1481,7 @@ class FLVDemuxer {
         meta.hvcc.set(new Uint8Array(arrayBuffer, dataOffset, dataSize), 0);
         Log.v(this.TAG, 'Parsed HEVCDecoderConfigurationRecord');
 
-        if (this._isInitialMetadataDispatched()) {
-            // flush parsed frames
-            if (this._dispatch && (this._audioTrack.length || this._videoTrack.length)) {
-                this._onDataAvailable(this._audioTrack, this._videoTrack);
-            }
-        } else {
-            this._videoInitialMetadataDispatched = true;
-        }
-        // notify new metadata
-        this._dispatch = false;
-        this._onTrackMetadata('video', meta);
+        this._setVideoConfig(meta);
     }
 
     _parseAV1CodecConfigurationRecord(arrayBuffer, dataOffset, dataSize) {
@@ -1583,6 +1567,32 @@ class FLVDemuxer {
         Log.v(this.TAG, 'Preparing AV1CodecConfigurationRecord');
     }
 
+    _setVideoConfig(metadata) {
+        this._videoMetadata = metadata;
+        this._dispatch = false;
+        if (this._videoInitialMetadataDispatched) {
+            // The next picture's DTS determines how long the last old picture lasts.
+            this._pendingVideoMetadata = metadata;
+            return;
+        }
+        this._videoInitialMetadataDispatched = true;
+        this._onTrackMetadata('video', metadata);
+    }
+
+    _applyPendingVideoConfig(nextDts) {
+        const metadata = this._pendingVideoMetadata;
+        if (!metadata) {
+            return;
+        }
+        this._pendingVideoMetadata = null;
+        if (this._isInitialMetadataDispatched() && this._audioTrack.length) {
+            // Normal audio batching and a DTS base shared with the pending video.
+            this._onDataAvailable(this._audioTrack, this._videoTrack);
+        }
+        this._onDataAvailable(null, this._videoTrack, true, nextDts);
+        this._onTrackMetadata('video', metadata);
+    }
+
     _parseAVCVideoData(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, cts) {
         const le = this._littleEndian;
         const v = new DataView(arrayBuffer, dataOffset, dataSize);
@@ -1629,6 +1639,7 @@ class FLVDemuxer {
         }
 
         if (units.length) {
+            this._applyPendingVideoConfig(dts);
             const track = this._videoTrack;
             const avcSample = {
                 units: units,
@@ -1692,6 +1703,7 @@ class FLVDemuxer {
         }
 
         if (units.length) {
+            this._applyPendingVideoConfig(dts);
             const track = this._videoTrack;
             const hevcSample = {
                 units: units,
