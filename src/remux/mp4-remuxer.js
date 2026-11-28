@@ -131,7 +131,7 @@ class MP4Remuxer {
         this._audioSegmentInfoList.clear();
     }
 
-    remux(audioTrack, videoTrack, force = false) {
+    remux(audioTrack, videoTrack, force = false, nextVideoDts) {
         if (!this._onMediaSegment) {
             throw new IllegalStateException('MP4Remuxer: onMediaSegment callback must be specificed!');
         }
@@ -139,7 +139,7 @@ class MP4Remuxer {
             this._calculateDtsBase(audioTrack, videoTrack);
         }
         if (videoTrack) {
-            this._remuxVideo(videoTrack, force);
+            this._remuxVideo(videoTrack, force, nextVideoDts);
         }
         if (audioTrack) {
             this._remuxAudio(audioTrack, force);
@@ -584,7 +584,7 @@ class MP4Remuxer {
         this._onMediaSegment('audio', segment);
     }
 
-    _remuxVideo(videoTrack, force) {
+    _remuxVideo(videoTrack, force, nextVideoDts) {
         if (this._videoMeta == null) {
             return;
         }
@@ -682,6 +682,9 @@ class MP4Remuxer {
                 if (lastSample != null) {  // use stashed sample's dts to calculate sample duration
                     const nextDts = lastSample.dts - this._dtsBase - dtsCorrection;
                     sampleDuration = nextDts - dts;
+                } else if (nextVideoDts > sample.dts) {
+                    // A configuration change separates the next sample from this batch.
+                    sampleDuration = nextVideoDts - sample.dts;
                 } else if (mp4Samples.length >= 1) {  // use second last sample duration
                     sampleDuration = mp4Samples[mp4Samples.length - 1].duration;
                 } else if (this._videoLastSampleDuration > 0) {
